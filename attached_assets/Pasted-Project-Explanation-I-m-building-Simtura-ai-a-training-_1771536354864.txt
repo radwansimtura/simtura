@@ -1,0 +1,278 @@
+Project Explanation
+I'm building Simtura.ai, a training platform for- at this point EMS personnel- which uses AI to create realistic interactive video scenarios that help to train upcoming EMTs, paramedics, and so on. Through using realistic-looking simulations that fluidly evolve like real scenarios, the immersion of students into scenario training becomes more effective than ever before. Such a program helps to bridge the wide gap between classroom teaching and real world experiences, allowing students to sharpen critical decision making far beyond their first ever call. 
+__________________________________________
+
+Problem Solved
+In any discipline, practice makes perfect. Yet in fields such as emergency medical services or law enforcement, opportunities for real-world, on-the-job training are often limited by logistics, safety concerns, and availability. You can’t simply ride along in an ambulance or shadow every critical call. Simtura.ai overcomes this barrier by generating seamless, high-fidelity scenarios through advanced AI. These simulations allow students to hone their decision-making, communication, and technical skills in a safe yet authentic environment. By the time they face their first real-world emergency, the scene will feel less like uncharted territory—and more like second nature.
+__________________________________________
+
+Background
+This summer, I participated and completed an EMT course, finally becoming certified on the first of August. Each week, I learned through a textbook and completed online quizzes about the knowledge I’d gained from my readings. Then, during my 10 hour classes on Saturdays I would go to a classroom and practice hands on skills. I found that I learned much more when I was using the knowledge I’d learned in what was supposed to be a practical application. But, I found that my time doing so was limited- I could only use the dummies once a week and I had to wait for the other 30 kids in my class to have their turn before I could. Further, it didn’t feel real- they were only dummies after all. Among these thoughts came forth the idea Simtura.ai represents. 
+__________________________________________
+
+Competition
+Somehow, there is absolutely no company or project in the world that I could find that already does what I aim to do. The closest thing I could find is VR simulators. Yes, these are very immersive and provide seamless interaction with your hands- but, they are terrible in accessibility. Most people are not willing to pay hundreds and take on the hassle of VR maintenance for a course like mine that took maybe 2 months. So, while I could find about 5 companies who do EMS training through VR, they are of little concern to me. 
+__________________________________________
+
+Assistance Needed
+Funding and technical expertise. 
+
+I need help with technical expertise with AI and the creation of programs. I have a vision and the connecting skills to scale and build the company of my dreams. Once it is built with the help of CS experts, I know this will be the next big thing in the realm of practical teaching. 
+
+Although funding also plays a large part in this early stage I currently reside within, I am fully confident that once I am able to produce my vision and present it- the funding will come easily.  
+
+CAC (customer acquisition cost), LVM (lifetime value money)
+__________________________________________
+
+Constraints
+Any constraints/requirements in the medical field (HIPAA, certifications, etc.). 
+
+HIPAA: With the scenarios being created by artificial intelligence they don’t have any correlation to real human beings in-terms of HIPAA. Even if you were to take certain scenarios that have actually happened from real patients, as long as there are zero identifying characteristics that would let someone tie it back to that person- it is completely legal. 
+
+Certifications: At the start of the project, I think applying for an educator/certifier license in various states/countries would be an absolute pain in the back. It also isn’t necessarily the most helpful- the app is meant to mostly train but this is certainly an area I’d like to pursue later on. 
+
+Functionally, what you picture this solving and how: Scenario training at the moment involves sitting with 10 people in a circle around a dummy and waiting forever for it to be your turn. Once it is your turn, you simply dictate aloud what you would actually be doing in said-scenario and do little interactive work (you may touch the dummy for a brief moment). In immersing students in a real-feeling and looking atmosphere. They are able to see the scene beyond a dummy, and witness consequences of their actions through the program. 
+__________________________________________
+
+Possibilities/features
+First person. Interactive demands for the character through dication and touch. Evolving scenes- patients respond either poorly or well or neither to certain actions. Explanations to wrong moves. Modes for EMRs, EMTs, AEMTs, Paramedics. Must include each individual state’s protocols for certain things like medications authorization.
+
+Mock exams, training mode. 
+__________________________________________
+
+Customer Base/Expandability
+At the moment, EMS. But like I said, there is absolutely no company in the world right now that offers something like this. If this takes off, it has the possibility to take on any sort of realm that involves scenario/practical training. 
+
+Examples include: Physicians of countless specialties, fire services, law enforcement, military and defense, construction, and so on. 
+
+
+Customer’s View: What they get, why they’d use it, why would they invest their time in it? 
+For a small sum of money, say 5 or 10 bucks or something, the customer receives a scene simulator that allows them to sharpen their practical skills. The first time you experience a 911 shift might be a little scary, nonetheless lead one, so getting ready is the best thing to do. Investing some of your time to make sure you can save a person’s life is always an endeavor worth pursuing.
+
+The mum test. 
+__________________________________________
+
+Scenarios
+Ideal scenario: 
+Starts in back of ambulance, hears dispatch’s description of patient, gets out of ambulance, approaches patient, forms general impression and scene safety, practices the primary assessment while talking to the patient, treats issues as they arise, puts patient into back of ambulance, continues treating, as soon as arrive at hospital and patient is unloaded from ambulance- scenario ends.
+
+
+Scenario #1 - Patient Primary Assessment (applicable to any scenario)
+
+A 22-year-old female is sitting on the ground holding her left side and breathing rapidly after falling during a soccer game. Her teammates report she was struck in the ribs by another player’s elbow.
+
+
+Steps
+Dictation/Decisions
+Dons or verbalizes appropriate PPE for skill.
+“Equip BSI (gloves, mask, etc.)”
+Scene size-up: Determines Scene Safety
+“Is my scene safe?” or looks around to check
+Scene size-up: Assesses need for additional resources (ALS, Fire, Extrication, Haz Mat...)
+
+
+“I am/not going to call ALS” - judgement call
+Scene size-up: Determines how many patients there are
+
+
+“There is 1 patient on the scene.”
+Scene size-up: Evaluates MOI or NOI
+
+
+“The mechanism of injury is an elbow to the ribs”
+Scene size-up: Consider need for spinal precautions
+“The patient did fall but it wasn’t significant so probably would not use spinal precautions here.”
+General Impression: Evaluates/treats life threat? (Major bleed, obvious arrest....).
+“There are no active life threats to the patient.”
+General Impression: Assess AVPU
+“The patient is alert and talking to me” A
+Primary Assessment: Evaluate/Treat Airway
+“The airway is patent”
+Primary Assessment: Evaluate/Treat Breathing
+“The patient is breathing rapidly and shallowly at 32 bpm, 88% SpO2. I’m going to administer non-breather mask at 15lpm.” 
+Primary Assessment: Evaluate/Treat Circulation
+“The patient’s pulse is 124, skin is cool and diaphoretic indicating shock, continuing non-rebreather. 
+Prioritizes patient 
+“This is a high priority patient”
+
+
+
+Scenario 2 - Asthma Attack 
+
+A 6-year-old male is sitting upright, appearing anxious and struggling to breathe with audible wheezing, nasal flaring,						
+and intercostal retractions. His mother states he has a history of asthma and began having trouble breathing an hour ago after playing						
+outside. His oxygen saturation is 85% on room air, and he is pale with cool, clammy skin. He is alert but unable to speak in full						
+sentences.						
+
+
+
+Steps
+Dictation/Decisions
+Dons or verbalizes appropriate PPE for skill.
+“Equip BSI (gloves, mask, etc.)”
+Scene size-up: Determines Scene Safety
+“Is my scene safe?” or looks around to check
+Scene size-up: Assesses need for additional resources (ALS, Fire, Extrication, Haz Mat...)
+
+
+“I am going to call ALS”
+Scene size-up: Determines how many patients there are
+
+
+“There is 1 patient on the scene.”
+Scene size-up: Evaluates MOI or NOI
+
+
+“The nature of illness is shortness of breath.”
+Scene size-up: Consider need for spinal precautions
+“Not going to consider spinal precautions, no indication."
+General Impression: Evaluates/treats life threat? (Major bleed, obvious arrest....).
+“The patient seems to be in respiratory distress, immediately assist with ventilations.”
+General Impression: Assess AVPU
+“The patient is alert and talking to me” A
+Primary Assessment: Evaluate/Treat Airway
+“The airway is patent”
+Primary Assessment: Evaluate/Treat Breathing
+“Continue the ventilations initiated in the immediate life threats stage, attach BVM to high flow supplemental oxygen once recognizing the SpO2 is at 85%.” 
+Primary Assessment: Evaluate/Treat Circulation
+“The patient’s skin is pale and diaphoretic, consistent with poor perfusion. Check the pulse and capillary refill.”
+Prioritizes patient 
+“This is a high priority patient”
+
+
+“Let’s load the patient onto the stretcher and get him into the ambulance.”
+
+
+“I will gather SAMPLE/OPQRST history en route, since patient is unstable and should not be delayed on scene.”
+History 
+OPRST- “What were you doing when you began struggling to breathe(O)? Does anything make it worse(P)? Does your pain radiate anywhere(R)? “Rate pain on a scale of 1-10(S). What time did the pain start(T)?”
+AMPLE- “Do you have any allergies? Do you take any medications? Do you have a medical history? When did you last eat or drink? Events leading up to the event?”
+
+
+
+
+“I would like to recheck the patient’s vitals, I need a blood pressure, heart rate, respiratory rate, SpO2, and an EtCO2.”
+Transfer care
+“We have arrived at the hospital, I will transfer care of my patient.”
+
+
+
+“Equip BSI.” (gloves, mask, etc)
+“Is my scene safe?” or look around to check
+“I am going to call ALS.”
+“There is 1 patient.”
+“The nature of illness is shortness of breath.”
+“Not going to consider spinal precautions, no indication."
+“The patient is alert and talking to me.”
+“The patient seems to be in respiratory distress, immediately assist with ventilations.”
+“The airway is patent”
+“Continue the ventilations initiated in the immediate life threats stage, attach BVM to high flow supplemental oxygen once recognizing the SpO2 is at 85%.” 
+“The patient’s skin is pale and diaphoretic, consistent with poor perfusion. Check the pulse and capillary refill.”
+“This is a high priority patient.”
+“Let’s load the patient onto the stretcher and get him into the ambulance.”
+“I will gather SAMPLE/OPQRST history en route, since patient is unstable and should not be delayed on scene.”
+OPRST- “What were you doing when you began struggling to breathe(O)? Does anything make it worse(P)? Does your pain radiate anywhere(R)? “Rate pain on a scale o f 1-10(S). What time did the pain start(T)?”
+AMPLE- “Do you have any allergies? Do you take any medications? Do you have a medical history? When did you last eat or drink? Events leading up to the event?”
+“I would like to recheck the patient’s vitals, I need a blood pressure, heart rate, respiratory rate, SpO2, and an EtCO2.”
+“We have arrived at the hospital, I will transfer care of my patient.”
+
+Scene ends…
+
+Scenario #3 – Bag Valve Mask (Precert)
+72-year-old male, unresponsive in bed
+Initial Findings: RR 4, weak pulse 52, SpO₂ 70%, HR 52, BP 92/58, cyanotic, cool/clammy, groans to pain only. Snoring respirations.
+Progression:
+Without intervention: Pulse weakens further, SpO₂ drops to 64%, respirations stop.
+With BVM + O₂ (15 L/min): Chest rise improves, SpO₂ increases to 86% within 2 minutes. HR rises to 66, skin color improves slightly. Patient begins to move arms but remains non-verbal.
+
+
+“Equip BSI.” (gloves, mask, eye protection, etc.)
+“Is my scene safe?” (look around, no hazards noted).
+“I am going to call ALS.”
+“There is 1 patient.”
+“The nature of illness is respiratory failure.”
+“Not going to consider spinal precautions, no indication.”
+“The patient is unresponsive, groans to painful stimuli only.”
+“Airway is not patent — patient has snoring respirations, so I will open the airway with a head-tilt chin-lift and insert an OPA.”
+“Breathing is agonal and inadequate, respiratory rate 4 with cyanosis present. I will immediately begin ventilations with a BVM.”
+“Attach BVM to high-flow oxygen at 15 liters per minute and assist ventilations at a rate of 10–12 breaths per minute, making sure I see chest rise.”
+“Circulation: Patient has weak radial pulse at 52, skin is cool and clammy, SpO₂ is 70%. This is consistent with poor perfusion. Blood pressure is 92/58.”
+“This is a high-priority patient.”
+“Continue ventilations — patient’s oxygen saturation improves to 86%, pulse rises to 66, skin color improves slightly. The patient begins moving arms but remains non-verbal.”
+“Let’s load the patient onto the stretcher and begin rapid transport to the ambulance.”
+“I will gather SAMPLE/OPQRST history en route since patient is unstable and should not be delayed on scene.”
+OPQRST SAMPLE
+“I would like to recheck the patient’s vitals: BP 92/58, HR 66, RR assisted at 12/min, SpO₂ 86%, EtCO₂ pending.”
+“Continue ventilations en route, reassess every 5 minutes due to critical condition.”
+“We have arrived at the hospital. I will transfer care of my patient and provide a full verbal report.”
+
+
+Scenario #4 – Trauma (Precert)
+22-year-old male, thigh laceration from glass
+Initial Findings: Spurting arterial bleed, HR 132, BP 90/60, SpO₂ 95%, pale/anxious. Cap refill >3 sec.
+Progression:
+Without bleeding control: BP drops to 76/40, HR 160, patient becomes lethargic, skin ashen.
+With tourniquet applied: Bleeding stops. HR stabilizes around 118, BP rises to 100/64. Patient becomes more coherent but remains pale and weak.
+
+“Equip BSI.” (gloves, mask, eye protection).
+“Is my scene safe?” (look for broken glass, environmental hazards).
+“I am going to call ALS.”
+“There is 1 patient.”
+“The mechanism of injury is penetrating trauma with severe external hemorrhage.”
+“No indication for spinal precautions at this time.”
+“The patient is alert but anxious, pale, with spurting arterial bleeding from the thigh.”
+“First, I will apply direct pressure to the wound with a sterile dressing.”
+“Bleeding is uncontrolled with direct pressure — I will immediately apply a tourniquet high and proximal on the thigh until bleeding stops.”
+“Airway is patent. Patient is talking to me.”
+“Breathing is adequate, respiratory rate not distressed, SpO₂ is 95%.”
+“Circulation: Spurting arterial bleed controlled with tourniquet, radial pulse is rapid and weak, HR 132, BP 90/60, cap refill >3 seconds, skin is pale and cool.”
+“This is a high-priority patient due to shock from hemorrhage.”
+“Expose and assess for additional injuries, manage life threats.”
+“Reassess bleeding — bleeding controlled with tourniquet. HR stabilizes to 118, BP rises to 100/64. Patient more coherent but remains pale and weak.”
+“Let’s load the patient onto the stretcher for rapid transport.”
+“I will treat for shock: keep the patient warm with blankets, elevate legs if no contraindication, provide high-flow oxygen via NRB at 15 L/min.”
+“I will gather SAMPLE/OPQRST history en route since the patient is unstable and should not be delayed on scene.”
+“I would like to recheck the patient’s vitals: HR 118, BP 100/64, RR 20, SpO₂ 95%.”
+“Continue to reassess bleeding control, mental status, and perfusion every 5 minutes.”
+“We have arrived at the hospital. I will transfer care of my patient and give a full verbal report.”
+
+
+Scenario #5 – Combative Overdose (NewCert)
+30-year-old female, suspected heroin use
+Initial Findings: Unresponsive, agonal respirations 6/min, SpO₂ 72%, HR 48, BP 88/54, pupils pinpoint, skin cool.
+Progression:
+With BVM + naloxone (IN 4 mg): Within 2 minutes, respirations increase to 14/min, HR rises to 78, BP 108/70, SpO₂ 94%. Patient regains consciousness, becomes combative, pushes rescuers away, shouting she’s “fine.”
+If no intervention: Respirations cease, HR bradycardic to 30, cardiac arrest within 5 minutes.
+
+Scenario #6 – Motor Vehicle Collision, Multi-Patient (NewCert)
+Driver #1: Alert, bleeding scalp wound. HR 110, BP 118/74, SpO₂ 98%. Becomes more agitated, vomiting blood → airway risk. 
+Passenger #1: Initially unresponsive, shallow breaths at 8/min, SpO₂ 82%, HR 52, BP 88/56. With BVM: RR rises to 12 assisted, SpO₂ improves to 91%, HR increases to 72. Without airway control, descends into arrest.
+Driver #2: Neck pain, holding still. HR 98, BP 130/78, SpO₂ 99%. Stable if immobilized.
+
+Scenario #7 – Elderly Fall, Possible Head Injury (NewCert)
+82-year-old female, fall in nursing home, on warfarin
+Initial Findings: Alert but confused. Forehead hematoma. HR 88, BP 158/86, RR 20, SpO₂ 95%. GCS 14.
+Progression: Over 10 minutes, speech slurs, right-sided arm weakness. HR 92, BP rises to 174/90, SpO₂ 94%.
+Response: O₂ improves SpO₂ to 98%, but neuro deficits worsen → GCS drops to 12 en route.
+
+Scenario #8 – Tension Pneumothorax (Recert)
+29-year-old male, chest trauma from steel beam
+Initial Findings: Severe distress, RR 36, SpO₂ 82%, HR 144, BP 86/60, cool/clammy, JVD, tracheal deviation left, absent L breath sounds.
+Progression:
+Without intervention: BP drops to 70/40, HR 160 then bradycardic, patient becomes unresponsive.
+With needle decompression (ALS): SpO₂ rises to 92%, HR slows to 124, BP improves to 96/64. Patient remains anxious but more coherent, chest rise equalizes slightly.
+
+Scenario #9 – Cardiac Arrest in Pregnant Patient (Recert)
+30-year-old female, 34 weeks pregnant
+Initial Findings: Unresponsive, no pulse, no respirations. Agonal gasps noted initially. Bystanders attempted compressions.
+Progression:
+With CPR + left uterine displacement: ETCO₂ 14 → 22 after compressions, HR regained briefly after 2 shocks but pulseless again.
+Without uterine tilt: Poor perfusion, ineffective compressions, no ROSC after 20 min.
+
+Scenario #10 – Hazardous Material Exposure (Recert)
+40-year-old male, collapsed outside warehouse
+Initial Findings: Unresponsive, pinpoint pupils, excessive salivation, muscle twitching. HR 50, BP 88/60, RR 6, SpO₂ 78%. Strong chemical odor present.
+Progression:
+Without antidote/airway: Respirations stop, HR slows to 30, cardiac arrest in minutes.
+With BVM + atropine (ALS antidote): RR assisted to 12, SpO₂ rises to 92%, HR improves to 72, secretions dry, patient remains unconscious but stable for transport.
+
