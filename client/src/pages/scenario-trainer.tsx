@@ -3,7 +3,6 @@ import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Scenario, ScenarioStep, VitalSigns, StepResponse } from "@shared/schema";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -24,59 +23,32 @@ import {
   VolumeX,
   Maximize,
   Minimize,
+  Play,
 } from "lucide-react";
 
-type VideoPhase = "dispatch" | "arrival" | "assessment" | "treatment" | "transport";
-
-const VIDEO_PHASE_MAP: Record<string, VideoPhase> = {
-  "Scene Safety": "arrival",
-  "Scene Size-Up": "arrival",
-  "General Impression": "assessment",
-  "Primary Assessment": "assessment",
-  "Reassessment": "treatment",
-  "Transport": "transport",
-  "Transfer": "transport",
-};
-
-const VIDEO_SOURCES: Record<VideoPhase, string> = {
-  dispatch: "/videos/ambulance-driving.mp4",
-  arrival: "/videos/scene-arrival.mp4",
-  assessment: "/videos/patient-assessment.mp4",
-  treatment: "/videos/treatment.mp4",
-  transport: "/videos/hospital-transport.mp4",
-};
-
-const PHASE_LABELS: Record<VideoPhase, string> = {
-  dispatch: "En Route to Scene",
-  arrival: "Arriving on Scene",
-  assessment: "Patient Assessment",
-  treatment: "Treatment & Stabilization",
-  transport: "Transport to Hospital",
-};
-
-function getVideoPhase(stepPhase: string): VideoPhase {
-  return VIDEO_PHASE_MAP[stepPhase] || "assessment";
-}
+type TrainerPhase =
+  | "intro"
+  | "dispatch-video"
+  | "step-video"
+  | "question"
+  | "feedback"
+  | "departure-video"
+  | "results";
 
 export default function ScenarioTrainerPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+  const [phase, setPhase] = useState<TrainerPhase>("intro");
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [responses, setResponses] = useState<StepResponse[]>([]);
   const [stepStartTime, setStepStartTime] = useState(Date.now());
   const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
-  const [currentVideoPhase, setCurrentVideoPhase] = useState<VideoPhase>("dispatch");
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
-  const feedbackRef = useRef<HTMLDivElement>(null);
+  const [videoFading, setVideoFading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const bgVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: scenario, isLoading: scenarioLoading } = useQuery<Scenario>({
@@ -123,47 +95,77 @@ export default function ScenarioTrainerPage() {
     }
   }, [steps]);
 
-  const transitionToPhase = useCallback((newPhase: VideoPhase) => {
-    if (newPhase === currentVideoPhase) return;
-
-    setIsTransitioning(true);
-
-    if (bgVideoRef.current) {
-      bgVideoRef.current.src = VIDEO_SOURCES[newPhase];
-      bgVideoRef.current.load();
-      bgVideoRef.current.play().catch(() => {});
+  const playVideo = useCallback((src: string, onEnded?: () => void) => {
+    const video = videoRef.current;
+    if (!video) {
+      onEnded?.();
+      return;
     }
-
+    setVideoFading(true);
+    let resolved = false;
+    const resolve = () => {
+      if (resolved) return;
+      resolved = true;
+      onEnded?.();
+    };
+    const fallbackTimer = setTimeout(() => {
+      setVideoFading(false);
+      resolve();
+    }, 30000);
     setTimeout(() => {
-      setCurrentVideoPhase(newPhase);
-      if (videoRef.current) {
-        videoRef.current.src = VIDEO_SOURCES[newPhase];
-        videoRef.current.load();
-        videoRef.current.play().catch(() => {});
+      video.src = src;
+      video.load();
+      video.currentTime = 0;
+      const handleCanPlay = () => {
+        video.removeEventListener("canplay", handleCanPlay);
+        setVideoFading(false);
+        video.play().catch(() => {
+          clearTimeout(fallbackTimer);
+          resolve();
+        });
+      };
+      const handleError = () => {
+        video.removeEventListener("error", handleError);
+        clearTimeout(fallbackTimer);
+        setVideoFading(false);
+        resolve();
+      };
+      video.addEventListener("canplay", handleCanPlay);
+      video.addEventListener("error", handleError);
+      if (onEnded) {
+        const handleEnded = () => {
+          video.removeEventListener("ended", handleEnded);
+          video.removeEventListener("error", handleError);
+          clearTimeout(fallbackTimer);
+          resolve();
+        };
+        video.addEventListener("ended", handleEnded);
+      } else {
+        clearTimeout(fallbackTimer);
       }
-      setIsTransitioning(false);
-    }, 1000);
-  }, [currentVideoPhase]);
-
-  useEffect(() => {
-    if (currentStepIndex < 0 || !steps) return;
-    const step = steps[currentStepIndex];
-    if (!step) return;
-    const newPhase = getVideoPhase(step.phase);
-    transitionToPhase(newPhase);
-  }, [currentStepIndex, steps]);
+    }, 300);
+  }, []);
 
   const handleStartScenario = () => {
-    setShowIntro(false);
-    setCurrentStepIndex(0);
-    setStepStartTime(Date.now());
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
+    if (!steps || steps.length === 0) return;
+    setPhase("dispatch-video");
+    playVideo("/videos/ambulance-driving.mp4", () => {
+      const step = steps[0];
+      if (step?.videoUrl) {
+        setPhase("step-video");
+        playVideo(step.videoUrl, () => {
+          setPhase("question");
+          setStepStartTime(Date.now());
+        });
+      } else {
+        setPhase("question");
+        setStepStartTime(Date.now());
+      }
+    });
   };
 
-  const currentStep = currentStepIndex >= 0 ? steps?.[currentStepIndex] : null;
-  const progress = steps ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
+  const currentStep = steps?.[currentStepIndex] ?? null;
+  const progressValue = steps ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
   const vitals = currentStep?.vitalSigns as VitalSigns | null;
 
   const [shuffledActions, setShuffledActions] = useState<string[]>([]);
@@ -176,44 +178,55 @@ export default function ScenarioTrainerPage() {
   }, [currentStep?.id]);
 
   const handleSelectAction = (action: string) => {
-    if (showFeedback) return;
+    if (phase !== "question") return;
     setSelectedAction(action);
   };
 
   const handleSubmit = () => {
     if (!selectedAction || !currentStep) return;
-
     const isCorrect = (currentStep.correctActions || []).includes(selectedAction);
     const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
-
     const response: StepResponse = {
       stepId: currentStep.id,
       selectedAction,
       isCorrect,
       timeSpent,
     };
-
     setResponses((prev) => [...prev, response]);
-    setShowFeedback(true);
-
-    setTimeout(() => {
-      feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+    setPhase("feedback");
   };
 
   const handleNext = () => {
     if (!steps) return;
+    const nextIndex = currentStepIndex + 1;
 
-    if (currentStepIndex + 1 >= steps.length) {
+    if (nextIndex >= steps.length) {
       const finalResponses = [...responses];
       completeAttemptMutation.mutate(finalResponses);
-      setIsComplete(true);
+      const departureUrl = scenario?.departureVideoUrl;
+      if (departureUrl) {
+        setPhase("departure-video");
+        playVideo(departureUrl, () => {
+          setPhase("results");
+        });
+      } else {
+        setPhase("results");
+      }
     } else {
-      setCurrentStepIndex((prev) => prev + 1);
+      setCurrentStepIndex(nextIndex);
       setSelectedAction(null);
-      setShowFeedback(false);
       setShowHint(false);
-      setStepStartTime(Date.now());
+      const nextStep = steps[nextIndex];
+      if (nextStep?.videoUrl) {
+        setPhase("step-video");
+        playVideo(nextStep.videoUrl, () => {
+          setPhase("question");
+          setStepStartTime(Date.now());
+        });
+      } else {
+        setPhase("question");
+        setStepStartTime(Date.now());
+      }
     }
   };
 
@@ -225,8 +238,7 @@ export default function ScenarioTrainerPage() {
       } else {
         document.exitFullscreen().catch(() => {});
       }
-    } catch {
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -260,20 +272,14 @@ export default function ScenarioTrainerPage() {
     );
   }
 
-  if (isComplete) {
+  const isCorrectAnswer = selectedAction && (currentStep?.correctActions || []).includes(selectedAction);
+
+  if (phase === "results") {
     const correctCount = responses.filter((r) => r.isCorrect).length;
     const score = Math.round((correctCount / responses.length) * 100);
 
     return (
       <div ref={containerRef} className="relative min-h-screen bg-black overflow-hidden">
-        <video
-          className="absolute inset-0 w-full h-full object-cover opacity-20"
-          src={VIDEO_SOURCES.transport}
-          autoPlay
-          loop
-          muted
-          playsInline
-        />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
 
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
@@ -365,27 +371,29 @@ export default function ScenarioTrainerPage() {
     );
   }
 
+  const showVideoPlaying = phase === "dispatch-video" || phase === "step-video" || phase === "departure-video";
+  const showQuestionUI = phase === "question" || phase === "feedback";
+
   return (
     <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-black" data-testid="video-trainer-container">
       <video
         ref={videoRef}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isTransitioning ? "opacity-0" : "opacity-100"}`}
-        src={VIDEO_SOURCES[currentVideoPhase]}
-        autoPlay
-        loop
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${videoFading ? "opacity-0" : "opacity-100"}`}
         muted={isMuted}
         playsInline
         data-testid="video-background"
       />
-      <video
-        ref={bgVideoRef}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isTransitioning ? "opacity-100" : "opacity-0"}`}
-        muted={isMuted}
-        playsInline
-      />
 
-      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40" />
+      {showVideoPlaying && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/30 z-10" />
+      )}
+
+      {showQuestionUI && (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10" />
+        </>
+      )}
 
       <div className="absolute top-0 left-0 right-0 z-30">
         <div className="flex items-center justify-between px-4 py-3">
@@ -401,18 +409,22 @@ export default function ScenarioTrainerPage() {
             </Button>
             <div>
               <div className="text-sm font-medium text-white/90 truncate max-w-[200px]">{scenario.title}</div>
-              {currentStepIndex >= 0 && (
+              {phase !== "intro" && (
                 <div className="text-xs text-white/50">
-                  Step {currentStepIndex + 1} of {steps.length}
+                  {showVideoPlaying ? (
+                    phase === "dispatch-video" ? "En Route..." : phase === "departure-video" ? "Transporting patient..." : `Step ${currentStepIndex + 1} of ${steps.length}`
+                  ) : (
+                    `Step ${currentStepIndex + 1} of ${steps.length}`
+                  )}
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {currentStepIndex >= 0 && (
+            {showQuestionUI && currentStep && (
               <Badge className="bg-blue-600/80 text-white border-0 backdrop-blur-sm text-xs">
-                {PHASE_LABELS[currentVideoPhase]}
+                {currentStep.phase}
               </Badge>
             )}
             <Button
@@ -436,21 +448,21 @@ export default function ScenarioTrainerPage() {
           </div>
         </div>
 
-        {currentStepIndex >= 0 && (
+        {phase !== "intro" && (
           <div className="px-4 pb-2">
-            <Progress value={progress} className="h-1 bg-white/10" data-testid="progress-bar" />
+            <Progress value={progressValue} className="h-1 bg-white/10" data-testid="progress-bar" />
           </div>
         )}
       </div>
 
       <AnimatePresence mode="wait">
-        {showIntro ? (
+        {phase === "intro" && (
           <motion.div
             key="intro"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-20 flex items-center justify-center"
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/70"
           >
             <div className="text-center max-w-lg px-4">
               <motion.div
@@ -478,14 +490,35 @@ export default function ScenarioTrainerPage() {
                   className="bg-blue-600 text-white px-8 text-base"
                   data-testid="button-start-scenario"
                 >
-                  Respond to Call
+                  <Play className="mr-2 h-5 w-5" /> Respond to Call
                 </Button>
               </motion.div>
             </div>
           </motion.div>
-        ) : (
+        )}
+
+        {showVideoPlaying && (
           <motion.div
-            key={`step-${currentStepIndex}`}
+            key="video-playing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex items-end justify-center pb-12"
+          >
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm text-white/80 font-medium">
+                {phase === "dispatch-video" && "Responding to call..."}
+                {phase === "step-video" && `Arriving at step ${currentStepIndex + 1}...`}
+                {phase === "departure-video" && "Transporting to hospital..."}
+              </span>
+            </div>
+          </motion.div>
+        )}
+
+        {showQuestionUI && (
+          <motion.div
+            key={`question-${currentStepIndex}`}
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
@@ -578,16 +611,16 @@ export default function ScenarioTrainerPage() {
               <div className="space-y-1.5 mb-3">
                 {shuffledActions.map((action, i) => {
                   const isSelected = selectedAction === action;
-                  const isCorrect = showFeedback && (currentStep?.correctActions || []).includes(action);
-                  const isWrong = showFeedback && isSelected && !isCorrect;
+                  const isCorrect = phase === "feedback" && (currentStep?.correctActions || []).includes(action);
+                  const isWrong = phase === "feedback" && isSelected && !isCorrect;
 
                   return (
                     <button
                       key={i}
                       onClick={() => handleSelectAction(action)}
-                      disabled={showFeedback}
+                      disabled={phase === "feedback"}
                       className={`w-full text-left rounded-lg border p-3 transition-all text-sm backdrop-blur-md ${
-                        showFeedback
+                        phase === "feedback"
                           ? isCorrect
                             ? "border-green-500/50 bg-green-500/15"
                             : isWrong
@@ -601,7 +634,7 @@ export default function ScenarioTrainerPage() {
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                          showFeedback
+                          phase === "feedback"
                             ? isCorrect
                               ? "bg-green-500 text-white"
                               : isWrong
@@ -611,7 +644,7 @@ export default function ScenarioTrainerPage() {
                             ? "bg-blue-500 text-white"
                             : "bg-white/10 text-white/50"
                         }`}>
-                          {showFeedback ? (
+                          {phase === "feedback" ? (
                             isCorrect ? <CheckCircle2 className="h-3.5 w-3.5" /> : isWrong ? <XCircle className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)
                           ) : (
                             String.fromCharCode(65 + i)
@@ -624,7 +657,7 @@ export default function ScenarioTrainerPage() {
                 })}
               </div>
 
-              {!showFeedback && (
+              {phase === "question" && (
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <Button
                     onClick={handleSubmit}
@@ -647,7 +680,7 @@ export default function ScenarioTrainerPage() {
                 </div>
               )}
 
-              {showHint && !showFeedback && currentStep?.hint && (
+              {showHint && phase === "question" && currentStep?.hint && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -661,31 +694,30 @@ export default function ScenarioTrainerPage() {
                 </motion.div>
               )}
 
-              {showFeedback && (
+              {phase === "feedback" && (
                 <motion.div
-                  ref={feedbackRef}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-2"
                   data-testid="feedback-panel"
                 >
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
-                    (currentStep?.correctActions || []).includes(selectedAction || "")
+                    isCorrectAnswer
                       ? "border-green-500/30 bg-green-500/10"
                       : "border-red-500/30 bg-red-500/10"
                   }`}>
                     <div className="flex items-start gap-2.5">
-                      {(currentStep?.correctActions || []).includes(selectedAction || "") ? (
+                      {isCorrectAnswer ? (
                         <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5 shrink-0" />
                       ) : (
                         <XCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
                       )}
                       <div>
                         <div className="font-semibold text-sm text-white mb-0.5">
-                          {(currentStep?.correctActions || []).includes(selectedAction || "") ? "Correct!" : "Not quite right"}
+                          {isCorrectAnswer ? "Correct!" : "Not quite right"}
                         </div>
                         <p className="text-xs text-white/70 leading-relaxed">
-                          {(currentStep?.correctActions || []).includes(selectedAction || "")
+                          {isCorrectAnswer
                             ? currentStep?.feedbackCorrect
                             : currentStep?.feedbackIncorrect}
                         </p>
