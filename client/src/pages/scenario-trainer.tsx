@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Scenario, ScenarioStep, VitalSigns, StepResponse } from "@shared/schema";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -15,19 +14,54 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  Clock,
   Heart,
   Lightbulb,
   Wind,
   Stethoscope,
   ThermometerSun,
   XCircle,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
 } from "lucide-react";
+
+type VideoPhase = "dispatch" | "arrival" | "assessment" | "treatment" | "transport";
+
+const VIDEO_PHASE_MAP: Record<string, VideoPhase> = {
+  "Scene Safety": "arrival",
+  "Scene Size-Up": "arrival",
+  "General Impression": "assessment",
+  "Primary Assessment": "assessment",
+  "Reassessment": "treatment",
+  "Transport": "transport",
+  "Transfer": "transport",
+};
+
+const VIDEO_SOURCES: Record<VideoPhase, string> = {
+  dispatch: "/videos/ambulance-driving.mp4",
+  arrival: "/videos/scene-arrival.mp4",
+  assessment: "/videos/patient-assessment.mp4",
+  treatment: "/videos/treatment.mp4",
+  transport: "/videos/hospital-transport.mp4",
+};
+
+const PHASE_LABELS: Record<VideoPhase, string> = {
+  dispatch: "En Route to Scene",
+  arrival: "Arriving on Scene",
+  assessment: "Patient Assessment",
+  treatment: "Treatment & Stabilization",
+  transport: "Transport to Hospital",
+};
+
+function getVideoPhase(stepPhase: string): VideoPhase {
+  return VIDEO_PHASE_MAP[stepPhase] || "assessment";
+}
 
 export default function ScenarioTrainerPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -35,7 +69,15 @@ export default function ScenarioTrainerPage() {
   const [stepStartTime, setStepStartTime] = useState(Date.now());
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [currentVideoPhase, setCurrentVideoPhase] = useState<VideoPhase>("dispatch");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const feedbackRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: scenario, isLoading: scenarioLoading } = useQuery<Scenario>({
     queryKey: ["/api/scenarios", id],
@@ -81,15 +123,57 @@ export default function ScenarioTrainerPage() {
     }
   }, [steps]);
 
-  const currentStep = steps?.[currentStepIndex];
-  const progress = steps ? ((currentStepIndex) / steps.length) * 100 : 0;
+  const transitionToPhase = useCallback((newPhase: VideoPhase) => {
+    if (newPhase === currentVideoPhase) return;
+
+    setIsTransitioning(true);
+
+    if (bgVideoRef.current) {
+      bgVideoRef.current.src = VIDEO_SOURCES[newPhase];
+      bgVideoRef.current.load();
+      bgVideoRef.current.play().catch(() => {});
+    }
+
+    setTimeout(() => {
+      setCurrentVideoPhase(newPhase);
+      if (videoRef.current) {
+        videoRef.current.src = VIDEO_SOURCES[newPhase];
+        videoRef.current.load();
+        videoRef.current.play().catch(() => {});
+      }
+      setIsTransitioning(false);
+    }, 1000);
+  }, [currentVideoPhase]);
+
+  useEffect(() => {
+    if (currentStepIndex < 0 || !steps) return;
+    const step = steps[currentStepIndex];
+    if (!step) return;
+    const newPhase = getVideoPhase(step.phase);
+    transitionToPhase(newPhase);
+  }, [currentStepIndex, steps]);
+
+  const handleStartScenario = () => {
+    setShowIntro(false);
+    setCurrentStepIndex(0);
+    setStepStartTime(Date.now());
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const currentStep = currentStepIndex >= 0 ? steps?.[currentStepIndex] : null;
+  const progress = steps ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
   const vitals = currentStep?.vitalSigns as VitalSigns | null;
 
-  const allActions = currentStep
-    ? [...(currentStep.correctActions || []), ...(currentStep.incorrectActions || [])].sort(
-        () => Math.random() - 0.5
-      )
-    : [];
+  const [shuffledActions, setShuffledActions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (currentStep) {
+      const allActions = [...(currentStep.correctActions || []), ...(currentStep.incorrectActions || [])];
+      setShuffledActions(allActions.sort(() => Math.random() - 0.5));
+    }
+  }, [currentStep?.id]);
 
   const handleSelectAction = (action: string) => {
     if (showFeedback) return;
@@ -130,17 +214,33 @@ export default function ScenarioTrainerPage() {
       setShowFeedback(false);
       setShowHint(false);
       setStepStartTime(Date.now());
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    try {
+      if (!document.fullscreenElement) {
+        containerRef.current.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
   if (scenarioLoading || stepsLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-8">
-          <Skeleton className="h-8 w-64 mb-4" />
-          <Skeleton className="h-4 w-full mb-8" />
-          <Skeleton className="h-64 w-full rounded-md" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/60 text-sm">Loading scenario...</p>
         </div>
       </div>
     );
@@ -148,11 +248,11 @@ export default function ScenarioTrainerPage() {
 
   if (!scenario || !steps || steps.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Scenario not found</h2>
-          <Button onClick={() => navigate("/scenarios")} data-testid="button-back-scenarios">
+          <AlertTriangle className="h-12 w-12 mx-auto text-white/40 mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Scenario not found</h2>
+          <Button onClick={() => navigate("/scenarios")} variant="outline" data-testid="button-back-scenarios">
             Back to Scenarios
           </Button>
         </div>
@@ -165,50 +265,62 @@ export default function ScenarioTrainerPage() {
     const score = Math.round((correctCount / responses.length) * 100);
 
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-3xl px-4 py-12">
+      <div ref={containerRef} className="relative min-h-screen bg-black overflow-hidden">
+        <video
+          className="absolute inset-0 w-full h-full object-cover opacity-20"
+          src={VIDEO_SOURCES.transport}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60" />
+
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center"
+            className="w-full max-w-3xl"
           >
-            <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
-              score >= 80 ? "bg-green-500/10" : score >= 60 ? "bg-yellow-500/10" : "bg-red-500/10"
-            }`}>
-              {score >= 80 ? (
-                <CheckCircle2 className="h-10 w-10 text-green-500" />
-              ) : score >= 60 ? (
-                <AlertTriangle className="h-10 w-10 text-yellow-500" />
-              ) : (
-                <XCircle className="h-10 w-10 text-red-500" />
-              )}
-            </div>
-            <h1 className="text-3xl font-bold mb-2" data-testid="text-results-title">Scenario Complete</h1>
-            <p className="text-muted-foreground mb-8">{scenario.title}</p>
-
-            <div className="grid grid-cols-3 gap-4 mb-10">
-              <div className="rounded-md border border-border/50 bg-card p-4">
-                <div className="text-3xl font-bold text-primary">{score}%</div>
-                <div className="text-xs text-muted-foreground mt-1">Overall Score</div>
+            <div className="text-center mb-8">
+              <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
+                score >= 80 ? "bg-green-500/20 ring-2 ring-green-500/50" : score >= 60 ? "bg-yellow-500/20 ring-2 ring-yellow-500/50" : "bg-red-500/20 ring-2 ring-red-500/50"
+              }`}>
+                {score >= 80 ? (
+                  <CheckCircle2 className="h-10 w-10 text-green-400" />
+                ) : score >= 60 ? (
+                  <AlertTriangle className="h-10 w-10 text-yellow-400" />
+                ) : (
+                  <XCircle className="h-10 w-10 text-red-400" />
+                )}
               </div>
-              <div className="rounded-md border border-border/50 bg-card p-4">
-                <div className="text-3xl font-bold text-green-500">{correctCount}</div>
-                <div className="text-xs text-muted-foreground mt-1">Correct</div>
-              </div>
-              <div className="rounded-md border border-border/50 bg-card p-4">
-                <div className="text-3xl font-bold text-red-500">{responses.length - correctCount}</div>
-                <div className="text-xs text-muted-foreground mt-1">Incorrect</div>
-              </div>
+              <h1 className="text-3xl font-bold text-white mb-2" data-testid="text-results-title">Scenario Complete</h1>
+              <p className="text-white/60">{scenario.title}</p>
             </div>
 
-            <div className="space-y-3 mb-10 text-left">
-              <h3 className="font-semibold mb-4">Step-by-Step Review</h3>
+            <div className="grid grid-cols-3 gap-3 mb-8">
+              <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 text-center">
+                <div className="text-3xl font-bold text-blue-400">{score}%</div>
+                <div className="text-xs text-white/50 mt-1">Overall Score</div>
+              </div>
+              <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 text-center">
+                <div className="text-3xl font-bold text-green-400">{correctCount}</div>
+                <div className="text-xs text-white/50 mt-1">Correct</div>
+              </div>
+              <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 text-center">
+                <div className="text-3xl font-bold text-red-400">{responses.length - correctCount}</div>
+                <div className="text-xs text-white/50 mt-1">Incorrect</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+              <h3 className="font-semibold text-white/80 mb-3 sticky top-0 bg-black/80 backdrop-blur-sm py-2">Step-by-Step Review</h3>
               {responses.map((response, i) => {
                 const step = steps[i];
                 return (
                   <div
                     key={i}
-                    className={`rounded-md border p-4 ${
+                    className={`rounded-lg border p-3 backdrop-blur-sm ${
                       response.isCorrect
                         ? "border-green-500/20 bg-green-500/5"
                         : "border-red-500/20 bg-red-500/5"
@@ -217,22 +329,22 @@ export default function ScenarioTrainerPage() {
                   >
                     <div className="flex items-start gap-3">
                       {response.isCorrect ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
                       ) : (
-                        <XCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+                        <XCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium mb-1">{step?.phase}: {step?.prompt?.slice(0, 80)}...</div>
-                        <div className="text-xs text-muted-foreground">
-                          Your answer: <span className={response.isCorrect ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>{response.selectedAction}</span>
+                        <div className="text-sm font-medium text-white/90 mb-0.5">{step?.phase}: {step?.prompt?.slice(0, 60)}...</div>
+                        <div className="text-xs text-white/50">
+                          Your answer: <span className={response.isCorrect ? "text-green-400" : "text-red-400"}>{response.selectedAction}</span>
                         </div>
                         {!response.isCorrect && step && (
-                          <div className="text-xs text-muted-foreground mt-1">
+                          <div className="text-xs text-white/40 mt-0.5">
                             Correct: {step.correctActions?.[0]}
                           </div>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground shrink-0">{response.timeSpent}s</div>
+                      <div className="text-xs text-white/30 shrink-0">{response.timeSpent}s</div>
                     </div>
                   </div>
                 );
@@ -240,10 +352,10 @@ export default function ScenarioTrainerPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-3">
-              <Button onClick={() => navigate("/scenarios")} variant="outline" data-testid="button-back-scenarios">
+              <Button onClick={() => navigate("/scenarios")} variant="outline" className="border-white/20 text-white" data-testid="button-back-scenarios">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All Scenarios
               </Button>
-              <Button onClick={() => window.location.reload()} data-testid="button-retry">
+              <Button onClick={() => window.location.reload()} className="bg-blue-600 text-white" data-testid="button-retry">
                 Retry Scenario
               </Button>
             </div>
@@ -254,239 +366,347 @@ export default function ScenarioTrainerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-4xl px-4">
-          <div className="flex h-14 items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/scenarios")} data-testid="button-exit-scenario">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="hidden sm:block">
-                <div className="text-sm font-medium truncate max-w-[200px]">{scenario.title}</div>
-                <div className="text-xs text-muted-foreground">
+    <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-black" data-testid="video-trainer-container">
+      <video
+        ref={videoRef}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isTransitioning ? "opacity-0" : "opacity-100"}`}
+        src={VIDEO_SOURCES[currentVideoPhase]}
+        autoPlay
+        loop
+        muted={isMuted}
+        playsInline
+        data-testid="video-background"
+      />
+      <video
+        ref={bgVideoRef}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isTransitioning ? "opacity-100" : "opacity-0"}`}
+        muted={isMuted}
+        playsInline
+      />
+
+      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40" />
+
+      <div className="absolute top-0 left-0 right-0 z-30">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/scenarios")}
+              className="text-white/80"
+              data-testid="button-exit-scenario"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <div className="text-sm font-medium text-white/90 truncate max-w-[200px]">{scenario.title}</div>
+              {currentStepIndex >= 0 && (
+                <div className="text-xs text-white/50">
                   Step {currentStepIndex + 1} of {steps.length}
                 </div>
-              </div>
-            </div>
-            <div className="flex-1 max-w-xs">
-              <Progress value={progress} className="h-2" data-testid="progress-bar" />
-            </div>
-            <Badge variant="outline" className="shrink-0">
-              {currentStep?.phase}
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStepIndex}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {vitals && (
-              <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="vitals-panel">
-                {vitals.hr !== undefined && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <Heart className="h-4 w-4 text-red-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">HR</div>
-                      <div className="text-sm font-semibold font-mono">{vitals.hr} bpm</div>
-                    </div>
-                  </div>
-                )}
-                {vitals.rr !== undefined && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <Wind className="h-4 w-4 text-blue-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">RR</div>
-                      <div className="text-sm font-semibold font-mono">{vitals.rr} /min</div>
-                    </div>
-                  </div>
-                )}
-                {vitals.spo2 !== undefined && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <Activity className="h-4 w-4 text-green-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">SpO2</div>
-                      <div className="text-sm font-semibold font-mono">{vitals.spo2}%</div>
-                    </div>
-                  </div>
-                )}
-                {vitals.bp && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <Stethoscope className="h-4 w-4 text-purple-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">BP</div>
-                      <div className="text-sm font-semibold font-mono">{vitals.bp}</div>
-                    </div>
-                  </div>
-                )}
-                {vitals.skinColor && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <ThermometerSun className="h-4 w-4 text-orange-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Skin</div>
-                      <div className="text-sm font-semibold">{vitals.skinColor}, {vitals.skinTemp}</div>
-                    </div>
-                  </div>
-                )}
-                {vitals.etco2 !== undefined && (
-                  <div className="rounded-md border border-border/50 bg-card p-3 flex items-center gap-3">
-                    <Wind className="h-4 w-4 text-teal-500 shrink-0" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">EtCO2</div>
-                      <div className="text-sm font-semibold font-mono">{vitals.etco2} mmHg</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentStep?.patientState && (
-              <div className="mb-6 rounded-md border border-border/50 bg-card p-5" data-testid="patient-state">
-                <div className="flex items-start gap-3">
-                  <Stethoscope className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Patient Presentation</div>
-                    <p className="text-sm leading-relaxed">{currentStep.patientState}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2" data-testid="text-step-prompt">
-                {currentStep?.prompt}
-              </h2>
-              {currentStep?.isCritical && (
-                <Badge variant="destructive" className="mt-2">
-                  <AlertTriangle className="mr-1 h-3 w-3" /> Critical Decision
-                </Badge>
               )}
             </div>
+          </div>
 
-            <div className="space-y-2 mb-6">
-              {allActions.map((action, i) => {
-                const isSelected = selectedAction === action;
-                const isCorrect = showFeedback && (currentStep?.correctActions || []).includes(action);
-                const isWrong = showFeedback && isSelected && !isCorrect;
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleSelectAction(action)}
-                    disabled={showFeedback}
-                    className={`w-full text-left rounded-md border p-4 transition-all text-sm ${
-                      showFeedback
-                        ? isCorrect
-                          ? "border-green-500/50 bg-green-500/10"
-                          : isWrong
-                          ? "border-red-500/50 bg-red-500/10"
-                          : "border-border/30 opacity-50"
-                        : isSelected
-                        ? "border-primary bg-primary/5"
-                        : "border-border/50 bg-card hover:border-primary/30"
-                    }`}
-                    data-testid={`button-action-${i}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium ${
-                        showFeedback
-                          ? isCorrect
-                            ? "border-green-500 bg-green-500 text-white"
-                            : isWrong
-                            ? "border-red-500 bg-red-500 text-white"
-                            : "border-border text-muted-foreground"
-                          : isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground"
-                      }`}>
-                        {showFeedback ? (
-                          isCorrect ? <CheckCircle2 className="h-4 w-4" /> : isWrong ? <XCircle className="h-4 w-4" /> : String.fromCharCode(65 + i)
-                        ) : (
-                          String.fromCharCode(65 + i)
-                        )}
-                      </div>
-                      <span>{action}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {!showFeedback && (
-              <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={handleSubmit} disabled={!selectedAction} data-testid="button-submit-answer">
-                  Submit Answer
-                </Button>
-                {currentStep?.hint && !showHint && (
-                  <Button variant="ghost" onClick={() => setShowHint(true)} data-testid="button-show-hint">
-                    <Lightbulb className="mr-2 h-4 w-4" /> Show Hint
-                  </Button>
-                )}
-              </div>
+          <div className="flex items-center gap-2">
+            {currentStepIndex >= 0 && (
+              <Badge className="bg-blue-600/80 text-white border-0 backdrop-blur-sm text-xs">
+                {PHASE_LABELS[currentVideoPhase]}
+              </Badge>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMuted(!isMuted)}
+              className="text-white/60"
+              data-testid="button-toggle-mute"
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              className="text-white/60"
+              data-testid="button-toggle-fullscreen"
+            >
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
 
-            {showHint && !showFeedback && currentStep?.hint && (
+        {currentStepIndex >= 0 && (
+          <div className="px-4 pb-2">
+            <Progress value={progress} className="h-1 bg-white/10" data-testid="progress-bar" />
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence mode="wait">
+        {showIntro ? (
+          <motion.div
+            key="intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex items-center justify-center"
+          >
+            <div className="text-center max-w-lg px-4">
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-4 rounded-md border border-yellow-500/20 bg-yellow-500/5 p-4"
-                data-testid="hint-panel"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
               >
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-                  <p className="text-sm">{currentStep.hint}</p>
+                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-blue-600/30 ring-2 ring-blue-500/50 flex items-center justify-center">
+                  <Stethoscope className="h-8 w-8 text-blue-400" />
                 </div>
+                <h1 className="text-3xl font-bold text-white mb-3" data-testid="text-scenario-title">{scenario.title}</h1>
+                <p className="text-white/60 mb-2 text-sm">{scenario.description}</p>
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.certLevel}</Badge>
+                  <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.difficulty}</Badge>
+                  <Badge className="bg-white/10 text-white/70 border-white/20">{steps.length} steps</Badge>
+                </div>
+                <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 mb-8 text-left">
+                  <div className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2">Dispatch Info</div>
+                  <p className="text-sm text-white/80 leading-relaxed">{scenario.patientSummary}</p>
+                </div>
+                <Button
+                  onClick={handleStartScenario}
+                  size="lg"
+                  className="bg-blue-600 text-white px-8 text-base"
+                  data-testid="button-start-scenario"
+                >
+                  Respond to Call
+                </Button>
               </motion.div>
-            )}
-
-            {showFeedback && (
-              <motion.div
-                ref={feedbackRef}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 space-y-4"
-                data-testid="feedback-panel"
-              >
-                <div className={`rounded-md border p-5 ${
-                  (currentStep?.correctActions || []).includes(selectedAction || "")
-                    ? "border-green-500/30 bg-green-500/5"
-                    : "border-red-500/30 bg-red-500/5"
-                }`}>
-                  <div className="flex items-start gap-3">
-                    {(currentStep?.correctActions || []).includes(selectedAction || "") ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
-                    )}
-                    <div>
-                      <div className="font-semibold text-sm mb-1">
-                        {(currentStep?.correctActions || []).includes(selectedAction || "") ? "Correct!" : "Not quite right"}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`step-${currentStepIndex}`}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-20 flex items-end sm:items-center"
+          >
+            <div className="w-full max-w-md ml-4 mb-4 sm:ml-8 sm:mb-0 max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar pr-2">
+              {vitals && (
+                <div className="mb-3 grid grid-cols-3 gap-1.5" data-testid="vitals-panel">
+                  {vitals.hr !== undefined && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <Heart className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">HR</div>
+                        <div className="text-xs font-semibold font-mono text-white/90">{vitals.hr} bpm</div>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {(currentStep?.correctActions || []).includes(selectedAction || "")
-                          ? currentStep?.feedbackCorrect
-                          : currentStep?.feedbackIncorrect}
-                      </p>
+                    </div>
+                  )}
+                  {vitals.rr !== undefined && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <Wind className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">RR</div>
+                        <div className="text-xs font-semibold font-mono text-white/90">{vitals.rr} /min</div>
+                      </div>
+                    </div>
+                  )}
+                  {vitals.spo2 !== undefined && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">SpO2</div>
+                        <div className="text-xs font-semibold font-mono text-white/90">{vitals.spo2}%</div>
+                      </div>
+                    </div>
+                  )}
+                  {vitals.bp && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <Stethoscope className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">BP</div>
+                        <div className="text-xs font-semibold font-mono text-white/90">{vitals.bp}</div>
+                      </div>
+                    </div>
+                  )}
+                  {vitals.skinColor && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <ThermometerSun className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">Skin</div>
+                        <div className="text-xs font-semibold text-white/90">{vitals.skinColor}</div>
+                      </div>
+                    </div>
+                  )}
+                  {vitals.etco2 !== undefined && (
+                    <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+                      <Wind className="h-3.5 w-3.5 text-teal-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-white/40">EtCO2</div>
+                        <div className="text-xs font-semibold font-mono text-white/90">{vitals.etco2} mmHg</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentStep?.patientState && (
+                <div className="mb-3 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 p-3" data-testid="patient-state">
+                  <div className="flex items-start gap-2">
+                    <Stethoscope className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/40 font-medium mb-0.5">Patient Presentation</div>
+                      <p className="text-xs text-white/80 leading-relaxed">{currentStep.patientState}</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button onClick={handleNext} data-testid="button-next-step">
-                    {currentStepIndex + 1 >= (steps?.length || 0) ? "View Results" : "Next Step"} <ArrowRight className="ml-2 h-4 w-4" />
+              )}
+
+              <div className="mb-3 rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-4">
+                <h2 className="text-base font-bold text-white mb-1" data-testid="text-step-prompt">
+                  {currentStep?.prompt}
+                </h2>
+                {currentStep?.isCritical && (
+                  <Badge variant="destructive" className="mt-1 text-xs">
+                    <AlertTriangle className="mr-1 h-3 w-3" /> Critical Decision
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-1.5 mb-3">
+                {shuffledActions.map((action, i) => {
+                  const isSelected = selectedAction === action;
+                  const isCorrect = showFeedback && (currentStep?.correctActions || []).includes(action);
+                  const isWrong = showFeedback && isSelected && !isCorrect;
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleSelectAction(action)}
+                      disabled={showFeedback}
+                      className={`w-full text-left rounded-lg border p-3 transition-all text-sm backdrop-blur-md ${
+                        showFeedback
+                          ? isCorrect
+                            ? "border-green-500/50 bg-green-500/15"
+                            : isWrong
+                            ? "border-red-500/50 bg-red-500/15"
+                            : "border-white/5 bg-black/40 opacity-40"
+                          : isSelected
+                          ? "border-blue-500/50 bg-blue-500/15"
+                          : "border-white/10 bg-black/50 hover:border-white/20 hover:bg-black/60"
+                      }`}
+                      data-testid={`button-action-${i}`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                          showFeedback
+                            ? isCorrect
+                              ? "bg-green-500 text-white"
+                              : isWrong
+                              ? "bg-red-500 text-white"
+                              : "bg-white/10 text-white/30"
+                            : isSelected
+                            ? "bg-blue-500 text-white"
+                            : "bg-white/10 text-white/50"
+                        }`}>
+                          {showFeedback ? (
+                            isCorrect ? <CheckCircle2 className="h-3.5 w-3.5" /> : isWrong ? <XCircle className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)
+                          ) : (
+                            String.fromCharCode(65 + i)
+                          )}
+                        </div>
+                        <span className="text-white/90 text-xs leading-snug">{action}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!showFeedback && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!selectedAction}
+                    className="bg-blue-600 text-white disabled:opacity-30"
+                    data-testid="button-submit-answer"
+                  >
+                    Submit Answer
                   </Button>
+                  {currentStep?.hint && !showHint && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowHint(true)}
+                      className="text-white/60"
+                      data-testid="button-show-hint"
+                    >
+                      <Lightbulb className="mr-1.5 h-3.5 w-3.5" /> Hint
+                    </Button>
+                  )}
                 </div>
-              </motion.div>
-            )}
+              )}
+
+              {showHint && !showFeedback && currentStep?.hint && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mb-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 backdrop-blur-md p-3"
+                  data-testid="hint-panel"
+                >
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-white/80">{currentStep.hint}</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {showFeedback && (
+                <motion.div
+                  ref={feedbackRef}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-2"
+                  data-testid="feedback-panel"
+                >
+                  <div className={`rounded-lg border p-4 backdrop-blur-md ${
+                    (currentStep?.correctActions || []).includes(selectedAction || "")
+                      ? "border-green-500/30 bg-green-500/10"
+                      : "border-red-500/30 bg-red-500/10"
+                  }`}>
+                    <div className="flex items-start gap-2.5">
+                      {(currentStep?.correctActions || []).includes(selectedAction || "") ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <div>
+                        <div className="font-semibold text-sm text-white mb-0.5">
+                          {(currentStep?.correctActions || []).includes(selectedAction || "") ? "Correct!" : "Not quite right"}
+                        </div>
+                        <p className="text-xs text-white/70 leading-relaxed">
+                          {(currentStep?.correctActions || []).includes(selectedAction || "")
+                            ? currentStep?.feedbackCorrect
+                            : currentStep?.feedbackIncorrect}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleNext}
+                      className="bg-blue-600 text-white"
+                      data-testid="button-next-step"
+                    >
+                      {currentStepIndex + 1 >= (steps?.length || 0) ? "View Results" : "Next Step"} <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </motion.div>
-        </AnimatePresence>
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
