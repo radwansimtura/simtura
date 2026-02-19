@@ -22,6 +22,7 @@ export async function seedDatabase() {
     imageUrl: "/images/scenario-sports-injury.png",
     estimatedMinutes: 8,
     tags: ["trauma", "rib injury", "primary assessment", "scene safety"],
+    departureVideoUrl: "/videos/s1-departure.mp4",
   });
 
   await Promise.all([
@@ -42,6 +43,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Always start with BSI/PPE and scene safety. Your safety comes first - you can't help the patient if you become one.",
       hint: "Think about what you always do FIRST at every single scene.",
       isCritical: false,
+      videoUrl: "/videos/s1-step1-arrive-soccer.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
@@ -60,6 +62,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "For a simple blunt trauma on a sports field, you don't need specialized resources. Assess the MOI: an elbow strike to the ribs is the mechanism.",
       hint: "How many patients? What caused the injury? Do you need backup?",
       isCritical: false,
+      videoUrl: "/videos/s1-step2-walk-to-player.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
@@ -78,6 +81,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Look at the patient more carefully. She is sitting up, talking, and holding her side. She is clearly alert and has no major visible life threats.",
       hint: "Is the patient Alert, responding to Voice, Pain, or Unresponsive? Any obvious life threats?",
       isCritical: false,
+      videoUrl: "/videos/s1-step3-approach-patient.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
@@ -96,6 +100,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "The patient is speaking clearly to you. A speaking patient has a patent airway. No airway interventions are needed.",
       hint: "Can the patient speak? What does that tell you about the airway?",
       isCritical: false,
+      videoUrl: "/videos/s1-step4-check-airway.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
@@ -114,6 +119,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "With an SpO2 of 88% and a respiratory rate of 32, the patient needs high-flow oxygen. A non-rebreather at 15 LPM is appropriate for this level of hypoxia.",
       hint: "The SpO2 is 88%. What oxygen delivery device is appropriate for significant hypoxia?",
       isCritical: true,
+      videoUrl: "/videos/s1-step5-check-breathing.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
@@ -132,6 +138,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "A heart rate of 124, cool/diaphoretic skin, and a blood pressure of 96/62 are signs of compensated shock. This is a high priority patient requiring rapid transport.",
       hint: "What do tachycardia, cool skin, and low blood pressure indicate together?",
       isCritical: true,
+      videoUrl: "/videos/s1-step6-check-circulation.mp4",
     }),
   ]);
 
@@ -145,6 +152,7 @@ export async function seedDatabase() {
     imageUrl: "/images/scenario-pediatric.png",
     estimatedMinutes: 12,
     tags: ["pediatric", "respiratory", "asthma", "medical"],
+    departureVideoUrl: "/videos/s2-departure.mp4",
   });
 
   await Promise.all([
@@ -165,6 +173,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "No matter how urgent the call sounds, always start with BSI/PPE and scene safety. This protects you and the patient.",
       hint: "What is always the first thing you do on any scene?",
       isCritical: false,
+      videoUrl: "/videos/s2-step1-arrive-house.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -183,6 +192,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "A 6-year-old with severe respiratory distress, retractions, and nasal flaring needs ALS resources. Paramedics can administer nebulized bronchodilators.",
       hint: "This child has signs of severe respiratory distress. Can BLS manage this alone, or would advanced interventions help?",
       isCritical: false,
+      videoUrl: "/videos/s2-step2-enter-house.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -201,6 +211,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "This child shows classic signs of severe respiratory distress: tripod positioning, nasal flaring, retractions, and an SpO2 of 85%. This IS a life threat.",
       hint: "Look at the SpO2, the breathing effort, and the child's ability to speak. Is this a life threat?",
       isCritical: true,
+      videoUrl: "/videos/s2-step3-approach-child.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -219,6 +230,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "An SpO2 of 85% is critically low. This child needs aggressive oxygen therapy. BVM with high-flow O2 at 15 LPM supports the inadequate ventilations.",
       hint: "The SpO2 is 85% and the child is tiring. What level of respiratory support does this require?",
       isCritical: true,
+      videoUrl: "/videos/s2-step4-treat-breathing.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -237,6 +249,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Pale, diaphoretic skin with delayed capillary refill in a child with an SpO2 of 85% means this is a critical patient. Do not delay transport.",
       hint: "Combine the respiratory distress with the circulation findings. How sick is this child?",
       isCritical: true,
+      videoUrl: "/videos/s2-step5-prepare-transport.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -255,6 +268,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Never delay transport of an unstable patient for on-scene history. Gather SAMPLE and OPQRST en route to the hospital.",
       hint: "Should you stay on scene for a full workup with an unstable pediatric patient?",
       isCritical: false,
+      videoUrl: "/videos/s2-step6-in-ambulance.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -273,6 +287,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Critical patients need frequent, complete reassessments. Never assume improvement means the patient is stable. Continue monitoring all vitals.",
       hint: "How often should you reassess an unstable patient? What vitals do you need?",
       isCritical: false,
+      videoUrl: "/videos/s2-step6-in-ambulance.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario2.id,
@@ -291,6 +306,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Always provide a complete verbal report when transferring care. The hospital team needs to know what happened, what you found, and what you did.",
       hint: "What information does the hospital team need to continue caring for this patient?",
       isCritical: false,
+      videoUrl: "/videos/s2-step7-arrive-hospital.mp4",
     }),
   ]);
 
@@ -304,6 +320,7 @@ export async function seedDatabase() {
     imageUrl: "/images/scenario-elderly.png",
     estimatedMinutes: 10,
     tags: ["respiratory failure", "BVM", "airway management", "geriatric"],
+    departureVideoUrl: "/videos/s3-departure.mp4",
   });
 
   await Promise.all([
@@ -324,6 +341,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Always don PPE first, including eye protection for airway management cases. Scene safety is non-negotiable.",
       hint: "What PPE is especially important when you may need to manage an airway?",
       isCritical: false,
+      videoUrl: "/videos/s3-step1-arrive-house-night.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario3.id,
@@ -342,6 +360,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "An unresponsive patient with signs of respiratory failure needs ALS. Paramedics can provide advanced airway management and medications.",
       hint: "Can BLS alone manage an unresponsive patient in respiratory failure?",
       isCritical: false,
+      videoUrl: "/videos/s3-step2-enter-bedroom.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario3.id,
@@ -360,6 +379,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "The patient only responds to pain (groaning with sternal rub). He is not alert, doesn't respond to voice, and is not completely unresponsive. He is P on AVPU.",
       hint: "He doesn't respond to your voice but groans when you apply pain. Where does that fall on AVPU?",
       isCritical: true,
+      videoUrl: "/videos/s3-step3-approach-bed.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario3.id,
@@ -378,6 +398,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Snoring respirations mean the airway is partially obstructed, likely by the tongue. You must open it with a head-tilt chin-lift and maintain with an OPA.",
       hint: "What causes snoring respirations? How do you fix it and keep it open?",
       isCritical: true,
+      videoUrl: "/videos/s3-step4-open-airway.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario3.id,
@@ -390,12 +411,13 @@ export async function seedDatabase() {
       incorrectActions: [
         "Apply non-rebreather mask at 15 LPM",
         "Apply nasal cannula at 6 LPM",
-        "Wait and see if breathing improves on its own",
+        "Wait for ALS before providing ventilatory support",
       ],
       feedbackCorrect: "Perfect! A respiratory rate of 4 is grossly inadequate. BVM ventilations with high-flow O2 is the only appropriate intervention here.",
       feedbackIncorrect: "A respiratory rate of 4 means the patient is barely breathing. Passive oxygen (NRB, nasal cannula) is not enough. You must actively ventilate with a BVM.",
       hint: "Is a respiratory rate of 4 adequate? Can passive oxygen delivery fix an SpO2 of 70% at this rate?",
       isCritical: true,
+      videoUrl: "/videos/s3-step5-bvm-ventilate.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario3.id,
@@ -414,6 +436,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "An SpO2 of 86% is still dangerously low. Continue BVM ventilations. Don't remove the OPA unless the patient develops a gag reflex.",
       hint: "Is 86% a normal SpO2? Should you stop an intervention that's working just because there's some improvement?",
       isCritical: true,
+      videoUrl: "/videos/s3-step6-reassess.mp4",
     }),
   ]);
 
@@ -427,6 +450,7 @@ export async function seedDatabase() {
     imageUrl: "/images/scenario-assessment.png",
     estimatedMinutes: 12,
     tags: ["trauma", "MVC", "spinal", "extrication"],
+    departureVideoUrl: "/videos/s4-departure.mp4",
   });
 
   await Promise.all([
@@ -447,6 +471,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "MVC scenes are among the most dangerous. Assess for traffic hazards, leaking fluids, vehicle stability, and downed power lines before approaching.",
       hint: "What hazards are unique to motor vehicle collision scenes?",
       isCritical: false,
+      videoUrl: "/videos/s4-step1-arrive-mvc.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario4.id,
@@ -465,6 +490,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "A trapped patient requires fire/rescue for extrication. You need additional resources, and the second patient must also be evaluated.",
       hint: "One patient is trapped. Can you extricate them? Does the other patient need evaluation?",
       isCritical: false,
+      videoUrl: "/videos/s4-step2-approach-vehicles.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario4.id,
@@ -483,6 +509,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "A high-speed MVC with neck pain requires immediate manual cervical spine stabilization. Never move a trauma patient without protecting the spine first.",
       hint: "What does neck pain after a high-speed collision tell you about spinal injury risk?",
       isCritical: true,
+      videoUrl: "/videos/s4-step3-look-in-car.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario4.id,
@@ -501,6 +528,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Chest wall tenderness with diminished breath sounds suggests possible rib fractures or pneumothorax. High-flow O2 and close monitoring are essential.",
       hint: "What could cause diminished breath sounds on one side after blunt chest trauma?",
       isCritical: false,
+      videoUrl: "/videos/s4-step4-stabilize-cspine.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario4.id,
@@ -519,6 +547,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Stable vitals don't mean low priority. The mechanism of injury, entrapment, neck pain, and possible chest injury all point to high priority.",
       hint: "Should you base priority only on current vitals, or also consider the mechanism and potential injuries?",
       isCritical: true,
+      videoUrl: "/videos/s4-step5-assess-trapped.mp4",
     }),
   ]);
 
@@ -532,6 +561,7 @@ export async function seedDatabase() {
     imageUrl: "/images/scenario-ambulance-interior.png",
     estimatedMinutes: 10,
     tags: ["cardiac arrest", "CPR", "AED", "BLS"],
+    departureVideoUrl: "/videos/s5-departure.mp4",
   });
 
   await Promise.all([
@@ -552,6 +582,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "Even in cardiac arrest, you need PPE. Get gloves on quickly, clear space, and then begin your assessment. It only takes seconds.",
       hint: "Can you do effective CPR in a crowd without PPE?",
       isCritical: false,
+      videoUrl: "/videos/s5-step1-arrive-restaurant.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario5.id,
@@ -570,6 +601,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "No response to shoulder tap or voice = Unresponsive (U on AVPU). With no breathing and cyanosis, immediately check for pulse.",
       hint: "No response to stimulation, not breathing, cyanotic. What life-threatening condition does this suggest?",
       isCritical: true,
+      videoUrl: "/videos/s5-step2-enter-restaurant.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario5.id,
@@ -588,6 +620,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "No pulse, no breathing = cardiac arrest. Begin CPR immediately. Every minute without CPR decreases survival by 7-10%.",
       hint: "What is the definitive treatment for cardiac arrest at the BLS level?",
       isCritical: true,
+      videoUrl: "/videos/s5-step3-kneel-cpr.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario5.id,
@@ -606,6 +639,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "The AED is the most important intervention in cardiac arrest. Apply it as soon as available, follow its prompts, and resume CPR immediately after any shock.",
       hint: "In witnessed cardiac arrest, what single intervention has the greatest impact on survival?",
       isCritical: true,
+      videoUrl: "/videos/s5-step4-apply-aed.mp4",
     }),
     storage.createScenarioStep({
       scenarioId: scenario5.id,
@@ -624,6 +658,7 @@ export async function seedDatabase() {
       feedbackIncorrect: "The resuscitation cycle is 2 minutes of CPR, then pause for AED reanalysis, pulse check, and compressor switch. This ensures quality and checks for ROSC.",
       hint: "How often should you reanalyze, check pulse, and switch compressors during CPR?",
       isCritical: true,
+      videoUrl: "/videos/s5-step5-continue-cpr.mp4",
     }),
   ]);
 

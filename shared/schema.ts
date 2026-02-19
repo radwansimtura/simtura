@@ -20,6 +20,7 @@ export const scenarios = pgTable("scenarios", {
   imageUrl: text("image_url"),
   estimatedMinutes: integer("estimated_minutes").notNull().default(10),
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+  departureVideoUrl: text("departure_video_url"),
 });
 
 export const scenarioSteps = pgTable("scenario_steps", {
@@ -36,6 +37,7 @@ export const scenarioSteps = pgTable("scenario_steps", {
   feedbackIncorrect: text("feedback_incorrect").notNull(),
   hint: text("hint"),
   isCritical: boolean("is_critical").notNull().default(false),
+  videoUrl: text("video_url"),
 });
 
 export const attempts = pgTable("attempts", {
