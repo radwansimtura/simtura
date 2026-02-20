@@ -1,0 +1,97 @@
+Detailed Character Breakdowns
+
+Main Character (Patient: "Liam")
+Age/Build: 6-year-old male, slim build. Caucasian.
+Appearance: Short, straight dark brown hair, slightly damp and messy from sweat.
+Attire: Plain light blue cotton T-shirt, dark gray soft jogging pants, white socks. No logos, patterns, text, or jewelry.
+Condition (Positioning): Sitting rigidly upright in the "tripod position" (leaning forward, hands braced firmly on his knees or the edge of a sofa). He cannot deviate from this position due to severe distress.
+Condition (Respiratory): Severe respiratory distress (dyspnea). Rapid, shallow breathing (tachypnea). Audible, high-pitched expiratory wheezing. Pronounced intercostal and substernal retractions (skin pulling tightly between the ribs and below the sternum on inhalation), clearly visible at the neckline and beneath the T-shirt. Dramatic nasal flaring (nostrils widening significantly) with every breath.
+Condition (Circulation/Skin): Skin is distinctly pale with a grayish tint (pallor). Cool and clammy appearance, with a visible sheen of sweat (diaphoresis) on the forehead and upper lip. Lips may have a slight bluish tint (cyanosis).
+Demeanor: Eyes wide with profound anxiety and fatigue. Alert and tracking movement, but completely unable to speak due to severe breathlessness.
+
+Supporting Character (Mother: "Sarah")
+Age/Build: Approx. 30 years old, average height and build. Caucasian.
+Appearance: Shoulder-length blonde hair pulled back hastily into a messy bun. No makeup.
+Attire: Maroon zip-up hoodie over a white T-shirt, blue jeans. Casual footwear.
+Demeanor: Highly anxious, furrowed brow, wringing her hands, but maintaining outward composure when speaking to EMS. Hovering very close to Liam.
+
+Lead Character (EMT/Medic: "Mark")
+Age/Build: Approx. 35-40 years old, sturdy, fit build. Caucasian.
+Appearance: Short, neat black hair. Clean-shaven.
+Attire: Standard EMS uniform: Navy blue tactical pants, navy blue short-sleeve button-down uniform shirt (crisp, professional, no patches, logos, or name tags). Black utility boots.
+PPE/Equipment: Wears a standard surgical mask covering his mouth and nose throughout. Wears light blue nitrile medical gloves (donned in Prompt 1). Stethoscope around his neck. Portable radio on his belt.
+Demeanor: Calm, focused, highly efficient, and professional. Moves with authority and controlled urgency.
+
+
+
+Environment, Lighting, and Style Guidelines
+Style: 8K Photorealistic, 16:9 aspect ratio. Cinematic realism, simulating the look of an Arri Alexa camera with a 50mm prime lens. Steady, documentary-style camera work prioritizing clinical detail.
+Environment: Starts in a clean, middle-class suburban living room (neutral colors, beige walls, hardwood floor, gray sofa). Transitions toward the exit and then the ambulance interior.
+Lighting (Living Room): Bright, soft, natural daylight from a large window as the key light. High-key lighting, ensuring even illumination with no harsh shadows, allowing clear visualization of the patient's pallor and retractions.
+Lighting (Ambulance): Bright, cool-white (5000K) overhead LED lighting. Clinical and sterile appearance.
+
+Negative Prompt (Apply to all): text, logos, gore, blood, brand names, distortions, exaggerated or cartoonish facial expressions, jewelry, tattoos, low resolution, blurry images, visible camera equipment, incorrect medical procedures, incorrect anatomy, extra limbs, missing fingers, flickering lights, fire, smoke, environmental hazards.
+
+
+Generative AI Video Prompts (Short Detailed) (10 Prompts, 8 Seconds Each)
+
+Prompt 1: PPE and Scene Safety (Guidelines: Dons appropriate PPE; Determines Scene Safety)
+Camera: Medium shot, interior entrance of the suburban living room. Natural daylight.
+Action: EMT Mark, in a crisp navy EMS uniform and wearing a surgical mask, walks briskly into the room carrying a red medical jump bag. He is actively pulling on light blue nitrile gloves, ensuring they fit snugly. As he enters the main area, he stops and his head turns deliberately left, then right, systematically scanning the environment.
+Dialogue (Mark): "BSI/PPE is on. Is my scene safe? Yes, scene is safe."
+Visuals: Clean environment. Focus is strictly on the deliberate actions of donning PPE and the visual sweep ensuring safety.
+
+Prompt 2: General Impression, Patient Count, and Resources (Guidelines: Determines how many patients; Evaluates/treats life threat; Assesses need for additional resources)
+Camera: Over-the-shoulder shot from behind Mark, revealing the patient.
+Action: Mark observes the scene. The camera reveals 6-year-old Liam on the gray couch in a severe tripod position. Liam's distress is profound: pale, sweaty skin, nasal flaring, and visible retractions. Sarah hovers anxiously. Mark assesses the severity from 6 feet away and immediately keys the microphone on his shoulder.
+Dialogue (Mark): "I see one patient. General impression is a pediatric male in severe respiratory distress. (Into radio) Requesting immediate ALS backup for a critical pediatric patient."
+Visuals: Soft natural daylight highlights the diaphoresis on Liam’s forehead. The immediate recognition of severity and the action of calling for ALS are key.
+
+Prompt 3: MOI/NOI, Spinal Precautions, and AVPU (Guidelines: Evaluates MOI or NOI; Consider need for spinal precautions; Assess AVPU)
+Camera: Medium shot, Mark approaching the patient and kneeling.
+Action: Mark approaches and asks the mother, "Did he fall or get hurt?" Sarah shakes her head, "No, it's his asthma." Mark kneels to Liam's eye level. "Hey buddy, look at me." Liam makes eye contact, wide-eyed, but cannot speak, managing only a slight nod.
+Dialogue (Mark): "Okay, the Nature of Illness is shortness of breath. No Mechanism of Injury; no spinal precautions needed. The patient is Alert."
+Visuals: Focus on the interaction establishing history and the patient's alert but non-verbal status.
+
+Prompt 4: Airway and Breathing Assessment (Guidelines: Evaluate/Treat Airway; Evaluate/Treat Breathing [Assessment])
+Camera: Close-up on Liam's face and chest, then focusing on Mark's actions.
+Action: Mark leans closer, listening to the breathing. Audible, high-pitched wheezing is present. He observes the deep retractions and nasal flaring. He quickly uses his stethoscope to listen to Liam's upper chest (auscultation).
+
+Dialogue (Mark): "The airway is patent, but I hear significant wheezing. Breathing is labored with severe work of breathing and retractions."
+Visuals: Extreme detail on the visible retractions of the chest muscles and the nasal flaring. The precise, professional use of the stethoscope.
+
+Prompt 5: Breathing Intervention (Inhaler) (Guidelines: Evaluate/Treat Breathing [Intervention])
+Camera: Tight shot focusing on the interaction and equipment.
+Action: Sarah hands Mark a pediatric pressurized metered-dose inhaler (MDI) attached to a yellow pediatric spacer device with a face mask. Mark shakes the device vigorously. He places the mask of the spacer firmly over Liam's nose and mouth, ensuring a tight seal, and presses the canister once.
+Dialogue (Mark): "Assisting with prescribed inhaler. Breathe in deep, buddy."
+Visuals: Clear view of the red inhaler and the yellow spacer device. Focus on the tight seal of the mask on Liam's pale face.
+
+Prompt 6: Breathing Intervention (Oxygen Administration) (Guidelines: Evaluate/Treat Breathing [Oxygenation])
+Camera: Medium shot, focusing on the rapid transition of care.
+Action: Immediately after the inhaler administration, Mark retrieves a pediatric non-rebreather mask (NRB) connected via green tubing to a portable oxygen cylinder. He turns the flow rate knob high; the reservoir bag inflates rapidly. He gently removes the spacer mask and applies the NRB mask to Liam's face.
+Dialogue (Mark): "Administering high-flow O2 via non-rebreather at 15 liters per minute."
+Visuals: Swift and efficient transition. The rapid inflation of the reservoir bag is a key visual element.
+
+Prompt 7: Circulation Assessment (Guidelines: Evaluate/Treat Circulation)
+Camera: Series of tight close-up shots on Mark's hands interacting with Liam.
+Action: Mark places the back of his gloved hand against Liam's forehead. He then takes Liam's wrist and checks the radial pulse. He quickly presses a fingernail to check capillary refill, which is visibly slow. He quickly scans the body for bleeding.
+Dialogue (Mark): "The patient’s skin is pale, cool, and diaphoretic. Pulse is rapid and thready. Capillary refill is delayed. No gross bleeds. Consistent with poor perfusion."
+Visuals: Detail of the light blue nitrile gloves against Liam's pale, sweaty skin.
+
+Prompt 8: Prioritization and Transport Decision (Guidelines: Prioritizes patient; Move to ambulance [Decision])
+Camera: Medium shot, focusing on Mark’s decision-making. Liam is visible in the foreground wearing the O2 mask, still distressed.
+
+Action: Mark assesses the overall clinical picture. He states decisively to his off-screen partner and the mother.
+Dialogue (Mark): "This is a high-priority patient. We need to move immediately. We will gather SAMPLE/OPQRST history en route, since the patient is unstable and should not be delayed on scene."
+Visuals: Mark's expression conveys controlled urgency.
+
+Prompt 9: Movement to Stretcher (Guidelines: Move to ambulance [Action])
+Camera: Wide shot. A clean, wheeled ambulance stretcher (aluminum frame, white linens) is  ow positioned next to the sofa.
+Action: Mark and an off-camera assistant gently move Liam from the sofa onto the ambulance stretcher. Liam must remain sitting fully upright (High Fowler's position) on the stretcher due to his distress; he is not lying down. The oxygen mask stays in place. They efficiently secure the safety straps across his chest and legs.
+Visuals: The careful movement of the patient ensuring the upright position and oxygen continuity.
+
+Prompt 10: Transport and En Route Care (Guidelines: History gathering en route)
+Camera: Medium shot, interior of a modern ambulance. Lighting is bright, cool-white (5000K) LED overhead.
+Action: Liam is secured on the stretcher in the High Fowler's position, still wearing the oxygen mask. Mark is sitting on the bench seat next to the stretcher, actively reassessing vital signs (e.g., attaching a pulse oximeter). Sarah is seated nearby. Mark looks at Sarah and begins the secondary assessment.
+Dialogue (Mark): "Okay, let's get his history now. Is he allergic to any medications?"
+Visuals: The sterile, brightly lit ambulance environment. Focus on the ongoing care and initiation of the history gathering during transport.
