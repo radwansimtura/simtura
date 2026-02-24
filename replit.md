@@ -52,6 +52,11 @@ Simtura.ai is an AI-powered training platform for EMS personnel (EMTs, Paramedic
 
 ## Seed Data
 - 5 realistic EMS scenarios seeded on startup
-- Covers: Sports Injury, Pediatric Asthma, Respiratory Failure, MVC, Cardiac Arrest
-- Each step has a unique first-person POV video
+- Scenario 1: Sports Injury - Primary Assessment (12 steps, full primary assessment sequence: BSI → Scene Safety → Additional Resources → Patient Count → MOI → Spinal → Life Threats → AVPU → Airway → Breathing → Circulation → Transport Priority)
+- Scenario 2: Severe Asthma Attack (10 steps, adult patient Marcus 28M)
+- Scenario 3: Respiratory Failure - Elderly Patient
+- Scenario 4: Motor Vehicle Collision
+- Scenario 5: Cardiac Arrest - Witnessed
+- Each step has a unique first-person POV bodycam video
 - Each scenario has a departure video
+- AI video generation: 8s clips, 16:9, first-person POV with EMT's blue nitrile-gloved hands, person_generation: "allow_adult"
