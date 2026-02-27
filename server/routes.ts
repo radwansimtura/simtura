@@ -29,8 +29,7 @@ export async function registerRoutes(
 
   app.get("/api/scenarios", async (_req, res) => {
     const scenarios = await storage.getAllScenarios();
-    const visible = scenarios.filter(s => s.title === "Sports Injury - Primary Assessment");
-    res.json(visible);
+    res.json(scenarios);
   });
 
   app.get("/api/scenarios/:id", async (req, res) => {
