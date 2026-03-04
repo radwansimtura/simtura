@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import {
-  Activity,
   ArrowRight,
   Moon,
   Sun,
@@ -10,6 +9,7 @@ import {
   Siren,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
 
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
@@ -45,16 +45,31 @@ export default function LandingPage() {
           }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         />
+        <motion.div
+          className="absolute top-[10%] right-[20%] w-[25vw] h-[25vw] rounded-full bg-blue-400/3 dark:bg-blue-400/8 blur-3xl"
+          animate={{
+            x: [0, 50, -70, 0],
+            y: [0, -80, 30, 0],
+            scale: [1, 1.1, 0.9, 1],
+          }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-[10%] left-[30%] w-[20vw] h-[20vw] rounded-full bg-indigo-400/3 dark:bg-indigo-400/6 blur-3xl"
+          animate={{
+            x: [0, -40, 60, 0],
+            y: [0, 60, -40, 0],
+            scale: [1, 0.85, 1.15, 1],
+          }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        />
       </div>
 
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-                <Activity className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold tracking-tight" data-testid="text-brand-name">Simtura.ai</span>
+              <img src={simturaLogo} alt="Simtura" className="h-8" data-testid="img-logo" />
             </div>
             <Button size="icon" variant="ghost" onClick={toggleTheme} data-testid="button-theme-toggle">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -71,14 +86,12 @@ export default function LandingPage() {
           transition={{ duration: 0.8 }}
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-card/50 backdrop-blur-sm text-sm text-muted-foreground mb-8">
-            <Activity className="h-3.5 w-3.5 text-primary" />
+            <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
             AI-Powered Clinical Training
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6" data-testid="text-hero-title">
-            Train like it's real.
-            <br />
-            <span className="bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">
-              Save lives for real.
+          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight leading-tight mb-6" data-testid="text-hero-title">
+            <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
+              Simtura
             </span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed" data-testid="text-hero-subtitle">
@@ -194,8 +207,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Simtura.ai</span>
+              <img src={simturaLogo} alt="Simtura" className="h-6" />
             </div>
             <p className="text-xs text-muted-foreground">
               Bridging the gap between classroom and clinical practice. Built for healthcare professionals.
