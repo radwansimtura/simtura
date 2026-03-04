@@ -30,14 +30,11 @@ export async function registerRoutes(
   app.get("/api/scenarios", async (req, res) => {
     const scenarios = await storage.getAllScenarios();
     const discipline = req.query.discipline as string | undefined;
-    const visible = scenarios.filter(s =>
-      s.title === "Sports Injury - Primary Assessment" || s.discipline === "Nursing"
-    );
     if (discipline) {
-      const filtered = visible.filter(s => s.discipline === discipline);
+      const filtered = scenarios.filter(s => s.discipline === discipline);
       return res.json(filtered);
     }
-    res.json(visible);
+    res.json(scenarios);
   });
 
   app.get("/api/scenarios/:id", async (req, res) => {
