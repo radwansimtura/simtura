@@ -1,16 +1,37 @@
 import { storage } from "./storage";
 import { db } from "./db";
 import { scenarios } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { log } from "./index";
 
+async function scenarioExists(title: string): Promise<boolean> {
+  const existing = await db.select().from(scenarios).where(eq(scenarios.title, title)).limit(1);
+  return existing.length > 0;
+}
+
 export async function seedDatabase() {
-  const existing = await db.select().from(scenarios).limit(1);
-  if (existing.length > 0) {
-    log("Database already seeded", "seed");
-    return;
+  let seededCount = 0;
+
+  if (!(await scenarioExists("Sports Injury - Primary Assessment"))) {
+    log("Seeding EMS scenarios...", "seed");
+    await seedEMSScenarios();
+    seededCount += 5;
   }
 
-  log("Seeding database with EMS scenarios...", "seed");
+  if (!(await scenarioExists("Acute Stroke - CVA Recognition"))) {
+    log("Seeding Nursing scenarios...", "seed");
+    await seedNursingScenario();
+    seededCount += 1;
+  }
+
+  if (seededCount === 0) {
+    log("Database already seeded", "seed");
+  } else {
+    log(`Seeded ${seededCount} new scenarios`, "seed");
+  }
+}
+
+async function seedEMSScenarios() {
 
   const scenario1 = await storage.createScenario({
     title: "Sports Injury - Primary Assessment",
@@ -813,6 +834,384 @@ export async function seedDatabase() {
       videoUrl: "/videos/s5-step5-continue-cpr.mp4",
     }),
   ]);
+}
 
-  log("Database seeded with 5 scenarios", "seed");
+async function seedNursingScenario() {
+  const scenario6 = await storage.createScenario({
+    title: "Acute Stroke - CVA Recognition",
+    description: "You are a student nurse precepting on a medical-surgical unit. During a routine assessment of a 67-year-old male patient admitted for hypertension and hyperlipidemia, you identify sudden neurological symptoms consistent with stroke. Activate the Code Stroke protocol and follow the patient through CT imaging, interventional radiology, and ICU transfer.",
+    patientSummary: "67M 'Robert Hernandez', admitted for HTN and hyperlipidemia management. Develops acute onset facial droop, right-sided weakness, and slurred speech during morning assessment. Last known well 15 minutes prior.",
+    difficulty: "Intermediate",
+    category: "Neurological",
+    certLevel: "RN",
+    discipline: "Nursing",
+    imageUrl: "/images/scenario-cva-stroke.png",
+    estimatedMinutes: 25,
+    tags: ["stroke", "CVA", "FAST", "Code Stroke", "neurological", "nursing", "med-surg", "thrombectomy", "SBAR"],
+    departureVideoUrl: "/videos/s6-departure.mp4",
+  });
+
+  await Promise.all([
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 1,
+      phase: "Patient Interaction",
+      prompt: "You enter Room 412 on the medical-surgical unit with your preceptor. Mr. Hernandez is sitting in bed with cardiac monitoring and IV fluids running. What is your first action before beginning your assessment?",
+      patientState: "Hospital med-surg room. 67-year-old male in hospital bed. Cardiac monitor showing normal sinus rhythm, IV saline infusing via pump. Wall oxygen and suction ports visible. Whiteboard reads: 'RN: Sarah, Student Nurse: Alex, Goal today: Blood pressure control.'",
+      vitalSigns: null,
+      correctActions: ["Perform hand hygiene and don appropriate PPE (gloves) before beginning the patient assessment"],
+      incorrectActions: [
+        "Begin taking vital signs immediately without hand hygiene",
+        "Start reviewing the chart at the bedside computer",
+        "Ask the preceptor what to do first",
+      ],
+      feedbackCorrect: "Correct! Hand hygiene and PPE are always performed before any patient interaction. This is a fundamental infection prevention practice.",
+      feedbackIncorrect: "Hand hygiene and gloving must come before any patient contact. This is a core nursing standard for infection prevention.",
+      hint: "What must you always do before touching a patient or their environment?",
+      isCritical: false,
+      videoUrl: "/videos/s6-step1-ppe.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 2,
+      phase: "Patient Interaction",
+      prompt: "You approach the bedside. How do you properly introduce yourself and verify the patient's identity?",
+      patientState: "The patient looks at you as you approach. He appears slightly uncomfortable and holds his head. The hospital ID bracelet is on his left wrist.",
+      vitalSigns: null,
+      correctActions: ["Introduce yourself as the student nurse, then verify identity using two patient identifiers: ask for full name and date of birth, and cross-reference with the ID bracelet"],
+      incorrectActions: [
+        "Skip introductions and begin the physical assessment",
+        "Just check the name on the whiteboard",
+        "Ask the preceptor to confirm the patient's identity for you",
+      ],
+      feedbackCorrect: "Correct! You say: 'Hello Mr. Hernandez, I'm the student nurse working with your nurse today. Can you confirm your name and date of birth?' He replies with mild speech hesitation: 'My name.. is Robert.. Hernandez… February 18, 1958.'",
+      feedbackIncorrect: "Patient identification requires two identifiers (name and DOB) confirmed directly with the patient and checked against the ID bracelet. This prevents medical errors.",
+      hint: "How many patient identifiers are required? Where do you verify them?",
+      isCritical: false,
+      videoUrl: "/videos/s6-step2-identify.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 3,
+      phase: "Patient Interaction",
+      prompt: "During your general observation, you notice the patient appears slightly confused and is holding his head. He says: 'My head feels funny and I feel weak.' What do you recognize about these symptoms?",
+      patientState: "The patient is holding his head, appears mildly confused, and reports feeling strange. His speech has a slight hesitation that was not present in his previous assessments documented in the chart.",
+      vitalSigns: { hr: 88, rr: 18, bp: "168/94", spo2: 96 },
+      correctActions: ["These symptoms — sudden headache, confusion, weakness, and speech changes — suggest a possible neurological emergency. This warrants immediate further assessment"],
+      incorrectActions: [
+        "This is likely just a headache from his hypertension, offer Tylenol",
+        "He's probably just tired, let him rest and recheck later",
+        "Document the complaint and continue with routine vitals",
+      ],
+      feedbackCorrect: "Excellent recognition! Sudden onset of headache, confusion, weakness, and speech changes are red flags for a neurological event. You correctly identify the need for immediate further assessment.",
+      feedbackIncorrect: "Sudden onset headache, confusion, new weakness, and speech changes in a patient with hypertension are red flags for stroke. These symptoms require immediate neurological assessment, not routine documentation.",
+      hint: "What neurological emergency presents with sudden headache, confusion, weakness, and speech changes?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step3-observe.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 4,
+      phase: "Assessment",
+      prompt: "You suspect a possible neurological emergency. Which of the following symptoms should immediately raise concern for stroke?",
+      patientState: "The patient continues to hold his head, his speech hesitation is becoming more noticeable, and he appears increasingly confused.",
+      vitalSigns: { hr: 90, rr: 18, bp: "172/96", spo2: 95 },
+      correctActions: ["Sudden facial droop is a hallmark stroke symptom and should immediately raise concern"],
+      incorrectActions: [
+        "A mild headache alone is the primary stroke indicator",
+        "Slight fatigue is the most concerning symptom",
+        "Mild nausea is the key stroke symptom",
+      ],
+      feedbackCorrect: "Correct! Sudden facial droop is one of the classic stroke warning signs. Along with arm weakness and speech changes, it forms the basis of the FAST stroke assessment.",
+      feedbackIncorrect: "While headache, fatigue, and nausea can occur with stroke, sudden facial droop is a classic hallmark symptom. It is part of the FAST screening tool (Face, Arms, Speech, Time).",
+      hint: "Think about the FAST acronym. What does the F stand for?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step4-concern.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 5,
+      phase: "Assessment",
+      prompt: "You decide to perform a stroke screening. Which assessment tool is most appropriate for initial stroke screening at the med-surg bedside?",
+      patientState: "The patient's symptoms are progressing. You need to quickly screen for stroke using a validated bedside tool.",
+      vitalSigns: { hr: 92, rr: 20, bp: "174/98", spo2: 95 },
+      correctActions: ["The FAST stroke assessment (Face, Arms, Speech, Time) is the most appropriate bedside screening tool for initial stroke recognition"],
+      incorrectActions: [
+        "The Glasgow Coma Scale is the best initial stroke screening tool",
+        "The Braden Scale should be used to assess for stroke",
+        "The Morse Fall Scale is the appropriate stroke screening tool",
+      ],
+      feedbackCorrect: "Correct! The FAST assessment (Face, Arms, Speech, Time) is designed specifically for rapid bedside stroke screening. It is quick, reliable, and can be performed by any nurse.",
+      feedbackIncorrect: "The FAST stroke assessment is the gold standard for rapid bedside stroke screening. The Glasgow Coma Scale measures consciousness but is not specific to stroke. The Braden and Morse scales assess skin breakdown and fall risk respectively.",
+      hint: "Which tool was specifically designed for rapid stroke screening using Face, Arms, Speech, and Time?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step5-tool.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 6,
+      phase: "FAST Assessment",
+      prompt: "You begin the FAST assessment. You say: 'Mr. Hernandez, can you smile for me?' What do you observe?",
+      patientState: "You stand at the bedside performing the FAST assessment. The preceptor watches closely, allowing you to lead. When asked to smile, the patient's face shows asymmetry.",
+      vitalSigns: { hr: 94, rr: 20, bp: "176/98", spo2: 95 },
+      correctActions: ["There is drooping on the right side of the patient's face. The right corner of his mouth does not rise symmetrically. This is a positive finding for facial droop"],
+      incorrectActions: [
+        "The patient's smile is symmetric and normal",
+        "The patient cannot hear you, reposition and try again",
+        "Facial assessment is inconclusive, skip to arms",
+      ],
+      feedbackCorrect: "Correct! You observe right-sided facial droop — the right corner of the mouth does not rise when the patient attempts to smile. This is a positive FAST finding.",
+      feedbackIncorrect: "Look carefully at the patient's face when he smiles. The right side is drooping — the mouth corner does not rise equally. This asymmetry is a positive stroke screening finding.",
+      hint: "Compare both sides of the face. Does one side move differently than the other?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step6-face.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 7,
+      phase: "FAST Assessment",
+      prompt: "Next you assess arm strength: 'Please raise both of your arms and hold them out in front of you.' What do you observe?",
+      patientState: "The patient raises both arms. His left arm stays elevated, but his right arm begins drifting downward despite visible effort to keep it raised.",
+      vitalSigns: { hr: 94, rr: 20, bp: "178/100", spo2: 94 },
+      correctActions: ["The patient's right arm is weak and drifting downward. This is a positive finding for arm drift, indicating right-sided motor weakness"],
+      incorrectActions: [
+        "Both arms are equal in strength",
+        "The left arm is weak",
+        "The patient is just tired from being in bed, this is normal",
+      ],
+      feedbackCorrect: "Correct! Right arm drift indicates right-sided motor weakness. Combined with the right facial droop, this suggests a left-hemisphere cerebrovascular event.",
+      feedbackIncorrect: "The right arm drifts downward while the left stays up. This is NOT normal fatigue — it indicates unilateral motor weakness, a key stroke indicator.",
+      hint: "Which arm is drifting? What does unilateral arm weakness suggest?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step7-arms.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 8,
+      phase: "FAST Assessment",
+      prompt: "You assess speech: 'Please repeat this sentence: The sky is blue.' The patient attempts: 'The shky is blu…' with notably slurred speech. What is your finding?",
+      patientState: "The patient struggles to repeat the phrase. His words are slurred and difficult to understand. He appears frustrated by his inability to speak clearly.",
+      vitalSigns: { hr: 96, rr: 20, bp: "180/100", spo2: 94 },
+      correctActions: ["The patient's speech is slurred (dysarthria). This is a positive finding for the Speech component of FAST"],
+      incorrectActions: [
+        "The patient's speech is clear and normal",
+        "The patient is just nervous, give him time",
+        "Speech issues are not relevant to stroke screening",
+      ],
+      feedbackCorrect: "Correct! The patient demonstrates dysarthria — slurred, garbled speech. This completes the FAST assessment: Face droop (positive), Arm drift (positive), Speech slurred (positive).",
+      feedbackIncorrect: "The patient's speech is clearly slurred. He cannot properly articulate 'The sky is blue.' Dysarthria is a critical stroke indicator and the S in FAST.",
+      hint: "Can the patient clearly repeat the phrase? What does slurred speech indicate in the FAST assessment?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step8-speech.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 9,
+      phase: "FAST Assessment",
+      prompt: "Your FAST assessment shows: Facial droop (right side), Arm drift (right arm), Slurred speech. Which findings indicate a possible acute stroke?",
+      patientState: "All three components of the FAST assessment are positive. The patient is becoming more anxious as his symptoms progress.",
+      vitalSigns: { hr: 96, rr: 22, bp: "180/102", spo2: 94 },
+      correctActions: ["All of the above — facial droop, arm weakness, AND slurred speech together indicate a possible acute stroke. All three FAST components are positive"],
+      incorrectActions: [
+        "Only facial droop alone indicates stroke",
+        "Only arm weakness alone indicates stroke",
+        "Only slurred speech alone indicates stroke",
+      ],
+      feedbackCorrect: "Correct! All three findings together strongly indicate an acute stroke. Any single positive FAST finding warrants concern, but all three together make the diagnosis highly likely. Time is now critical.",
+      feedbackIncorrect: "While any single finding can indicate stroke, all three together — facial droop, arm weakness, and slurred speech — create an overwhelming clinical picture of acute stroke.",
+      hint: "In FAST, do you need all three findings to be positive, or can any single finding indicate stroke?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step9-recognize.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 10,
+      phase: "FAST Assessment",
+      prompt: "You have confirmed positive FAST findings. What is the most important immediate nursing action?",
+      patientState: "The student nurse recognizes the findings suggest an acute stroke. The preceptor is watching, ready to support the student's next decision.",
+      vitalSigns: { hr: 98, rr: 22, bp: "182/102", spo2: 93 },
+      correctActions: ["Activate the hospital's stroke response protocol (Code Stroke) immediately — time is brain"],
+      incorrectActions: [
+        "Document the symptoms thoroughly in the chart first",
+        "Wait for the physician to round and inform them then",
+        "Administer pain medication for the patient's headache",
+      ],
+      feedbackCorrect: "Excellent! Activating the Code Stroke protocol is the correct immediate action. In stroke care, 'time is brain' — every minute of delay means more brain tissue lost. Documentation can happen after the protocol is activated.",
+      feedbackIncorrect: "Documentation, waiting for rounds, and pain medication all delay the most critical action: activating Code Stroke. In acute stroke, every minute counts. Activate the protocol FIRST, then document.",
+      hint: "In a time-sensitive neurological emergency, should documentation come before or after alerting the stroke team?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step10-action.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 11,
+      phase: "Code Stroke",
+      prompt: "You report your findings to your preceptor: 'The patient has facial droop, arm weakness, and slurred speech.' She nods and instructs you to activate Code Stroke. You call it in. The overhead announcement sounds: 'Code Stroke, Room 412.' What critical information must you determine next?",
+      patientState: "Code Stroke activated. Additional nurses arrive with the stroke response cart. Staff begin applying portable monitor leads, raising bed rails, and unlocking bed wheels for transport.",
+      vitalSigns: { hr: 98, rr: 22, bp: "184/104", spo2: 93 },
+      correctActions: ["Determine the time of symptom onset — 'When was the patient last seen normal?' The preceptor confirms he was speaking normally during morning rounds about 15 minutes ago. Last known well time: approximately 08:00 AM"],
+      incorrectActions: [
+        "Order a full metabolic panel immediately",
+        "Begin administering blood pressure medication",
+        "Start preparing discharge paperwork",
+      ],
+      feedbackCorrect: "Correct! The 'last known well' time is critical because it determines eligibility for time-sensitive treatments like tPA (alteplase). The patient was last seen normal approximately 15 minutes ago at 08:00 AM.",
+      feedbackIncorrect: "The most critical information in acute stroke is the 'last known well' time — when the patient was last seen without symptoms. This determines eligibility for thrombolytic therapy.",
+      hint: "What time-dependent information determines whether a stroke patient can receive clot-busting medication?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step11-code-stroke.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 12,
+      phase: "Code Stroke",
+      prompt: "Why is identifying the time of symptom onset critical in acute stroke management?",
+      patientState: "The stroke team is assembling. The last known well time has been established as approximately 08:00 AM — 15 minutes ago.",
+      vitalSigns: { hr: 100, rr: 22, bp: "184/104", spo2: 93 },
+      correctActions: ["The time of symptom onset determines eligibility for thrombolytic therapy (tPA/alteplase). tPA must be administered within 4.5 hours of symptom onset for ischemic stroke"],
+      incorrectActions: [
+        "It determines what diet the patient should receive",
+        "It determines discharge planning timelines",
+        "It determines the physical therapy schedule",
+      ],
+      feedbackCorrect: "Correct! tPA (alteplase) has a strict administration window — generally within 4.5 hours of symptom onset for ischemic stroke. Knowing the exact 'last known well' time is essential for treatment decisions.",
+      feedbackIncorrect: "The time of onset is critical because thrombolytic therapy (tPA) has a strict time window. Missing this window means the patient cannot receive this life-saving clot-dissolving medication.",
+      hint: "What stroke treatment has a strict time window measured from symptom onset?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step12-onset-time.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 13,
+      phase: "Code Stroke",
+      prompt: "While awaiting the stroke team, you check the patient's blood glucose to rule out hypoglycemia. The reading is 110 mg/dL (normal). Your preceptor ensures IV access and cardiac monitoring. She tells you: 'I'm going to remain on the unit to care for our other patients. You can accompany the stroke team.' Which diagnostic test will most likely be performed first?",
+      patientState: "Blood glucose is 110 mg/dL (normal). IV access confirmed. Cardiac monitoring in place. The patient is being prepared for transport to imaging.",
+      vitalSigns: { hr: 100, rr: 22, bp: "186/104", spo2: 93 },
+      correctActions: ["A head CT without contrast will be performed first. It is the priority diagnostic test to determine if the stroke is ischemic or hemorrhagic"],
+      incorrectActions: [
+        "A chest X-ray is the first priority test",
+        "An abdominal ultrasound is needed first",
+        "An MRI of the spine is the first diagnostic test",
+      ],
+      feedbackCorrect: "Correct! A non-contrast head CT is the first diagnostic test in acute stroke. It rapidly determines whether the stroke is ischemic (clot) or hemorrhagic (bleed), which dictates the treatment path.",
+      feedbackIncorrect: "A non-contrast head CT is always the first imaging study in suspected stroke. It distinguishes ischemic from hemorrhagic stroke — a critical distinction that determines whether clot-dissolving medication can be given.",
+      hint: "Which imaging test can rapidly differentiate between a clot-based stroke and a bleeding-based stroke?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step13-glucose-prep.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 14,
+      phase: "Transport to CT",
+      prompt: "You accompany the stroke team as the patient is transported on the hospital bed through the hallway toward CT imaging. The patient appears anxious. What are your nursing priorities during transport?",
+      patientState: "The patient is being transported on the hospital bed with a portable cardiac monitor attached. You pass other hospital rooms and take the elevator to the imaging floor. The patient grips the bedrails anxiously.",
+      vitalSigns: { hr: 102, rr: 22, bp: "186/106", spo2: 93 },
+      correctActions: ["Continue monitoring vital signs, maintain IV access, provide patient reassurance, and anticipate that a CT scan of the head will be performed to evaluate the stroke type"],
+      incorrectActions: [
+        "Disconnect the cardiac monitor for easier transport",
+        "Tell the patient they are probably fine to avoid worrying them",
+        "Stop at the nurses' station to update the chart before continuing to CT",
+      ],
+      feedbackCorrect: "Correct! During transport, maintain continuous monitoring, keep the IV running, reassure the patient, and anticipate the diagnostic testing. You tell him: 'We are taking you for imaging to evaluate your symptoms.'",
+      feedbackIncorrect: "During critical patient transport, never disconnect monitoring, minimize delays, and provide honest reassurance. The patient's condition can change rapidly during an acute stroke.",
+      hint: "What three things should you maintain during critical patient transport?",
+      isCritical: false,
+      videoUrl: "/videos/s6-step14-transport.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 15,
+      phase: "Transport to CT",
+      prompt: "You arrive at the CT suite. The radiology tech prepares the scanner. Why was checking blood glucose important in this suspected stroke patient?",
+      patientState: "The CT scanning area has dimmed lighting. The large circular CT scanner is visible. The radiology technologist is at the control console. The patient will slide into the scanner on the motorized table.",
+      vitalSigns: { hr: 102, rr: 22, bp: "188/106", spo2: 93 },
+      correctActions: ["Hypoglycemia can mimic stroke symptoms. Checking blood glucose rules out a metabolic cause that could present identically to an acute stroke"],
+      incorrectActions: [
+        "Blood glucose determines stroke severity",
+        "Blood glucose determines CT scan eligibility",
+        "Blood glucose predicts recovery time",
+      ],
+      feedbackCorrect: "Correct! Hypoglycemia can cause confusion, weakness, slurred speech, and focal neurological deficits that closely mimic stroke. Ruling it out ensures you're treating the correct condition.",
+      feedbackIncorrect: "Hypoglycemia is a 'stroke mimic' — it can cause identical symptoms including confusion, weakness, and speech changes. A normal blood glucose helps confirm the symptoms are truly neurological in origin.",
+      hint: "What common metabolic condition can present with confusion, weakness, and slurred speech similar to stroke?",
+      isCritical: false,
+      videoUrl: "/videos/s6-step15-ct-suite.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 16,
+      phase: "CT Results",
+      prompt: "The CT scan is complete. If this patient meets eligibility criteria based on the CT findings and time of onset, which medication may be administered for ischemic stroke?",
+      patientState: "The CT scan shows findings consistent with a large vessel occlusion in the left middle cerebral artery (MCA). No hemorrhage is identified. The stroke team reviews the images.",
+      vitalSigns: { hr: 104, rr: 22, bp: "190/108", spo2: 92 },
+      correctActions: ["Alteplase (tPA) may be administered if the patient meets eligibility criteria — it is the thrombolytic medication used to dissolve clots in ischemic stroke within the treatment window"],
+      incorrectActions: [
+        "Insulin should be administered",
+        "Morphine is the appropriate medication",
+        "A heparin bolus is the first-line treatment",
+      ],
+      feedbackCorrect: "Correct! Alteplase (tPA) is the thrombolytic medication for eligible ischemic stroke patients. However, due to the suspected large vessel occlusion, the stroke team determines the patient is also a candidate for mechanical thrombectomy.",
+      feedbackIncorrect: "Alteplase (tPA) is the FDA-approved thrombolytic for acute ischemic stroke. It dissolves clots. Insulin, morphine, and heparin boluses are not first-line acute stroke treatments.",
+      hint: "What class of medication dissolves blood clots? What is the generic name of the most common one used in stroke?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step16-ct-results.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 17,
+      phase: "Interventional Radiology",
+      prompt: "The CT shows a large vessel occlusion in the middle cerebral artery. The patient is moved to Interventional Radiology for a procedure. What is the purpose of mechanical thrombectomy?",
+      patientState: "The IR suite has bright overhead surgical lights. Staff wear lead aprons. A sterile instrument table is prepared. Large angiography monitors display cerebral blood vessels. The IR team prepares for the procedure.",
+      vitalSigns: { hr: 104, rr: 24, bp: "190/108", spo2: 92 },
+      correctActions: ["Mechanical thrombectomy physically removes a large blood clot from a cerebral artery using a catheter-based device. It is used for large vessel occlusions that may not respond adequately to tPA alone"],
+      incorrectActions: [
+        "Mechanical thrombectomy dissolves clots with medication",
+        "Mechanical thrombectomy repairs damaged brain tissue",
+        "Mechanical thrombectomy prevents infection",
+      ],
+      feedbackCorrect: "Correct! Mechanical thrombectomy uses a catheter inserted through the femoral artery to physically retrieve the clot from the cerebral artery. After the procedure, the patient is positioned flat with the affected leg straight following femoral artery access.",
+      feedbackIncorrect: "Mechanical thrombectomy is a physical clot removal procedure, not a medication. A catheter device is threaded to the brain's arteries to mechanically extract the clot that is blocking blood flow.",
+      hint: "Does 'mechanical' removal involve medication or a physical device?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step17-ir.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 18,
+      phase: "ICU Transfer",
+      prompt: "After the IR procedure, the patient is transferred to the Neuro ICU. You participate in the SBAR handoff to the ICU nurse. Which nursing priority is most important post-stroke intervention in the ICU?",
+      patientState: "The Neuro ICU has continuous arterial blood pressure waveforms, neuro monitoring equipment. The ICU nurse performs a pupil check with a penlight. The patient is positioned with head of bed less than 30 degrees post-procedure.",
+      vitalSigns: { hr: 88, rr: 18, bp: "158/88", spo2: 96 },
+      correctActions: ["Frequent neurological assessments are the most important post-stroke nursing priority. Serial neuro checks detect any changes in condition, re-occlusion, or hemorrhagic conversion early"],
+      incorrectActions: [
+        "Daily weight monitoring is the top priority",
+        "Routine ambulation should begin immediately",
+        "Dietary teaching is the most important priority",
+      ],
+      feedbackCorrect: "Correct! Frequent neurological assessments (often every 15-30 minutes initially) are the cornerstone of post-stroke ICU care. They detect deterioration, re-occlusion, or hemorrhagic conversion early when intervention is still possible.",
+      feedbackIncorrect: "After a stroke intervention, the brain remains at risk for re-occlusion or hemorrhagic conversion. Frequent neurological assessments catch these life-threatening changes early. Weight monitoring, ambulation, and dietary teaching are important but not the immediate priority.",
+      hint: "What is the biggest ongoing risk after stroke intervention that requires close monitoring?",
+      isCritical: true,
+      videoUrl: "/videos/s6-step18-icu.mp4",
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario6.id,
+      stepOrder: 19,
+      phase: "Debrief",
+      prompt: "You return to the med-surg unit with your preceptor. She debriefs the event with you: 'You identified stroke symptoms quickly during your assessment.' What is the most important nursing takeaway from this scenario?",
+      patientState: "You and your preceptor walk back through the hospital hallway toward the med-surg nurses' station. The preceptor takes this opportunity to reinforce the key learning points.",
+      vitalSigns: null,
+      correctActions: ["Stroke treatment depends on rapid recognition and escalation of care. Early detection and immediate activation of the stroke protocol ensures patients receive time-sensitive treatment"],
+      incorrectActions: [
+        "Stroke symptoms resolve without treatment so timing doesn't matter",
+        "Only physicians can identify strokes, nurses should not screen",
+        "Neurological exams are unnecessary for med-surg patients",
+      ],
+      feedbackCorrect: "Excellent! Rapid recognition and escalation are critical in stroke care. Your quick identification of FAST symptoms and immediate activation of Code Stroke helped ensure this patient received time-sensitive treatment. Every minute counts — 'time is brain.'",
+      feedbackIncorrect: "Stroke is a time-critical emergency. Nurses play a vital role in early recognition and escalation. Without rapid identification and protocol activation, patients miss the treatment window. Neurological assessments are essential on every unit.",
+      hint: "What made the difference in this patient's outcome — the speed of recognition and escalation, or waiting for someone else to notice?",
+      isCritical: false,
+      videoUrl: "/videos/s6-step19-debrief.mp4",
+    }),
+  ]);
 }
