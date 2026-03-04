@@ -55,6 +55,8 @@ export default function ScenarioTrainerPage() {
     queryKey: ["/api/scenarios", id],
   });
 
+  const backUrl = scenario?.discipline === "Nursing" ? "/nursing" : "/ems";
+
   const { data: steps, isLoading: stepsLoading } = useQuery<ScenarioStep[]>({
     queryKey: ["/api/scenarios", id, "steps"],
   });
@@ -264,7 +266,7 @@ export default function ScenarioTrainerPage() {
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 mx-auto text-white/40 mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Scenario not found</h2>
-          <Button onClick={() => navigate("/scenarios")} variant="outline" data-testid="button-back-scenarios">
+          <Button onClick={() => navigate(backUrl)} variant="outline" data-testid="button-back-scenarios">
             Back to Scenarios
           </Button>
         </div>
@@ -358,7 +360,7 @@ export default function ScenarioTrainerPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-3">
-              <Button onClick={() => navigate("/scenarios")} variant="outline" className="border-white/20 text-white" data-testid="button-back-scenarios">
+              <Button onClick={() => navigate(backUrl)} variant="outline" className="border-white/20 text-white" data-testid="button-back-scenarios">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All Scenarios
               </Button>
               <Button onClick={() => window.location.reload()} className="bg-blue-600 text-white" data-testid="button-retry">
@@ -401,7 +403,7 @@ export default function ScenarioTrainerPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/scenarios")}
+              onClick={() => navigate(backUrl)}
               className="text-white/80"
               data-testid="button-exit-scenario"
             >

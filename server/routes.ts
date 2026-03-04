@@ -27,8 +27,13 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
-  app.get("/api/scenarios", async (_req, res) => {
+  app.get("/api/scenarios", async (req, res) => {
     const scenarios = await storage.getAllScenarios();
+    const discipline = req.query.discipline as string | undefined;
+    if (discipline) {
+      const filtered = scenarios.filter(s => s.discipline === discipline);
+      return res.json(filtered);
+    }
     res.json(scenarios);
   });
 

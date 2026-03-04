@@ -17,6 +17,7 @@ export const scenarios = pgTable("scenarios", {
   difficulty: text("difficulty").notNull(),
   category: text("category").notNull(),
   certLevel: text("cert_level").notNull(),
+  discipline: text("discipline").notNull().default("EMS"),
   imageUrl: text("image_url"),
   estimatedMinutes: integer("estimated_minutes").notNull().default(10),
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
