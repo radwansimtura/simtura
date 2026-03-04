@@ -150,8 +150,8 @@ export default function ScenarioTrainerPage() {
 
   const handleStartScenario = () => {
     if (!steps || steps.length === 0) return;
-    setPhase("dispatch-video");
-    playVideo("/videos/ambulance-driving.mp4", () => {
+
+    const startFirstStep = () => {
       const step = steps[0];
       if (step?.videoUrl) {
         setPhase("step-video");
@@ -163,7 +163,16 @@ export default function ScenarioTrainerPage() {
         setPhase("question");
         setStepStartTime(Date.now());
       }
-    });
+    };
+
+    if (scenario?.discipline === "Nursing") {
+      startFirstStep();
+    } else {
+      setPhase("dispatch-video");
+      playVideo("/videos/ambulance-driving.mp4", () => {
+        startFirstStep();
+      });
+    }
   };
 
   const currentStep = steps?.[currentStepIndex] ?? null;
