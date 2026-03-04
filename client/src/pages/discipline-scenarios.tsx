@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "@/components/theme-provider";
 import type { Scenario } from "@shared/schema";
 import {
-  Activity,
   ArrowLeft,
   ArrowRight,
   Clock,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
 
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-green-500/10 text-green-600 dark:text-green-400",
@@ -84,10 +84,7 @@ export default function DisciplineScenariosPage({
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <span className="text-lg font-bold tracking-tight">Simtura.ai</span>
-              </div>
+              <img src={simturaLogo} alt="Simtura" className="h-7" data-testid="img-logo" />
             </div>
             <Button size="icon" variant="ghost" onClick={toggleTheme} data-testid="button-theme-toggle">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
