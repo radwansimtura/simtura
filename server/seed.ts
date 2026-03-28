@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 import { db } from "./db";
-import { scenarios } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { scenarios, scenarioSteps, attempts } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { log } from "./index";
 
 async function scenarioExists(title: string): Promise<boolean> {
@@ -9,10 +9,35 @@ async function scenarioExists(title: string): Promise<boolean> {
   return existing.length > 0;
 }
 
+async function getScenarioByTitle(title: string) {
+  const [scenario] = await db.select().from(scenarios).where(eq(scenarios.title, title)).limit(1);
+  return scenario ?? null;
+}
+
+async function getStepCount(scenarioId: string): Promise<number> {
+  const [result] = await db.select({ count: sql<number>`count(*)::int` }).from(scenarioSteps).where(eq(scenarioSteps.scenarioId, scenarioId));
+  return result?.count ?? 0;
+}
+
+async function deleteScenarioData(scenarioId: string) {
+  await db.delete(attempts).where(eq(attempts.scenarioId, scenarioId));
+  await db.delete(scenarioSteps).where(eq(scenarioSteps.scenarioId, scenarioId));
+  await db.delete(scenarios).where(eq(scenarios.id, scenarioId));
+}
+
 export async function seedDatabase() {
   let seededCount = 0;
 
-  if (!(await scenarioExists("Sports Injury - Primary Assessment"))) {
+  const existingS1 = await getScenarioByTitle("Sports Injury - Primary Assessment");
+  if (existingS1) {
+    const stepCount = await getStepCount(existingS1.id);
+    if (stepCount !== 7) {
+      log(`Scenario 1 has ${stepCount} steps (expected 7), re-seeding Scenario 1...`, "seed");
+      await deleteScenarioData(existingS1.id);
+      await seedScenario1Only();
+      seededCount += 1;
+    }
+  } else {
     log("Seeding EMS scenarios...", "seed");
     await seedEMSScenarios();
     seededCount += 5;
@@ -31,8 +56,11 @@ export async function seedDatabase() {
   }
 }
 
-async function seedEMSScenarios() {
+async function seedScenario1Only() {
+  await createScenario1WithSteps();
+}
 
+async function createScenario1WithSteps() {
   const scenario1 = await storage.createScenario({
     title: "Sports Injury - Primary Assessment",
     description: "A 22-year-old female is sitting on the ground holding her left side and breathing rapidly after falling during a soccer game. Her teammates report she was struck in the ribs by another player's elbow. Perform a complete primary assessment following proper EMS protocol.",
@@ -299,6 +327,10 @@ async function seedEMSScenarios() {
       questions: null,
     }),
   ]);
+}
+
+async function seedEMSScenarios() {
+  await createScenario1WithSteps();
 
   const scenario2 = await storage.createScenario({
     title: "Severe Asthma Attack",
