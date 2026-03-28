@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Scenario, ScenarioStep, VitalSigns, StepResponse } from "@shared/schema";
-import { useState, useEffect, useRef, useCallback } from "react";
+import type { Scenario, ScenarioStep, VitalSigns, StepQuestion, StepResponse } from "@shared/schema";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -35,11 +35,30 @@ type TrainerPhase =
   | "departure-video"
   | "results";
 
+function getStepQuestions(step: ScenarioStep): StepQuestion[] {
+  const questionsArray = step.questions as StepQuestion[] | null;
+  if (questionsArray && Array.isArray(questionsArray) && questionsArray.length > 0) {
+    return questionsArray;
+  }
+  return [{
+    prompt: step.prompt,
+    patientState: step.patientState ?? undefined,
+    vitalSigns: step.vitalSigns as VitalSigns | null,
+    correctActions: step.correctActions || [],
+    incorrectActions: step.incorrectActions || [],
+    feedbackCorrect: step.feedbackCorrect,
+    feedbackIncorrect: step.feedbackIncorrect,
+    hint: step.hint ?? undefined,
+    isCritical: step.isCritical,
+  }];
+}
+
 export default function ScenarioTrainerPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const [phase, setPhase] = useState<TrainerPhase>("intro");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [responses, setResponses] = useState<StepResponse[]>([]);
@@ -61,11 +80,36 @@ export default function ScenarioTrainerPage() {
     queryKey: ["/api/scenarios", id, "steps"],
   });
 
+  const totalQuestions = useMemo(() => {
+    if (!steps) return 0;
+    return steps.reduce((sum, step) => sum + getStepQuestions(step).length, 0);
+  }, [steps]);
+
+  const questionsAnsweredSoFar = useMemo(() => {
+    if (!steps) return 0;
+    let count = 0;
+    for (let i = 0; i < currentStepIndex; i++) {
+      count += getStepQuestions(steps[i]).length;
+    }
+    count += currentQuestionIndex;
+    return count;
+  }, [steps, currentStepIndex, currentQuestionIndex]);
+
+  const allQuestionsList = useMemo(() => {
+    if (!steps) return [];
+    const list: { step: ScenarioStep; question: StepQuestion; questionIndex: number }[] = [];
+    for (const step of steps) {
+      const qs = getStepQuestions(step);
+      qs.forEach((q, qi) => list.push({ step, question: q, questionIndex: qi }));
+    }
+    return list;
+  }, [steps]);
+
   const startAttemptMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/attempts", {
         scenarioId: id,
-        totalSteps: steps?.length || 0,
+        totalSteps: totalQuestions,
       });
       return res.json();
     },
@@ -176,17 +220,20 @@ export default function ScenarioTrainerPage() {
   };
 
   const currentStep = steps?.[currentStepIndex] ?? null;
-  const progressValue = steps ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
-  const vitals = currentStep?.vitalSigns as VitalSigns | null;
+  const currentQuestions = currentStep ? getStepQuestions(currentStep) : [];
+  const currentQuestion = currentQuestions[currentQuestionIndex] ?? null;
+
+  const progressValue = totalQuestions > 0 ? ((questionsAnsweredSoFar + (phase === "feedback" ? 1 : 0)) / totalQuestions) * 100 : 0;
+  const vitals = currentQuestion?.vitalSigns as VitalSigns | null;
 
   const [shuffledActions, setShuffledActions] = useState<string[]>([]);
 
   useEffect(() => {
-    if (currentStep) {
-      const allActions = [...(currentStep.correctActions || []), ...(currentStep.incorrectActions || [])];
+    if (currentQuestion) {
+      const allActions = [...(currentQuestion.correctActions || []), ...(currentQuestion.incorrectActions || [])];
       setShuffledActions(allActions.sort(() => Math.random() - 0.5));
     }
-  }, [currentStep?.id]);
+  }, [currentStepIndex, currentQuestionIndex, currentQuestion?.prompt]);
 
   const handleSelectAction = (action: string) => {
     if (phase !== "question") return;
@@ -194,11 +241,12 @@ export default function ScenarioTrainerPage() {
   };
 
   const handleSubmit = () => {
-    if (!selectedAction || !currentStep) return;
-    const isCorrect = (currentStep.correctActions || []).includes(selectedAction);
+    if (!selectedAction || !currentQuestion || !currentStep) return;
+    const isCorrect = (currentQuestion.correctActions || []).includes(selectedAction);
     const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
     const response: StepResponse = {
       stepId: currentStep.id,
+      questionIndex: currentQuestionIndex,
       selectedAction,
       isCorrect,
       timeSpent,
@@ -208,10 +256,22 @@ export default function ScenarioTrainerPage() {
   };
 
   const handleNext = () => {
-    if (!steps) return;
-    const nextIndex = currentStepIndex + 1;
+    if (!steps || !currentStep) return;
 
-    if (nextIndex >= steps.length) {
+    const hasMoreQuestions = currentQuestionIndex + 1 < currentQuestions.length;
+
+    if (hasMoreQuestions) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setSelectedAction(null);
+      setShowHint(false);
+      setPhase("question");
+      setStepStartTime(Date.now());
+      return;
+    }
+
+    const nextStepIndex = currentStepIndex + 1;
+
+    if (nextStepIndex >= steps.length) {
       const finalResponses = [...responses];
       completeAttemptMutation.mutate(finalResponses);
       const departureUrl = scenario?.departureVideoUrl;
@@ -224,10 +284,11 @@ export default function ScenarioTrainerPage() {
         setPhase("results");
       }
     } else {
-      setCurrentStepIndex(nextIndex);
+      setCurrentStepIndex(nextStepIndex);
+      setCurrentQuestionIndex(0);
       setSelectedAction(null);
       setShowHint(false);
-      const nextStep = steps[nextIndex];
+      const nextStep = steps[nextStepIndex];
       if (nextStep?.videoUrl) {
         setPhase("step-video");
         playVideo(nextStep.videoUrl, () => {
@@ -283,7 +344,7 @@ export default function ScenarioTrainerPage() {
     );
   }
 
-  const isCorrectAnswer = selectedAction && (currentStep?.correctActions || []).includes(selectedAction);
+  const isCorrectAnswer = selectedAction && currentQuestion && (currentQuestion.correctActions || []).includes(selectedAction);
 
   if (phase === "results") {
     const correctCount = responses.filter((r) => r.isCorrect).length;
@@ -331,9 +392,11 @@ export default function ScenarioTrainerPage() {
             </div>
 
             <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-              <h3 className="font-semibold text-white/80 mb-3 sticky top-0 bg-black/80 backdrop-blur-sm py-2">Step-by-Step Review</h3>
+              <h3 className="font-semibold text-white/80 mb-3 sticky top-0 bg-black/80 backdrop-blur-sm py-2">Question-by-Question Review</h3>
               {responses.map((response, i) => {
-                const step = steps[i];
+                const qInfo = allQuestionsList[i];
+                const question = qInfo?.question;
+                const step = qInfo?.step;
                 return (
                   <div
                     key={i}
@@ -351,13 +414,13 @@ export default function ScenarioTrainerPage() {
                         <XCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-white/90 mb-0.5">{step?.phase}: {step?.prompt?.slice(0, 60)}...</div>
+                        <div className="text-sm font-medium text-white/90 mb-0.5">{step?.phase}: {question?.prompt?.slice(0, 80)}...</div>
                         <div className="text-xs text-white/50">
                           Your answer: <span className={response.isCorrect ? "text-green-400" : "text-red-400"}>{response.selectedAction}</span>
                         </div>
-                        {!response.isCorrect && step && (
+                        {!response.isCorrect && question && (
                           <div className="text-xs text-white/40 mt-0.5">
-                            Correct: {step.correctActions?.[0]}
+                            Correct: {question.correctActions?.[0]}
                           </div>
                         )}
                       </div>
@@ -384,6 +447,10 @@ export default function ScenarioTrainerPage() {
 
   const showVideoPlaying = phase === "dispatch-video" || phase === "step-video" || phase === "departure-video";
   const showQuestionUI = phase === "question" || phase === "feedback";
+
+  const isLastQuestion = currentStepIndex + 1 >= steps.length && currentQuestionIndex + 1 >= currentQuestions.length;
+  const hasMoreQuestionsInStep = currentQuestionIndex + 1 < currentQuestions.length;
+  const nextButtonLabel = isLastQuestion ? "View Results" : hasMoreQuestionsInStep ? "Next Question" : "Next Step";
 
   return (
     <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-black" data-testid="video-trainer-container">
@@ -425,7 +492,13 @@ export default function ScenarioTrainerPage() {
                   {showVideoPlaying ? (
                     phase === "dispatch-video" ? "En Route..." : phase === "departure-video" ? "Transporting patient..." : `Step ${currentStepIndex + 1} of ${steps.length}`
                   ) : (
-                    `Step ${currentStepIndex + 1} of ${steps.length}`
+                    <>
+                      Step {currentStepIndex + 1} of {steps.length}
+                      {currentQuestions.length > 1 && (
+                        <span className="text-white/30"> &middot; Q{currentQuestionIndex + 1}/{currentQuestions.length}</span>
+                      )}
+                      <span className="text-white/30"> &middot; {questionsAnsweredSoFar + 1}/{totalQuestions} total</span>
+                    </>
                   )}
                 </div>
               )}
@@ -489,7 +562,7 @@ export default function ScenarioTrainerPage() {
                 <div className="flex items-center justify-center gap-3 mb-6">
                   <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.certLevel}</Badge>
                   <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.difficulty}</Badge>
-                  <Badge className="bg-white/10 text-white/70 border-white/20">{steps.length} steps</Badge>
+                  <Badge className="bg-white/10 text-white/70 border-white/20">{totalQuestions} questions</Badge>
                 </div>
                 <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 mb-8 text-left">
                   <div className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2">Dispatch Info</div>
@@ -527,9 +600,9 @@ export default function ScenarioTrainerPage() {
           </motion.div>
         )}
 
-        {showQuestionUI && (
+        {showQuestionUI && currentQuestion && (
           <motion.div
-            key={`question-${currentStepIndex}`}
+            key={`question-${currentStepIndex}-${currentQuestionIndex}`}
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
@@ -596,13 +669,13 @@ export default function ScenarioTrainerPage() {
                 </div>
               )}
 
-              {currentStep?.patientState && (
+              {currentQuestion.patientState && (
                 <div className="mb-3 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 p-3" data-testid="patient-state">
                   <div className="flex items-start gap-2">
                     <Stethoscope className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-white/40 font-medium mb-0.5">Patient Presentation</div>
-                      <p className="text-xs text-white/80 leading-relaxed">{currentStep.patientState}</p>
+                      <p className="text-xs text-white/80 leading-relaxed">{currentQuestion.patientState}</p>
                     </div>
                   </div>
                 </div>
@@ -610,9 +683,9 @@ export default function ScenarioTrainerPage() {
 
               <div className="mb-3 rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-4">
                 <h2 className="text-base font-bold text-white mb-1" data-testid="text-step-prompt">
-                  {currentStep?.prompt}
+                  {currentQuestion.prompt}
                 </h2>
-                {currentStep?.isCritical && (
+                {currentQuestion.isCritical && (
                   <Badge variant="destructive" className="mt-1 text-xs">
                     <AlertTriangle className="mr-1 h-3 w-3" /> Critical Decision
                   </Badge>
@@ -622,7 +695,7 @@ export default function ScenarioTrainerPage() {
               <div className="space-y-1.5 mb-3">
                 {shuffledActions.map((action, i) => {
                   const isSelected = selectedAction === action;
-                  const isCorrect = phase === "feedback" && (currentStep?.correctActions || []).includes(action);
+                  const isCorrect = phase === "feedback" && (currentQuestion.correctActions || []).includes(action);
                   const isWrong = phase === "feedback" && isSelected && !isCorrect;
 
                   return (
@@ -678,7 +751,7 @@ export default function ScenarioTrainerPage() {
                   >
                     Submit Answer
                   </Button>
-                  {currentStep?.hint && !showHint && (
+                  {currentQuestion.hint && !showHint && (
                     <Button
                       variant="ghost"
                       onClick={() => setShowHint(true)}
@@ -691,7 +764,7 @@ export default function ScenarioTrainerPage() {
                 </div>
               )}
 
-              {showHint && phase === "question" && currentStep?.hint && (
+              {showHint && phase === "question" && currentQuestion.hint && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -700,7 +773,7 @@ export default function ScenarioTrainerPage() {
                 >
                   <div className="flex items-start gap-2">
                     <Lightbulb className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-white/80">{currentStep.hint}</p>
+                    <p className="text-xs text-white/80">{currentQuestion.hint}</p>
                   </div>
                 </motion.div>
               )}
@@ -729,8 +802,8 @@ export default function ScenarioTrainerPage() {
                         </div>
                         <p className="text-xs text-white/70 leading-relaxed">
                           {isCorrectAnswer
-                            ? currentStep?.feedbackCorrect
-                            : currentStep?.feedbackIncorrect}
+                            ? currentQuestion.feedbackCorrect
+                            : currentQuestion.feedbackIncorrect}
                         </p>
                       </div>
                     </div>
@@ -741,7 +814,7 @@ export default function ScenarioTrainerPage() {
                       className="bg-blue-600 text-white"
                       data-testid="button-next-step"
                     >
-                      {currentStepIndex + 1 >= (steps?.length || 0) ? "View Results" : "Next Step"} <ArrowRight className="ml-1.5 h-4 w-4" />
+                      {nextButtonLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
                     </Button>
                   </div>
                 </motion.div>
