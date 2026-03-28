@@ -39,6 +39,7 @@ export const scenarioSteps = pgTable("scenario_steps", {
   hint: text("hint"),
   isCritical: boolean("is_critical").notNull().default(false),
   videoUrl: text("video_url"),
+  questions: jsonb("questions"),
 });
 
 export const attempts = pgTable("attempts", {
@@ -83,8 +84,21 @@ export interface VitalSigns {
   gcs?: number;
 }
 
+export interface StepQuestion {
+  prompt: string;
+  patientState?: string;
+  vitalSigns?: VitalSigns | null;
+  correctActions: string[];
+  incorrectActions: string[];
+  feedbackCorrect: string;
+  feedbackIncorrect: string;
+  hint?: string;
+  isCritical?: boolean;
+}
+
 export interface StepResponse {
   stepId: string;
+  questionIndex?: number;
   selectedAction: string;
   isCorrect: boolean;
   timeSpent: number;
