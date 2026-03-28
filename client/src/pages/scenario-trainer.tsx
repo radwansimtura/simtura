@@ -394,7 +394,9 @@ export default function ScenarioTrainerPage() {
             <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
               <h3 className="font-semibold text-white/80 mb-3 sticky top-0 bg-black/80 backdrop-blur-sm py-2">Question-by-Question Review</h3>
               {responses.map((response, i) => {
-                const qInfo = allQuestionsList[i];
+                const qInfo = allQuestionsList.find(
+                  (q) => q.step.id === response.stepId && q.questionIndex === (response.questionIndex ?? 0)
+                ) ?? allQuestionsList[i];
                 const question = qInfo?.question;
                 const step = qInfo?.step;
                 return (
