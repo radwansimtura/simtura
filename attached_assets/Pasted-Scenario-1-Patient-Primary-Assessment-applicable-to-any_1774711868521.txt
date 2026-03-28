@@ -1,0 +1,85 @@
+Scenario #1 - Patient Primary Assessment (applicable to any scenario)
+A 22-year-old female is sitting on the ground holding her left side and breathing rapidly after falling during a soccer game. Her teammates report she was struck in the ribs by another player’s elbow.
+
+
+Steps
+Dictation/Decisions
+Intent / intended result
+Photo & video number
+Prompt/Description
+Dons or verbalizes appropriate PPE for skill.
+“Equip BSI (gloves, mask, etc.)”
+“Did the user put on proper PPE?”
+scenario-1_step-1.jpeg
+Create an image from within the back of the ambulance. The same image is applicable to essentially every single scene that we create. Not picky for this one. 
+Scene size-up: Determines Scene Safety
+“Is my scene safe?” or looks around to check
+“Did the user ensure their team’s safety?”
+
+
+Create an image that shows a female soccer player on the ground. It is a grassy field, with a couple of other players on the pitch. A smaller field, not a stadium. The player should be somewhat far away so that the user is able to assess the scene around them. It should look like the user is walking up to them but is still a distance away. 
+Scene size-up: Assesses need for additional resources (ALS, Fire, Extrication, Haz Mat...)
+
+
+“I am going to call ALS” - judgement call
+“Did the user appropriately ask for assistance?”
+
+
+Create an image that is now closer to the soccer player. Now she is right in front of you and clearly in distress. She is clutching her left side and breathing hard. 
+Scene size-up: Determines how many patients there are
+
+
+“There is 1 patient on the scene.”
+“Did the user correctly identify the number of patients on scene?”
+
+
+Same as above. 
+Scene size-up: Evaluates MOI or NOI
+
+
+“The mechanism of injury is an elbow to the ribs”
+“Did the user identify whether it was a MOI or NOI? Did they identify the correct MOI?”
+
+
+Same as above. 
+Scene size-up: Consider need for spinal precautions
+“No indication for spinal precautions.”
+“Did the user correctly state indications for spinal motion restriction?”
+
+
+Same as above. 
+General Impression: Evaluates/treats life threat? (Major bleed, obvious arrest....).
+“There are no active life threats to the patient.”
+“Did the user correctly assess whether there are imminent threats to patient?”
+scenario-1_step-2.jpeg
+Same as above. 
+General Impression: Assess AVPU
+“The patient is alert and talking to me” A
+“Did the user correctly identify what type of responsiveness level the patient has?”
+
+
+Same as above. 
+Primary Assessment: Evaluate/Treat Airway
+“The airway is patent”
+“Did the user correctly state whether the airway was patent or not?”
+
+
+Same as above. 
+Primary Assessment: Evaluate/Treat Breathing
+“The patient is breathing rapidly and shallowly at 32 bpm, 88% SpO2. I’m going to administer non-breather mask at 15lpm.” 
+“Did the user correctly describe the breathing and if it required any interventions?”
+scenario-1_step-3.jpeg
+Create an image where the soccer player now has a non rebreather mask on her face. It should look like the images that we compiled together on the call last time. She should be sitting upright. 
+Primary Assessment: Evaluate/Treat Circulation
+“The patient’s pulse is 124, skin is cool and diaphoretic indicating shock, continuing non-rebreather. Put a blanket on the patient.” 
+“Did the user correctly describe patient’s pulse, skin, and assess for gross bleeds? Did they correctly intervene?”
+
+
+Create an image where it is clear that the soccer player has diaphoretic skin (heavily sweating). It does not need to be overly excessive but it should be clear that she is sweaty. She is sitting upright and still wearing that nonrebreather, this could be combined into one photo from the last box if that’s easier!
+Prioritizes patient 
+“This is a high priority patient”
+“Did the user select the correct level priority for the transport?”
+scenario-1_step-4.jpeg
+Create an image where the soccer player is now on the stretcher and strapped in. The stretcher is half down ( and she still has the nonrebreather mask on. She now should have a blanket on top of her.  
+
+Scenario end… (though usually the scene ends when the ambulance arrives at the hospital and transfers care, the primary assessment is concluded with the decision of patient prioritization)
