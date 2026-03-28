@@ -15,6 +15,7 @@ const updateAttemptSchema = z.object({
   correctSteps: z.number().int().min(0).optional(),
   responses: z.array(z.object({
     stepId: z.string(),
+    questionIndex: z.number().int().min(0).optional(),
     selectedAction: z.string(),
     isCorrect: z.boolean(),
     timeSpent: z.number(),
