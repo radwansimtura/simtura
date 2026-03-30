@@ -28,14 +28,20 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
+  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment"];
+
   app.get("/api/scenarios", async (req, res) => {
     const scenarios = await storage.getAllScenarios();
     const discipline = req.query.discipline as string | undefined;
     if (discipline) {
-      const filtered = scenarios.filter(s => s.discipline === discipline);
+      let filtered = scenarios.filter(s => s.discipline === discipline);
+      if (discipline === "EMS") {
+        filtered = filtered.filter(s => PUBLISHED_EMS_TITLES.includes(s.title));
+      }
       return res.json(filtered);
     }
-    res.json(scenarios);
+    const visible = scenarios.filter(s => s.discipline !== "EMS" || PUBLISHED_EMS_TITLES.includes(s.title));
+    res.json(visible);
   });
 
   app.get("/api/scenarios/:id", async (req, res) => {
