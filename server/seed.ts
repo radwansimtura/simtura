@@ -31,8 +31,8 @@ export async function seedDatabase() {
   const existingS1 = await getScenarioByTitle("Sports Injury - Primary Assessment");
   if (existingS1) {
     const stepCount = await getStepCount(existingS1.id);
-    if (stepCount !== 7) {
-      log(`Scenario 1 has ${stepCount} steps (expected 7), re-seeding Scenario 1...`, "seed");
+    if (stepCount !== 6) {
+      log(`Scenario 1 has ${stepCount} steps (expected 6), re-seeding Scenario 1...`, "seed");
       await deleteScenarioData(existingS1.id);
       await seedScenario1Only();
       seededCount += 1;
@@ -82,14 +82,14 @@ async function createScenario1WithSteps() {
       prompt: "You are dispatched to a local soccer field for a player down with a possible rib injury. You are seated in the back of the ambulance approaching the scene. What is your very first action before exiting the rig?",
       patientState: "You are in the back of the ambulance. Equipment bags, oxygen cylinder, and stretcher are visible around you. The ambulance is slowing to a stop.",
       vitalSigns: null,
-      correctActions: ["Don appropriate BSI/PPE - put on nitrile gloves and eye protection before exiting the ambulance"],
+      correctActions: ["Don appropriate BSI/PPE - put on nitrile gloves before exiting the ambulance"],
       incorrectActions: [
         "Grab your jump bag and exit the rig quickly while putting gloves on as you walk to the patient",
         "Radio dispatch to confirm the exact location on the field, then don PPE while waiting for their response",
-        "Put on gloves only - eye protection is not necessary for a sports injury with no visible blood",
+        "Skip gloves for now since this is a sports injury with no visible blood - you can glove up after your initial assessment",
       ],
-      feedbackCorrect: "Correct! BSI always comes first. You've donned your nitrile gloves and eye protection. You are now protected and ready to exit the rig and approach the scene.",
-      feedbackIncorrect: "BSI/PPE is always your very first action - before you leave the ambulance, before you approach the patient, before anything else. Don gloves and eye protection.",
+      feedbackCorrect: "Correct! BSI always comes first. You've donned your nitrile gloves. You are now protected and ready to exit the rig and approach the scene.",
+      feedbackIncorrect: "BSI/PPE is always your very first action - before you leave the ambulance, before you approach the patient, before anything else. Put on your gloves.",
       hint: "What do you always do FIRST at every single scene before anything else?",
       isCritical: false,
       videoUrl: "/videos/s1-step1-ppe.mp4",
@@ -270,45 +270,52 @@ async function createScenario1WithSteps() {
       scenarioId: scenario1.id,
       stepOrder: 5,
       phase: "Primary Assessment",
-      prompt: "Evaluate breathing. You place your stethoscope on the patient's chest. She is breathing rapidly and shallowly, guarding her left side with each breath. Your assessment reveals: respiratory rate 32 breaths per minute, SpO2 88%, diminished breath sounds on the left side. What is your assessment and intervention?",
-      patientState: "Rapid, shallow breathing at 32/min. She winces and guards her left ribs with every breath. Pulse oximeter reads 88%. Breath sounds are diminished on the left side where the impact occurred. Right lung sounds are clear.",
-      vitalSigns: { hr: 124, rr: 32, spo2: 88, skinColor: "Pale", skinTemp: "Cool", skinMoisture: "Diaphoretic" },
-      correctActions: ["Breathing is rapid and shallow at 32/min with an SpO2 of 88%. This is inadequate breathing requiring intervention. Administer high-flow oxygen via non-rebreather mask at 15 liters per minute"],
-      incorrectActions: [
-        "Breathing is rapid but she is ventilating on her own - apply a nasal cannula at 6 LPM and reassess in 5 minutes",
-        "The SpO2 of 88% indicates she is not ventilating adequately - assist ventilations immediately with a bag-valve mask at 12 breaths per minute",
-        "Apply a non-rebreather mask at 10 LPM - 15 LPM is only indicated if the SpO2 drops below 85%",
-      ],
-      feedbackCorrect: "Excellent! With a respiratory rate of 32, SpO2 of 88%, and diminished left-side breath sounds, this patient needs high-flow oxygen immediately. A non-rebreather mask at 15 LPM is the correct BLS intervention for this level of hypoxia.",
-      feedbackIncorrect: "A respiratory rate of 32, SpO2 of 88%, and diminished breath sounds indicate significant respiratory compromise. The patient needs high-flow oxygen via non-rebreather mask at 15 LPM. A nasal cannula is insufficient for this degree of hypoxia, and BVM ventilations are not indicated for a patient who is breathing on their own.",
-      hint: "The SpO2 is 88% and she's breathing fast and shallow. What oxygen delivery device provides the highest concentration at the BLS level?",
+      prompt: "",
+      patientState: null,
+      vitalSigns: null,
+      correctActions: [],
+      incorrectActions: [],
+      feedbackCorrect: "",
+      feedbackIncorrect: "",
+      hint: null,
       isCritical: true,
       videoUrl: "/videos/s1-step5-breathing.mp4",
-      questions: null,
+      questions: [
+        {
+          prompt: "Evaluate breathing. You place your stethoscope on the patient's chest. She is breathing rapidly and shallowly, guarding her left side with each breath. Your assessment reveals: respiratory rate 32 breaths per minute, SpO2 88%, diminished breath sounds on the left side. What is your assessment and intervention?",
+          patientState: "Rapid, shallow breathing at 32/min. She winces and guards her left ribs with every breath. Pulse oximeter reads 88%. Breath sounds are diminished on the left side where the impact occurred. Right lung sounds are clear.",
+          vitalSigns: { hr: 124, rr: 32, spo2: 88, skinColor: "Pale", skinTemp: "Cool", skinMoisture: "Diaphoretic" },
+          correctActions: ["Breathing is rapid and shallow at 32/min with an SpO2 of 88%. This is inadequate breathing requiring intervention. Administer high-flow oxygen via non-rebreather mask at 15 liters per minute"],
+          incorrectActions: [
+            "Breathing is rapid but she is ventilating on her own - apply a nasal cannula at 6 LPM and reassess in 5 minutes",
+            "The SpO2 of 88% indicates she is not ventilating adequately - assist ventilations immediately with a bag-valve mask at 12 breaths per minute",
+            "Apply a non-rebreather mask at 10 LPM - 15 LPM is only indicated if the SpO2 drops below 85%",
+          ],
+          feedbackCorrect: "Excellent! With a respiratory rate of 32, SpO2 of 88%, and diminished left-side breath sounds, this patient needs high-flow oxygen immediately. A non-rebreather mask at 15 LPM is the correct BLS intervention for this level of hypoxia.",
+          feedbackIncorrect: "A respiratory rate of 32, SpO2 of 88%, and diminished breath sounds indicate significant respiratory compromise. The patient needs high-flow oxygen via non-rebreather mask at 15 LPM. A nasal cannula is insufficient for this degree of hypoxia, and BVM ventilations are not indicated for a patient who is breathing on their own.",
+          hint: "The SpO2 is 88% and she's breathing fast and shallow. What oxygen delivery device provides the highest concentration at the BLS level?",
+          isCritical: true,
+        },
+        {
+          prompt: "With the non-rebreather mask now on the patient at 15 LPM, evaluate circulation. You check the radial pulse - it is rapid at 124 bpm and slightly weak. The skin is cool, pale, and diaphoretic (she is noticeably sweaty). Capillary refill is 3 seconds. No gross external bleeding visible. What do these findings indicate and what do you do?",
+          patientState: "Non-rebreather mask is in place delivering 15 LPM O2. Radial pulse is rapid at 124 and slightly thready. Skin is cool, pale, and diaphoretic with visible sweat on her forehead and arms. Capillary refill is delayed at 3 seconds. No external bleeding anywhere.",
+          vitalSigns: { hr: 124, rr: 32, spo2: 88, bp: "96/62", skinColor: "Pale", skinTemp: "Cool", skinMoisture: "Diaphoretic" },
+          correctActions: ["Signs indicate possible shock: tachycardia (124), cool/pale/diaphoretic skin, delayed cap refill, hypotension (96/62). Continue NRB oxygen, maintain body temperature, and prepare for rapid transport"],
+          incorrectActions: [
+            "The tachycardia and diaphoresis are likely pain-related and exercise-related - continue monitoring but no immediate intervention beyond the oxygen already in place",
+            "Signs of shock are present - elevate the patient's legs, start IV fluids, and apply a tourniquet to the left arm to maintain central perfusion",
+            "Early shock is possible - position the patient flat on her back, apply oxygen via nasal cannula at 4 LPM, and perform a full secondary assessment before deciding on transport",
+          ],
+          feedbackCorrect: "Correct! A heart rate of 124, cool/pale/diaphoretic skin, delayed capillary refill, and a blood pressure of 96/62 are classic signs of compensated shock - likely from internal bleeding at the rib fracture site. Continue high-flow O2, apply a blanket for warmth, and prepare for rapid transport.",
+          feedbackIncorrect: "Tachycardia (124), cool/pale/diaphoretic skin, delayed capillary refill (3 sec), and hypotension (96/62) are NOT normal. These are signs of compensated shock. The patient needs continued oxygen, a blanket for body temperature maintenance, and rapid transport to a trauma center.",
+          hint: "What do a fast pulse, cool sweaty skin, and low blood pressure tell you when combined? What should you do to maintain body temperature in a shock patient?",
+          isCritical: true,
+        },
+      ],
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
       stepOrder: 6,
-      phase: "Primary Assessment",
-      prompt: "With the non-rebreather mask now on the patient at 15 LPM, evaluate circulation. You check the radial pulse - it is rapid at 124 bpm and slightly weak. The skin is cool, pale, and diaphoretic (she is noticeably sweaty). Capillary refill is 3 seconds. No gross external bleeding visible. What do these findings indicate and what do you do?",
-      patientState: "Non-rebreather mask is in place delivering 15 LPM O2. Radial pulse is rapid at 124 and slightly thready. Skin is cool, pale, and diaphoretic with visible sweat on her forehead and arms. Capillary refill is delayed at 3 seconds. No external bleeding anywhere.",
-      vitalSigns: { hr: 124, rr: 32, spo2: 88, bp: "96/62", skinColor: "Pale", skinTemp: "Cool", skinMoisture: "Diaphoretic" },
-      correctActions: ["Signs indicate possible shock: tachycardia (124), cool/pale/diaphoretic skin, delayed cap refill, hypotension (96/62). Continue NRB oxygen, maintain body temperature, and prepare for rapid transport"],
-      incorrectActions: [
-        "The tachycardia and diaphoresis are likely pain-related and exercise-related - continue monitoring but no immediate intervention beyond the oxygen already in place",
-        "Signs of shock are present - elevate the patient's legs, start IV fluids, and apply a tourniquet to the left arm to maintain central perfusion",
-        "Early shock is possible - position the patient flat on her back, apply oxygen via nasal cannula at 4 LPM, and perform a full secondary assessment before deciding on transport",
-      ],
-      feedbackCorrect: "Correct! A heart rate of 124, cool/pale/diaphoretic skin, delayed capillary refill, and a blood pressure of 96/62 are classic signs of compensated shock - likely from internal bleeding at the rib fracture site. Continue high-flow O2, apply a blanket for warmth, and prepare for rapid transport.",
-      feedbackIncorrect: "Tachycardia (124), cool/pale/diaphoretic skin, delayed capillary refill (3 sec), and hypotension (96/62) are NOT normal. These are signs of compensated shock. The patient needs continued oxygen, a blanket for body temperature maintenance, and rapid transport to a trauma center.",
-      hint: "What do a fast pulse, cool sweaty skin, and low blood pressure tell you when combined? What should you do to maintain body temperature in a shock patient?",
-      isCritical: true,
-      videoUrl: "/videos/s1-step6-circulation.mp4",
-      questions: null,
-    }),
-    storage.createScenarioStep({
-      scenarioId: scenario1.id,
-      stepOrder: 7,
       phase: "Transport Decision",
       prompt: "Based on your complete primary assessment - blunt trauma to ribs, rapid shallow breathing at 32/min, SpO2 88%, tachycardia at 124, signs of shock with cool/diaphoretic skin and hypotension - what is your transport priority for this patient?",
       patientState: "The patient is sitting up wearing the non-rebreather mask with a blanket draped over her. She is still in significant pain, breathing rapidly, and showing signs of shock. The stretcher is positioned beside her.",
