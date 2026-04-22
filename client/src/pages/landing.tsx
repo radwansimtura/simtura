@@ -10,8 +10,8 @@ type Clip = { src: string; word: string };
 const MONTAGE: Clip[] = [
   { src: "/videos/ambulance-driving.mp4", word: "Respond." },
   { src: "/videos/s1-step1-ppe.mp4", word: "Prepare." },
-  { src: "/videos/s6-step7-arms.mp4", word: "Assess." },
-  { src: "/videos/s5-step4-apply-aed.mp4", word: "Treat." },
+  { src: "/videos/patient-assessment.mp4", word: "Assess." },
+  { src: "/videos/treatment.mp4", word: "Treat." },
   { src: "/videos/s1-step3-patient-contact.mp4", word: "Decide." },
   { src: "/videos/s2-step10-transport.mp4", word: "Save lives." },
 ];
