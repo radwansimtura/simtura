@@ -13,9 +13,10 @@ function EMSPage() {
   return (
     <DisciplineScenariosPage
       discipline="EMS"
-      title="EMS Training Scenarios"
-      subtitle="Field-based emergency scenarios for EMRs, EMTs, AEMTs, and Paramedics. Practice patient assessments and critical decision-making."
+      heroWord="EMS."
+      heroSubtitle="Field response, primary assessments, and critical decisions for EMRs through Paramedics."
       heroImage="/images/ems-hero-background.jpg"
+      heroVideo="/videos/ambulance-driving.mp4"
       accentColor="blue"
       certLevels={["EMR", "EMT", "AEMT", "Paramedic"]}
     />
@@ -26,9 +27,10 @@ function NursingPage() {
   return (
     <DisciplineScenariosPage
       discipline="Nursing"
-      title="Nursing Training Scenarios"
-      subtitle="Hospital-based clinical scenarios for nursing students and practicing nurses. Stroke recognition, patient assessment, and interdisciplinary care."
+      heroWord="Nursing."
+      heroSubtitle="Bedside care, neuro checks, and clinical reasoning for LPNs, RNs, and BSNs."
       heroImage="/images/nursing-hero-background.jpg"
+      heroVideo="/videos/hospital-transport.mp4"
       accentColor="emerald"
       certLevels={["RN", "LPN", "BSN"]}
     />
