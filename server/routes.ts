@@ -28,7 +28,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
-  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment"];
+  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment", "Sports Injury - Primary Assessment (Copy)"];
 
   app.get("/api/scenarios", async (req, res) => {
     const scenarios = await storage.getAllScenarios();
