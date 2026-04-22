@@ -25,6 +25,7 @@ export interface IStorage {
   createScenario(scenario: InsertScenario): Promise<Scenario>;
 
   getScenarioSteps(scenarioId: string): Promise<ScenarioStep[]>;
+  getScenarioStep(id: string): Promise<ScenarioStep | undefined>;
   createScenarioStep(step: InsertScenarioStep): Promise<ScenarioStep>;
 
   createAttempt(attempt: InsertAttempt): Promise<Attempt>;
@@ -68,6 +69,11 @@ export class DatabaseStorage implements IStorage {
       .from(scenarioSteps)
       .where(eq(scenarioSteps.scenarioId, scenarioId))
       .orderBy(asc(scenarioSteps.stepOrder));
+  }
+
+  async getScenarioStep(id: string): Promise<ScenarioStep | undefined> {
+    const [step] = await db.select().from(scenarioSteps).where(eq(scenarioSteps.id, id));
+    return step;
   }
 
   async createScenarioStep(step: InsertScenarioStep): Promise<ScenarioStep> {

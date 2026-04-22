@@ -46,4 +46,3 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
-ANTHROPIC_API_KEY = "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"
