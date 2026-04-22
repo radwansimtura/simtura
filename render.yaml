@@ -3,7 +3,7 @@ services:
     name: simtura
     env: node
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm run db:push -- --force && npm start
+    startCommand: node script/db-migrate.js && npm start
     envVars:
       - key: NODE_ENV
         value: production
