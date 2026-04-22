@@ -2,8 +2,8 @@ services:
   - type: web
     name: simtura
     env: node
-    buildCommand: npm install --include=dev && npm run build && npm run db:push -- --force
-    startCommand: npm start
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run db:push -- --force && npm start
     envVars:
       - key: NODE_ENV
         value: production
