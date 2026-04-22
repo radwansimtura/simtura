@@ -4,6 +4,10 @@ import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireAuth } from "./auth";
+import { contactSchema } from "@shared/schema";
+
+const FREE_DAILY_LIMIT = 1;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -167,7 +171,36 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
     }
+
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({
+        message: "Sign in to start a scenario.",
+        code: "auth_required",
+      });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(401).json({ message: "Session expired", code: "auth_required" });
+    }
+
+    if (user.tier !== "pro") {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const todayCount = await storage.countUserAttemptsSince(userId, startOfDay);
+      if (todayCount >= FREE_DAILY_LIMIT) {
+        return res.status(429).json({
+          message: "You've used today's free scenario. Upgrade for unlimited access.",
+          code: "free_limit_reached",
+          limit: FREE_DAILY_LIMIT,
+          used: todayCount,
+        });
+      }
+    }
+
     const attempt = await storage.createAttempt({
+      userId,
       scenarioId: parsed.data.scenarioId,
       totalSteps: parsed.data.totalSteps,
       correctSteps: 0,
@@ -176,10 +209,76 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
     res.json(attempt);
   });
 
-  app.patch("/api/attempts/:id", async (req, res) => {
+  app.get("/api/me/stats", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const allAttempts = await storage.getUserAttempts(userId, 200);
+    const completed = allAttempts.filter((a) => a.completedAt && typeof a.score === "number");
+    const totalAttempts = allAttempts.length;
+    const totalCompleted = completed.length;
+    const avgScore = completed.length
+      ? Math.round(completed.reduce((s, a) => s + (a.score || 0), 0) / completed.length)
+      : 0;
+    const bestScore = completed.length ? Math.max(...completed.map((a) => a.score || 0)) : 0;
+    const passed = completed.filter((a) => (a.score || 0) >= 80).length;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const todayCount = await storage.countUserAttemptsSince(userId, startOfDay);
+
+    const allScenarios = await storage.getAllScenarios();
+    const scenarioMap = new Map(allScenarios.map((s) => [s.id, s]));
+
+    const recent = allAttempts.slice(0, 10).map((a) => ({
+      id: a.id,
+      scenarioId: a.scenarioId,
+      scenarioTitle: scenarioMap.get(a.scenarioId)?.title || "Unknown scenario",
+      discipline: scenarioMap.get(a.scenarioId)?.discipline || null,
+      startedAt: a.startedAt,
+      completedAt: a.completedAt,
+      score: a.score,
+    }));
+
+    res.json({
+      totalAttempts,
+      totalCompleted,
+      avgScore,
+      bestScore,
+      passed,
+      todayCount,
+      dailyLimit: user.tier === "pro" ? null : FREE_DAILY_LIMIT,
+      tier: user.tier,
+      recent,
+    });
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    const parsed = contactSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
+    }
+    // Log for now — production would email or persist
+    console.log("[contact]", {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      length: parsed.data.message.length,
+    });
+    res.json({ ok: true });
+  });
+
+  app.patch("/api/attempts/:id", requireAuth, async (req, res) => {
     const parsed = updateAttemptSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+    const existing = await storage.getAttempt(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: "Attempt not found" });
+    }
+    if (existing.userId !== (req.session as any).userId) {
+      return res.status(403).json({ message: "Forbidden" });
     }
     const updated = await storage.updateAttempt(req.params.id, {
       completedAt: parsed.data.completedAt ? new Date(parsed.data.completedAt) : undefined,

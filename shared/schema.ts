@@ -5,8 +5,12 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull().default(""),
+  tier: text("tier").notNull().default("free"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  proSince: timestamp("pro_since"),
 });
 
 export const scenarios = pgTable("scenarios", {
@@ -44,6 +48,7 @@ export const scenarioSteps = pgTable("scenario_steps", {
 
 export const attempts = pgTable("attempts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   scenarioId: varchar("scenario_id").notNull(),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
@@ -53,16 +58,38 @@ export const attempts = pgTable("attempts", {
   responses: jsonb("responses").notNull().default(sql`'[]'::jsonb`),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const signupSchema = z.object({
+  email: z.string().email().max(200),
+  password: z.string().min(8).max(200),
+  name: z.string().min(1).max(120),
 });
+export const signinSchema = z.object({
+  email: z.string().email().max(200),
+  password: z.string().min(1).max(200),
+});
+export type SignupInput = z.infer<typeof signupSchema>;
+export type SigninInput = z.infer<typeof signinSchema>;
+
+export interface PublicUser {
+  id: string;
+  email: string;
+  name: string;
+  tier: "free" | "pro";
+  createdAt: string;
+  proSince: string | null;
+}
+
+export const contactSchema = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(200),
+  message: z.string().min(5).max(4000),
+});
+export type ContactInput = z.infer<typeof contactSchema>;
 
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Scenario = typeof scenarios.$inferSelect;
 export type InsertScenario = z.infer<typeof insertScenarioSchema>;

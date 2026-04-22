@@ -1,9 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronDown, Stethoscope, Siren } from "lucide-react";
+import { ArrowRight, ChevronDown, Stethoscope, Siren, Quote, User } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import { useAuth } from "@/hooks/use-auth";
+import { SiteFooter } from "@/components/site-footer";
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "It's the closest I've felt to the real call without being on one. The pause-and-decide flow rewires how you think under pressure.",
+    name: "Maya Chen",
+    role: "Paramedic · Year 3",
+  },
+  {
+    quote:
+      "We piloted Simtura with our nursing cohort for stroke recognition. Pass rates on the unit competency jumped noticeably the first month.",
+    name: "Dr. Lisa Bowman",
+    role: "RN, MSN · Clinical Educator",
+  },
+  {
+    quote:
+      "Finally a sim platform that doesn't feel like a quiz. The first-person video makes you commit to a decision before you can second-guess it.",
+    name: "Marcus Reyes",
+    role: "EMT-B · Houston FD",
+  },
+];
 
 type Clip = { src: string; word: string };
 
@@ -31,6 +54,7 @@ export default function LandingPage() {
   }, [reduceMotion]);
 
   const current = MONTAGE[idx];
+  const { user } = useAuth();
 
   return (
     <div className="bg-black text-white relative">
@@ -42,18 +66,40 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
-              <a href="#disciplines" className="hover:text-white transition-colors" data-testid="link-nav-about">About</a>
+              <a href="#testimonials" className="hover:text-white transition-colors" data-testid="link-nav-testimonials">Testimonials</a>
+              <Link href="/contact" className="hover:text-white transition-colors" data-testid="link-nav-contact">Contact</Link>
             </div>
-            <Link href="/ems">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
-                data-testid="button-nav-cta"
-              >
-                Start Training
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+              {user ? (
+                <Link href="/profile">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                    data-testid="button-nav-profile"
+                  >
+                    <User className="mr-1.5 h-3.5 w-3.5" />
+                    {user.name?.split(" ")[0] || "Profile"}
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors" data-testid="link-nav-signin">
+                    Sign in
+                  </Link>
+                  <Link href="/signup">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                      data-testid="button-nav-cta"
+                    >
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -153,7 +199,7 @@ export default function LandingPage() {
       </section>
 
       {/* DISCIPLINES SECTION */}
-      <section id="disciplines" className="relative z-10 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
+      <section id="disciplines" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -191,14 +237,75 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-white/10 py-8 px-6 sm:px-10">
-        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <img src={simturaLogo} alt="Simtura" className="h-6 opacity-80" />
-          <p className="text-xs text-white/40">
-            Bridging classroom to clinical practice.
+      {/* TESTIMONIALS */}
+      <section id="testimonials" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-14 sm:mb-20"
+        >
+          <p className="text-[11px] uppercase tracking-[0.4em] text-white/50 mb-4">
+            What people say
           </p>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">
+            Trusted by educators<br className="hidden sm:inline" /> and frontline crews.
+          </h2>
+        </motion.div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          {TESTIMONIALS.map((t, i) => (
+            <motion.figure
+              key={t.name}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="relative rounded-2xl border border-white/10 bg-white/[0.025] p-7 backdrop-blur-sm hover:border-white/20 transition-colors h-full flex flex-col"
+              data-testid={`testimonial-${i}`}
+            >
+              <Quote className="h-6 w-6 text-white/20 mb-4" />
+              <blockquote className="text-white/85 text-[15px] leading-relaxed flex-1">
+                "{t.quote}"
+              </blockquote>
+              <figcaption className="mt-6 pt-5 border-t border-white/10">
+                <div className="text-sm font-semibold text-white">{t.name}</div>
+                <div className="text-xs text-white/50 mt-0.5">{t.role}</div>
+              </figcaption>
+            </motion.figure>
+          ))}
         </div>
-      </footer>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="relative z-10 px-6 sm:px-10 pb-24 sm:pb-32 max-w-4xl mx-auto text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.7 }}
+        >
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight mb-5">
+            Step into the call.
+          </h2>
+          <p className="text-white/60 text-lg max-w-xl mx-auto mb-8">
+            Free forever — one scenario a day. Upgrade anytime for unlimited access.
+          </p>
+          <Link href={user ? "/ems" : "/signup"}>
+            <Button
+              size="lg"
+              className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+              data-testid="button-cta-final"
+            >
+              {user ? "Continue training" : "Create your account"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </motion.div>
+      </section>
+
+      <SiteFooter />
     </div>
   );
 }
