@@ -4,10 +4,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import DisciplineScenariosPage from "@/pages/discipline-scenarios";
 import ScenarioTrainerPage from "@/pages/scenario-trainer";
+import SignInPage from "@/pages/signin";
+import SignUpPage from "@/pages/signup";
+import ProfilePage from "@/pages/profile";
+import ContactPage from "@/pages/contact";
+import LegalPage from "@/pages/legal";
 
 function EMSPage() {
   return (
@@ -45,6 +51,11 @@ function Router() {
       <Route path="/nursing" component={NursingPage} />
       <Route path="/scenarios" component={EMSPage} />
       <Route path="/scenario/:id" component={ScenarioTrainerPage} />
+      <Route path="/signin" component={SignInPage} />
+      <Route path="/signup" component={SignUpPage} />
+      <Route path="/profile" component={ProfilePage} />
+      <Route path="/contact" component={ContactPage} />
+      <Route path="/legal" component={LegalPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -54,10 +65,12 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

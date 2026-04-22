@@ -10,11 +10,14 @@ import {
   ChevronDown,
   Clock,
   Search,
+  User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import { useAuth } from "@/hooks/use-auth";
+import { SiteFooter } from "@/components/site-footer";
 
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -51,6 +54,7 @@ export default function DisciplineScenariosPage({
   certLevels,
 }: DisciplineScenariosPageProps) {
   const reduceMotion = useReducedMotion() ?? false;
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCert, setSelectedCert] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
@@ -109,16 +113,44 @@ export default function DisciplineScenariosPage({
               >
                 Nursing
               </Link>
+              <Link href="/contact" className="hover:text-white transition-colors" data-testid="link-nav-contact">
+                Contact
+              </Link>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
-              onClick={scrollToScenarios}
-              data-testid="button-nav-cta"
-            >
-              Browse Scenarios
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5 hidden sm:inline-flex"
+                onClick={scrollToScenarios}
+                data-testid="button-nav-cta"
+              >
+                Browse
+              </Button>
+              {user ? (
+                <Link href="/profile">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-4"
+                    data-testid="button-nav-profile"
+                  >
+                    <User className="mr-1.5 h-3.5 w-3.5" />
+                    {user.name?.split(" ")[0] || "Profile"}
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/signin">
+                  <Button
+                    size="sm"
+                    className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
+                    data-testid="button-nav-signin"
+                  >
+                    Sign in
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -322,14 +354,7 @@ export default function DisciplineScenariosPage({
         )}
       </section>
 
-      <footer className="relative z-10 border-t border-white/10 py-8 px-6 sm:px-10 mt-12">
-        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <img src={simturaLogo} alt="Simtura" className="h-6 opacity-80" />
-          <p className="text-xs text-white/40">
-            Bridging classroom to clinical practice.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

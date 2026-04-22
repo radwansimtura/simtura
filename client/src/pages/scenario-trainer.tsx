@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { UpgradeModal } from "@/components/upgrade-modal";
 import type { Scenario, ScenarioStep, VitalSigns, StepQuestion, StepResponse } from "@shared/schema";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,6 +74,9 @@ function getStepQuestions(step: ScenarioStep): StepQuestion[] {
 export default function ScenarioTrainerPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
+  const setLocation = navigate;
+  const { user } = useAuth();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [phase, setPhase] = useState<TrainerPhase>("intro");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -139,6 +144,14 @@ export default function ScenarioTrainerPage() {
     },
     onSuccess: (data) => {
       setAttemptId(data.id);
+    },
+    onError: (err: Error) => {
+      const msg = err.message || "";
+      if (msg.startsWith("401")) {
+        setLocation(`/signin?next=/scenario/${id}`);
+      } else if (msg.startsWith("429") || msg.includes("free_limit_reached")) {
+        setShowUpgrade(true);
+      }
     },
   });
 
@@ -1062,6 +1075,15 @@ export default function ScenarioTrainerPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => {
+          setShowUpgrade(false);
+          navigate(backUrl);
+        }}
+        reason="You've used your free scenario for today. Upgrade to Pro for unlimited training."
+      />
     </div>
   );
 }
