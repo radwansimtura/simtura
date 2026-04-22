@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
+import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
 
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-green-500/10 text-green-600 dark:text-green-400",

@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronDown, Stethoscope, Siren } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
+import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
 
 type Clip = { src: string; word: string };
 
@@ -38,7 +38,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
-            <img src={simturaLogo} alt="Simtura" className="h-7 brightness-0 invert" data-testid="img-logo" />
+            <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
@@ -193,7 +193,7 @@ export default function LandingPage() {
 
       <footer className="relative z-10 border-t border-white/10 py-8 px-6 sm:px-10">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <img src={simturaLogo} alt="Simtura" className="h-5 brightness-0 invert opacity-70" />
+          <img src={simturaLogo} alt="Simtura" className="h-6 opacity-80" />
           <p className="text-xs text-white/40">
             Bridging classroom to clinical practice.
           </p>
