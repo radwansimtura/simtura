@@ -1,24 +1,36 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronDown, Stethoscope, Siren } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
+
+type Clip = { src: string; word: string };
+
+const MONTAGE: Clip[] = [
+  { src: "/videos/ambulance-driving.mp4", word: "Respond." },
+  { src: "/videos/s1-step1-ppe.mp4", word: "Prepare." },
+  { src: "/videos/s2-step4-airway-breathing.mp4", word: "Assess." },
+  { src: "/videos/s2-step5-inhaler.mp4", word: "Treat." },
+  { src: "/videos/s1-step3-patient-contact.mp4", word: "Decide." },
+  { src: "/videos/s2-step10-transport.mp4", word: "Save lives." },
+];
+
+const CUT_MS = 1800;
 
 export default function LandingPage() {
   const reduceMotion = useReducedMotion() ?? false;
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (reduceMotion) {
-      v.pause();
-      return;
-    }
-    v.playbackRate = 0.7;
-    v.play().catch(() => {});
+    if (reduceMotion) return;
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % MONTAGE.length);
+    }, CUT_MS);
+    return () => clearInterval(t);
   }, [reduceMotion]);
+
+  const current = MONTAGE[idx];
 
   return (
     <div className="bg-black text-white relative">
@@ -46,53 +58,62 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* HERO MONTAGE */}
       <section className="relative h-screen w-full overflow-hidden">
-        {/* Background video */}
-        <div className="absolute inset-0 z-0">
-          <video
-            ref={videoRef}
-            className="absolute inset-0 h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            data-testid="video-hero-bg"
-          >
-            <source src="/videos/ambulance-driving.mp4" type="video/mp4" />
-          </video>
-          {/* Soft gradient overlay for text legibility */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black" />
+        {/* Crossfading clips */}
+        <div className="absolute inset-0 z-0 bg-black">
+          <AnimatePresence>
+            <motion.video
+              key={current.src + idx}
+              className="absolute inset-0 h-full w-full object-cover"
+              src={current.src}
+              autoPlay
+              muted
+              playsInline
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ opacity: { duration: 0.45 }, scale: { duration: CUT_MS / 1000, ease: "linear" } }}
+              data-testid="video-hero-bg"
+            />
+          </AnimatePresence>
+          {/* Soft overlay for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/85" />
         </div>
 
-        {/* Centered hero content */}
+        {/* Hero content */}
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-            className="text-5xl sm:text-7xl lg:text-8xl font-semibold tracking-tight leading-[1.05] max-w-4xl mb-6"
-            data-testid="text-hero-title"
-          >
-            Train for the moments
-            <br />
-            that matter most.
-          </motion.h1>
+          {/* Bold animated word */}
+          <div className="relative h-[1.25em] flex items-center justify-center mb-4 overflow-hidden text-6xl sm:text-8xl lg:text-9xl">
+            <AnimatePresence mode="wait">
+              <motion.h1
+                key={current.word}
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="font-bold tracking-tight leading-[1.1] text-white"
+                data-testid="text-hero-word"
+              >
+                {current.word}
+              </motion.h1>
+            </AnimatePresence>
+          </div>
 
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.25, ease: "easeOut" }}
-            className="text-lg sm:text-xl text-white/70 max-w-xl mb-10 font-light"
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="text-base sm:text-lg text-white/75 max-w-xl mb-8 font-light"
             data-testid="text-hero-subtitle"
           >
-            Immersive video simulations for EMS and nursing — practice real scenarios, build real confidence.
+            Immersive video simulations for EMS and nursing.
           </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.45, ease: "easeOut" }}
+            transition={{ duration: 0.8, delay: 0.5 }}
           >
             <Link href="/ems">
               <Button
@@ -105,6 +126,18 @@ export default function LandingPage() {
               </Button>
             </Link>
           </motion.div>
+        </div>
+
+        {/* Cut indicator dots */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+          {MONTAGE.map((_, i) => (
+            <div
+              key={i}
+              className={`h-0.5 transition-all duration-500 ${
+                i === idx ? "w-8 bg-white" : "w-3 bg-white/30"
+              }`}
+            />
+          ))}
         </div>
 
         {/* Scroll hint */}
