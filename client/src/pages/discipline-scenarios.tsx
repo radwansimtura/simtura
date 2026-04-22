@@ -113,9 +113,6 @@ export default function DisciplineScenariosPage({
               >
                 Nursing
               </Link>
-              <Link href="/contact" className="hover:text-white transition-colors" data-testid="link-nav-contact">
-                Contact
-              </Link>
             </div>
             <div className="flex items-center gap-3">
               <Button

@@ -66,8 +66,6 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
-              <a href="#testimonials" className="hover:text-white transition-colors" data-testid="link-nav-testimonials">Testimonials</a>
-              <Link href="/contact" className="hover:text-white transition-colors" data-testid="link-nav-contact">Contact</Link>
             </div>
             <div className="flex items-center gap-3">
               {user ? (
