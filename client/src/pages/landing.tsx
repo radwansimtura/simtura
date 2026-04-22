@@ -16,7 +16,7 @@ const MONTAGE: Clip[] = [
   { src: "/videos/s2-step10-transport.mp4", word: "Save lives." },
 ];
 
-const CUT_MS = 1800;
+const CUT_MS = 3200;
 
 export default function LandingPage() {
   const reduceMotion = useReducedMotion() ?? false;
