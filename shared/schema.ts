@@ -102,4 +102,22 @@ export interface StepResponse {
   selectedAction: string;
   isCorrect: boolean;
   timeSpent: number;
+  mode?: "multiple-choice" | "open-response";
+  aiScore?: number;
+  aiIncluded?: string[];
+  aiMissed?: string[];
+  aiSummary?: string;
+}
+
+export interface GradeAnswerRequest {
+  prompt: string;
+  correctAnswer: string;
+  traineeAnswer: string;
+}
+
+export interface GradeAnswerResponse {
+  score: number;
+  included: string[];
+  missed: string[];
+  summary: string;
 }

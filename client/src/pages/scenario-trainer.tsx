@@ -24,7 +24,23 @@ import {
   Maximize,
   Minimize,
   Play,
+  Mic,
+  MicOff,
+  Loader2,
+  Brain,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+
+type TrainerMode = "multiple-choice" | "open-response";
+
+interface GradeResult {
+  score: number;
+  included: string[];
+  missed: string[];
+  summary: string;
+}
+
+const PASS_THRESHOLD = 80;
 
 type TrainerPhase =
   | "intro"
@@ -67,8 +83,16 @@ export default function ScenarioTrainerPage() {
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [videoFading, setVideoFading] = useState(false);
+  const [mode, setMode] = useState<TrainerMode>("multiple-choice");
+  const [traineeAnswer, setTraineeAnswer] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
+  const [isGrading, setIsGrading] = useState(false);
+  const [gradeError, setGradeError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const speechSupported = typeof window !== "undefined" && (("SpeechRecognition" in window) || ("webkitSpeechRecognition" in window));
 
   const { data: scenario, isLoading: scenarioLoading } = useQuery<Scenario>({
     queryKey: ["/api/scenarios", id],
@@ -240,19 +264,93 @@ export default function ScenarioTrainerPage() {
     setSelectedAction(action);
   };
 
-  const handleSubmit = () => {
-    if (!selectedAction || !currentQuestion || !currentStep) return;
-    const isCorrect = (currentQuestion.correctActions || []).includes(selectedAction);
-    const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
-    const response: StepResponse = {
-      stepId: currentStep.id,
-      questionIndex: currentQuestionIndex,
-      selectedAction,
-      isCorrect,
-      timeSpent,
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
+    setIsListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!speechSupported) return;
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
+      }
+      if (transcript) setTraineeAnswer((prev) => (prev ? prev + " " : "") + transcript.trim());
     };
-    setResponses((prev) => [...prev, response]);
-    setPhase("feedback");
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setIsListening(false);
+    }
+  }, [speechSupported]);
+
+  useEffect(() => () => stopListening(), [stopListening]);
+
+  const handleSubmit = async () => {
+    if (!currentQuestion || !currentStep) return;
+    const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
+
+    if (mode === "multiple-choice") {
+      if (!selectedAction) return;
+      const isCorrect = (currentQuestion.correctActions || []).includes(selectedAction);
+      const response: StepResponse = {
+        stepId: currentStep.id,
+        questionIndex: currentQuestionIndex,
+        selectedAction,
+        isCorrect,
+        timeSpent,
+        mode: "multiple-choice",
+      };
+      setResponses((prev) => [...prev, response]);
+      setPhase("feedback");
+      return;
+    }
+
+    const trimmed = traineeAnswer.trim();
+    if (!trimmed) return;
+    stopListening();
+    setIsGrading(true);
+    setGradeError(null);
+    try {
+      const res = await apiRequest("POST", "/api/grade-answer", {
+        stepId: currentStep.id,
+        questionIndex: currentQuestionIndex,
+        traineeAnswer: trimmed,
+      });
+      const result: GradeResult = await res.json();
+      setGradeResult(result);
+      const isCorrect = result.score >= PASS_THRESHOLD;
+      const response: StepResponse = {
+        stepId: currentStep.id,
+        questionIndex: currentQuestionIndex,
+        selectedAction: trimmed,
+        isCorrect,
+        timeSpent,
+        mode: "open-response",
+        aiScore: result.score,
+        aiIncluded: result.included,
+        aiMissed: result.missed,
+        aiSummary: result.summary,
+      };
+      setResponses((prev) => [...prev, response]);
+      setPhase("feedback");
+    } catch (err: any) {
+      setGradeError(err?.message || "Grading failed. Please try again.");
+    } finally {
+      setIsGrading(false);
+    }
   };
 
   const handleNext = () => {
@@ -264,6 +362,9 @@ export default function ScenarioTrainerPage() {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAction(null);
       setShowHint(false);
+      setTraineeAnswer("");
+      setGradeResult(null);
+      setGradeError(null);
       setPhase("question");
       setStepStartTime(Date.now());
       return;
@@ -288,6 +389,9 @@ export default function ScenarioTrainerPage() {
       setCurrentQuestionIndex(0);
       setSelectedAction(null);
       setShowHint(false);
+      setTraineeAnswer("");
+      setGradeResult(null);
+      setGradeError(null);
       const nextStep = steps[nextStepIndex];
       if (nextStep?.videoUrl) {
         setPhase("step-video");
@@ -566,10 +670,43 @@ export default function ScenarioTrainerPage() {
                   <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.difficulty}</Badge>
                   <Badge className="bg-white/10 text-white/70 border-white/20">{totalQuestions} questions</Badge>
                 </div>
-                <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 mb-8 text-left">
+                <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 mb-4 text-left">
                   <div className="text-xs uppercase tracking-wider text-white/40 font-medium mb-2">Dispatch Info</div>
                   <p className="text-sm text-white/80 leading-relaxed">{scenario.patientSummary}</p>
                 </div>
+
+                <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 mb-6 text-left">
+                  <div className="text-xs uppercase tracking-wider text-white/40 font-medium mb-3">Practice Mode</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setMode("multiple-choice")}
+                      className={`rounded-lg border p-3 text-left transition-all ${
+                        mode === "multiple-choice"
+                          ? "border-blue-500/60 bg-blue-500/15"
+                          : "border-white/10 bg-black/30 hover:border-white/20"
+                      }`}
+                      data-testid="button-mode-multiple-choice"
+                    >
+                      <div className="text-sm font-semibold text-white mb-0.5">Multiple Choice</div>
+                      <div className="text-[11px] text-white/50 leading-snug">Pick the correct answer from options.</div>
+                    </button>
+                    <button
+                      onClick={() => setMode("open-response")}
+                      className={`rounded-lg border p-3 text-left transition-all ${
+                        mode === "open-response"
+                          ? "border-blue-500/60 bg-blue-500/15"
+                          : "border-white/10 bg-black/30 hover:border-white/20"
+                      }`}
+                      data-testid="button-mode-open-response"
+                    >
+                      <div className="text-sm font-semibold text-white mb-0.5 flex items-center gap-1.5">
+                        Open Response <Brain className="h-3 w-3 text-blue-400" />
+                      </div>
+                      <div className="text-[11px] text-white/50 leading-snug">Type or speak your answer. AI scores it.</div>
+                    </button>
+                  </div>
+                </div>
+
                 <Button
                   onClick={handleStartScenario}
                   size="lg"
@@ -694,64 +831,111 @@ export default function ScenarioTrainerPage() {
                 )}
               </div>
 
-              <div className="space-y-1.5 mb-3">
-                {shuffledActions.map((action, i) => {
-                  const isSelected = selectedAction === action;
-                  const isCorrect = phase === "feedback" && (currentQuestion.correctActions || []).includes(action);
-                  const isWrong = phase === "feedback" && isSelected && !isCorrect;
+              {mode === "multiple-choice" && (
+                <div className="space-y-1.5 mb-3">
+                  {shuffledActions.map((action, i) => {
+                    const isSelected = selectedAction === action;
+                    const isCorrect = phase === "feedback" && (currentQuestion.correctActions || []).includes(action);
+                    const isWrong = phase === "feedback" && isSelected && !isCorrect;
 
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => handleSelectAction(action)}
-                      disabled={phase === "feedback"}
-                      className={`w-full text-left rounded-lg border p-3 transition-all text-sm backdrop-blur-md ${
-                        phase === "feedback"
-                          ? isCorrect
-                            ? "border-green-500/50 bg-green-500/15"
-                            : isWrong
-                            ? "border-red-500/50 bg-red-500/15"
-                            : "border-white/5 bg-black/40 opacity-40"
-                          : isSelected
-                          ? "border-blue-500/50 bg-blue-500/15"
-                          : "border-white/10 bg-black/50 hover:border-white/20 hover:bg-black/60"
-                      }`}
-                      data-testid={`button-action-${i}`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleSelectAction(action)}
+                        disabled={phase === "feedback"}
+                        className={`w-full text-left rounded-lg border p-3 transition-all text-sm backdrop-blur-md ${
                           phase === "feedback"
                             ? isCorrect
-                              ? "bg-green-500 text-white"
+                              ? "border-green-500/50 bg-green-500/15"
                               : isWrong
-                              ? "bg-red-500 text-white"
-                              : "bg-white/10 text-white/30"
+                              ? "border-red-500/50 bg-red-500/15"
+                              : "border-white/5 bg-black/40 opacity-40"
                             : isSelected
-                            ? "bg-blue-500 text-white"
-                            : "bg-white/10 text-white/50"
-                        }`}>
-                          {phase === "feedback" ? (
-                            isCorrect ? <CheckCircle2 className="h-3.5 w-3.5" /> : isWrong ? <XCircle className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)
-                          ) : (
-                            String.fromCharCode(65 + i)
-                          )}
+                            ? "border-blue-500/50 bg-blue-500/15"
+                            : "border-white/10 bg-black/50 hover:border-white/20 hover:bg-black/60"
+                        }`}
+                        data-testid={`button-action-${i}`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                            phase === "feedback"
+                              ? isCorrect
+                                ? "bg-green-500 text-white"
+                                : isWrong
+                                ? "bg-red-500 text-white"
+                                : "bg-white/10 text-white/30"
+                              : isSelected
+                              ? "bg-blue-500 text-white"
+                              : "bg-white/10 text-white/50"
+                          }`}>
+                            {phase === "feedback" ? (
+                              isCorrect ? <CheckCircle2 className="h-3.5 w-3.5" /> : isWrong ? <XCircle className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)
+                            ) : (
+                              String.fromCharCode(65 + i)
+                            )}
+                          </div>
+                          <span className="text-white/90 text-xs leading-snug">{action}</span>
                         </div>
-                        <span className="text-white/90 text-xs leading-snug">{action}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {mode === "open-response" && phase === "question" && (
+                <div className="mb-3 rounded-lg border border-white/10 bg-black/50 backdrop-blur-md p-3" data-testid="open-response-input">
+                  <Textarea
+                    value={traineeAnswer}
+                    onChange={(e) => setTraineeAnswer(e.target.value)}
+                    placeholder={isListening ? "Listening... speak your answer." : "Type your answer or tap the mic to dictate..."}
+                    rows={4}
+                    disabled={isGrading}
+                    className="bg-transparent border-white/10 text-white placeholder:text-white/30 resize-none focus-visible:ring-blue-500/40"
+                    data-testid="textarea-open-answer"
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {speechSupported ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isListening ? "destructive" : "secondary"}
+                        onClick={isListening ? stopListening : startListening}
+                        disabled={isGrading}
+                        className="text-xs"
+                        data-testid="button-mic"
+                      >
+                        {isListening ? (
+                          <><MicOff className="mr-1.5 h-3.5 w-3.5" /> Stop</>
+                        ) : (
+                          <><Mic className="mr-1.5 h-3.5 w-3.5" /> Speak</>
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] text-white/40">Voice input not supported in this browser</span>
+                    )}
+                    <span className="text-[10px] text-white/40">{traineeAnswer.length} chars</span>
+                  </div>
+                </div>
+              )}
 
               {phase === "question" && (
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <Button
                     onClick={handleSubmit}
-                    disabled={!selectedAction}
+                    disabled={
+                      isGrading ||
+                      (mode === "multiple-choice" ? !selectedAction : !traineeAnswer.trim())
+                    }
                     className="bg-blue-600 text-white disabled:opacity-30"
                     data-testid="button-submit-answer"
                   >
-                    Submit Answer
+                    {isGrading ? (
+                      <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Grading...</>
+                    ) : mode === "open-response" ? (
+                      "Submit for AI Grading"
+                    ) : (
+                      "Submit Answer"
+                    )}
                   </Button>
                   {currentQuestion.hint && !showHint && (
                     <Button
@@ -762,6 +946,9 @@ export default function ScenarioTrainerPage() {
                     >
                       <Lightbulb className="mr-1.5 h-3.5 w-3.5" /> Hint
                     </Button>
+                  )}
+                  {gradeError && (
+                    <span className="text-xs text-red-400" data-testid="text-grade-error">{gradeError}</span>
                   )}
                 </div>
               )}
@@ -780,30 +967,79 @@ export default function ScenarioTrainerPage() {
                 </motion.div>
               )}
 
-              {phase === "feedback" && (
+              {phase === "feedback" && (() => {
+                const passedOpen = mode === "open-response" && gradeResult ? gradeResult.score >= PASS_THRESHOLD : false;
+                const headlineCorrect = mode === "open-response" ? passedOpen : !!isCorrectAnswer;
+                return (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-2"
                   data-testid="feedback-panel"
                 >
+                  {mode === "open-response" && gradeResult && (
+                    <div className={`rounded-lg border p-4 backdrop-blur-md ${
+                      passedOpen ? "border-green-500/30 bg-green-500/10" : "border-yellow-500/30 bg-yellow-500/10"
+                    }`} data-testid="ai-grade-panel">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-blue-400" />
+                          <span className="text-xs uppercase tracking-wider text-white/60 font-medium">AI Congruency Score</span>
+                        </div>
+                        <div className={`text-2xl font-bold font-mono ${passedOpen ? "text-green-400" : "text-yellow-400"}`} data-testid="text-ai-score">
+                          {gradeResult.score}<span className="text-sm text-white/40">/100</span>
+                        </div>
+                      </div>
+                      {gradeResult.summary && (
+                        <p className="text-xs text-white/70 leading-relaxed mb-3" data-testid="text-ai-summary">{gradeResult.summary}</p>
+                      )}
+                      {gradeResult.included.length > 0 && (
+                        <div className="mb-2">
+                          <div className="text-[10px] uppercase tracking-wider text-green-400/80 font-medium mb-1">You included</div>
+                          <ul className="space-y-0.5">
+                            {gradeResult.included.map((item, i) => (
+                              <li key={i} className="text-xs text-white/80 flex items-start gap-1.5">
+                                <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {gradeResult.missed.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-red-400/80 font-medium mb-1">You missed</div>
+                          <ul className="space-y-0.5">
+                            {gradeResult.missed.map((item, i) => (
+                              <li key={i} className="text-xs text-white/80 flex items-start gap-1.5">
+                                <XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
-                    isCorrectAnswer
+                    headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
                       : "border-red-500/30 bg-red-500/10"
                   }`}>
                     <div className="flex items-start gap-2.5">
-                      {isCorrectAnswer ? (
+                      {headlineCorrect ? (
                         <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5 shrink-0" />
                       ) : (
                         <XCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
                       )}
                       <div>
                         <div className="font-semibold text-sm text-white mb-0.5">
-                          {isCorrectAnswer ? "Correct!" : "Not quite right"}
+                          {mode === "open-response"
+                            ? (passedOpen ? `Pass (≥${PASS_THRESHOLD})` : `Below passing (${PASS_THRESHOLD}+ to pass)`)
+                            : (headlineCorrect ? "Correct!" : "Not quite right")}
                         </div>
                         <p className="text-xs text-white/70 leading-relaxed">
-                          {isCorrectAnswer
+                          {headlineCorrect
                             ? currentQuestion.feedbackCorrect
                             : currentQuestion.feedbackIncorrect}
                         </p>
@@ -820,7 +1056,8 @@ export default function ScenarioTrainerPage() {
                     </Button>
                   </div>
                 </motion.div>
-              )}
+                );
+              })()}
             </div>
           </motion.div>
         )}
