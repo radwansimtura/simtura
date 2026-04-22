@@ -11,6 +11,16 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+process.on("uncaughtException", (err) => {
+  console.error("[fatal] Uncaught exception:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[fatal] Unhandled promise rejection:", reason);
+  process.exit(1);
+});
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -110,4 +120,7 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
-})();
+})().catch((err) => {
+  console.error("[fatal] Startup failed:", err);
+  process.exit(1);
+});
