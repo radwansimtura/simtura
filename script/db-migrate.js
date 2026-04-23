@@ -10,14 +10,27 @@ if (!dbUrl) {
 const masked = dbUrl.replace(/:([^:@]+)@/, ":****@");
 console.log(`[db-push] Using database: ${masked}`);
 
-// Resolve the username → email rename before drizzle-kit runs so it
-// never sees an ambiguous column difference and never prompts.
 const client = new pg.Client({ connectionString: dbUrl });
 try {
   await client.connect();
+
+  // Resolve all schema differences on the users table before drizzle-kit
+  // runs, so it never sees an ambiguous column and never prompts.
+  // Safe to run on a fresh DB (table may not exist yet — handled by the
+  // outer catch) or on any partially-migrated DB.
   await client.query(`
     DO $$ BEGIN
-      -- username exists, email doesn't → rename
+      -- Skip everything if the users table doesn't exist yet.
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'users'
+      ) THEN
+        RAISE NOTICE 'users table not found — drizzle will create it';
+        RETURN;
+      END IF;
+
+      -- ── Renames ────────────────────────────────────────────────────────
+      -- username → email
       IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'users' AND column_name = 'username'
@@ -29,23 +42,120 @@ try {
         RAISE NOTICE 'Renamed users.username → users.email';
       END IF;
 
-      -- both exist (shouldn't happen, but be safe) → drop username
+      -- password → password_hash
       IF EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'username'
-      ) AND EXISTS (
+        WHERE table_name = 'users' AND column_name = 'password'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password_hash'
+      ) THEN
+        ALTER TABLE users RENAME COLUMN password TO password_hash;
+        RAISE NOTICE 'Renamed users.password → users.password_hash';
+      END IF;
+
+      -- pwd → password_hash
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'pwd'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password_hash'
+      ) THEN
+        ALTER TABLE users RENAME COLUMN pwd TO password_hash;
+        RAISE NOTICE 'Renamed users.pwd → users.password_hash';
+      END IF;
+
+      -- ── Add missing columns ────────────────────────────────────────────
+      IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'users' AND column_name = 'email'
       ) THEN
-        ALTER TABLE users DROP COLUMN username;
-        RAISE NOTICE 'Dropped redundant users.username column';
+        ALTER TABLE users ADD COLUMN email text NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added users.email';
       END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password_hash'
+      ) THEN
+        ALTER TABLE users ADD COLUMN password_hash text NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added users.password_hash';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'name'
+      ) THEN
+        ALTER TABLE users ADD COLUMN name text NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added users.name';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'tier'
+      ) THEN
+        ALTER TABLE users ADD COLUMN tier text NOT NULL DEFAULT 'free';
+        RAISE NOTICE 'Added users.tier';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'created_at'
+      ) THEN
+        ALTER TABLE users ADD COLUMN created_at timestamp NOT NULL DEFAULT NOW();
+        RAISE NOTICE 'Added users.created_at';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'pro_since'
+      ) THEN
+        ALTER TABLE users ADD COLUMN pro_since timestamp;
+        RAISE NOTICE 'Added users.pro_since';
+      END IF;
+
+      -- ── Drop legacy columns no longer in the schema ───────────────────
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'username'
+      ) THEN
+        ALTER TABLE users DROP COLUMN username;
+        RAISE NOTICE 'Dropped legacy users.username';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'role'
+      ) THEN
+        ALTER TABLE users DROP COLUMN role;
+        RAISE NOTICE 'Dropped legacy users.role';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password'
+      ) THEN
+        ALTER TABLE users DROP COLUMN password;
+        RAISE NOTICE 'Dropped legacy users.password';
+      END IF;
+
+      -- ── Ensure unique constraint on email ─────────────────────────────
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'users'::regclass
+          AND contype = 'u'
+          AND conname = 'users_email_unique'
+      ) THEN
+        ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+        RAISE NOTICE 'Added unique constraint on users.email';
+      END IF;
+
     END $$;
   `);
-  console.log("[db-push] Pre-migration check complete.");
+  console.log("[db-push] Pre-migration complete.");
 } catch (err) {
-  // Table may not exist yet on a fresh database — that's fine, drizzle will create it.
-  console.log("[db-push] Pre-migration skipped (table likely doesn't exist yet):", err.message);
+  console.log("[db-push] Pre-migration note:", err.message);
 } finally {
   await client.end();
 }
