@@ -46,6 +46,8 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
+  const buildTime = new Date().toISOString();
+  console.log(`building server (BUILD_TIME=${buildTime})...`);
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
@@ -54,6 +56,7 @@ async function buildAll() {
     outfile: "dist/index.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
+      "process.env.BUILD_TIME": JSON.stringify(buildTime),
     },
     minify: true,
     external: externals,

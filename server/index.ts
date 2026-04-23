@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupSession, registerAuthRoutes } from "./auth";
 
+console.log(`[startup] BUILD_TIME=${process.env.BUILD_TIME ?? "dev-unset"}`);
+
 const REQUIRED_ENV = ["DATABASE_URL", "SESSION_SECRET"] as const;
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length > 0) {
