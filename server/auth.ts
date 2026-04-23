@@ -110,7 +110,13 @@ export function registerAuthRoutes(app: Express) {
       name: parsed.data.name.trim(),
     });
     req.session.userId = user.id;
-    res.json(toPublic(user));
+    req.session.save((err) => {
+      if (err) {
+        console.error("[auth] Session save error on signup:", err);
+        return res.status(500).json({ message: "Session error, please try again." });
+      }
+      res.json(toPublic(user));
+    });
   });
 
   app.post("/api/auth/signin", async (req, res) => {
@@ -128,7 +134,13 @@ export function registerAuthRoutes(app: Express) {
       return res.status(401).json({ message: "Invalid email or password." });
     }
     req.session.userId = user.id;
-    res.json(toPublic(user));
+    req.session.save((err) => {
+      if (err) {
+        console.error("[auth] Session save error on signin:", err);
+        return res.status(500).json({ message: "Session error, please try again." });
+      }
+      res.json(toPublic(user));
+    });
   });
 
   app.post("/api/auth/signout", (req, res) => {
