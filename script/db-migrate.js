@@ -1,4 +1,5 @@
-import { spawn } from "child_process";
+import { execSync } from "child_process";
+import pg from "pg";
 
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
@@ -8,25 +9,55 @@ if (!dbUrl) {
 
 const masked = dbUrl.replace(/:([^:@]+)@/, ":****@");
 console.log(`[db-push] Using database: ${masked}`);
-console.log("[db-push] Running drizzle-kit push (non-interactive)...");
 
-const child = spawn("npx", ["drizzle-kit", "push", "--force"], {
-  env: { ...process.env },
-  stdio: ["pipe", "inherit", "inherit"],
-});
+// Resolve the username → email rename before drizzle-kit runs so it
+// never sees an ambiguous column difference and never prompts.
+const client = new pg.Client({ connectionString: dbUrl });
+try {
+  await client.connect();
+  await client.query(`
+    DO $$ BEGIN
+      -- username exists, email doesn't → rename
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'username'
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'email'
+      ) THEN
+        ALTER TABLE users RENAME COLUMN username TO email;
+        RAISE NOTICE 'Renamed users.username → users.email';
+      END IF;
 
-// Auto-answer all interactive prompts by sending Enter repeatedly.
-// --force skips confirmations but not rename-detection prompts (e.g.
-// "is email renamed from username?"). Piping newlines selects the
-// first/default option ("create new column") for every such prompt.
-child.stdin.write("\n".repeat(20));
-child.stdin.end();
+      -- both exist (shouldn't happen, but be safe) → drop username
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'username'
+      ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'email'
+      ) THEN
+        ALTER TABLE users DROP COLUMN username;
+        RAISE NOTICE 'Dropped redundant users.username column';
+      END IF;
+    END $$;
+  `);
+  console.log("[db-push] Pre-migration check complete.");
+} catch (err) {
+  // Table may not exist yet on a fresh database — that's fine, drizzle will create it.
+  console.log("[db-push] Pre-migration skipped (table likely doesn't exist yet):", err.message);
+} finally {
+  await client.end();
+}
 
-child.on("close", (code) => {
-  if (code === 0) {
-    console.log("[db-push] Schema push completed successfully.");
-  } else {
-    console.error(`[db-push] Schema push failed with exit code ${code}.`);
-    process.exit(1);
-  }
-});
+console.log("[db-push] Running drizzle-kit push...");
+try {
+  execSync("npx drizzle-kit push --force", {
+    stdio: "inherit",
+    env: { ...process.env },
+  });
+  console.log("[db-push] Schema push completed successfully.");
+} catch {
+  console.error("[db-push] Schema push failed — see output above for details.");
+  process.exit(1);
+}
