@@ -32,8 +32,8 @@ type Clip = { src: string; discipline: string };
 
 const MONTAGE: Clip[] = [
   { src: "/videos/hero-nurse.mp4", discipline: "Nursing" },
-  { src: "/videos/hero-clip-1.mp4", discipline: "EMS" },
-  { src: "/videos/hero-clip-2.mp4", discipline: "EMS" },
+  { src: "/videos/hero-clip-1.mp4", discipline: "Fire" },
+  { src: "/videos/hero-clip-2.mp4", discipline: "Police" },
   { src: "/videos/hero-clip-3.mp4", discipline: "EMS" },
 ];
 
