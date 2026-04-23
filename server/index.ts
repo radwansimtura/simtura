@@ -79,6 +79,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { probeDatabase } = await import("./db");
+  await probeDatabase();
   const { registerRoutes } = await import("./routes");
   setupSession(app);
   registerAuthRoutes(app);
