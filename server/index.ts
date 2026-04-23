@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupSession, registerAuthRoutes } from "./auth";
 
-const REQUIRED_ENV = ["DATABASE_URL"] as const;
+const REQUIRED_ENV = ["DATABASE_URL", "SESSION_SECRET"] as const;
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length > 0) {
   console.error(

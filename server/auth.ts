@@ -3,6 +3,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { pool } from "./db";
 import { storage } from "./storage";
 import { signupSchema, signinSchema, type PublicUser } from "@shared/schema";
 
@@ -54,7 +55,7 @@ function toPublic(u: {
 export function setupSession(app: Express) {
   const PgStore = connectPg(session);
   const store = new PgStore({
-    conString: process.env.DATABASE_URL,
+    pool,
     createTableIfMissing: true,
     tableName: "user_sessions",
   });
