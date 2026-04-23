@@ -11,13 +11,28 @@ const masked = dbUrl.replace(/:([^:@]+)@/, ":****@");
 console.log(`[db-push] Using database: ${masked}`);
 
 const client = new pg.Client({ connectionString: dbUrl });
-try {
-  await client.connect();
+await client.connect();
 
-  // Resolve all schema differences on the users table before drizzle-kit
-  // runs, so it never sees an ambiguous column and never prompts.
-  // Safe to run on a fresh DB (table may not exist yet — handled by the
-  // outer catch) or on any partially-migrated DB.
+// ── 1. Create session store table (independent — must always run) ──────────
+try {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS "user_sessions" (
+      "sid"    varchar      NOT NULL,
+      "sess"   json         NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
+    );
+    CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire"
+      ON "user_sessions" ("expire");
+  `);
+  console.log("[db-push] user_sessions table ready.");
+} catch (err) {
+  console.error("[db-push] ERROR creating user_sessions table:", err.message);
+  process.exit(1);
+}
+
+// ── 2. Resolve users table schema differences before drizzle-kit runs ──────
+try {
   await client.query(`
     DO $$ BEGIN
       -- Skip everything if the users table doesn't exist yet.
@@ -153,27 +168,12 @@ try {
 
     END $$;
   `);
-  // ── Create session store table ─────────────────────────────────────────
-  // connect-pg-simple uses createTableIfMissing but emits errors silently.
-  // Create the table explicitly here so startup failures are visible.
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS "user_sessions" (
-      "sid"    varchar      NOT NULL COLLATE "default",
-      "sess"   json         NOT NULL,
-      "expire" timestamp(6) NOT NULL,
-      CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
-    );
-    CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire"
-      ON "user_sessions" ("expire");
-  `);
-  console.log("[db-push] Session table ready.");
-
-  console.log("[db-push] Pre-migration complete.");
+  console.log("[db-push] Users table migration complete.");
 } catch (err) {
-  console.log("[db-push] Pre-migration note:", err.message);
-} finally {
-  await client.end();
+  console.log("[db-push] Users migration note (non-fatal):", err.message);
 }
+
+await client.end();
 
 console.log("[db-push] Running drizzle-kit push...");
 try {
