@@ -28,18 +28,16 @@ const TESTIMONIALS = [
   },
 ];
 
-type Clip = { src: string; word: string };
+type Clip = { src: string; discipline: string };
 
 const MONTAGE: Clip[] = [
-  { src: "/videos/ambulance-driving.mp4", word: "Respond." },
-  { src: "/videos/s1-step1-ppe.mp4", word: "Prepare." },
-  { src: "/videos/patient-assessment.mp4", word: "Assess." },
-  { src: "/videos/treatment.mp4", word: "Treat." },
-  { src: "/videos/s1-step3-patient-contact.mp4", word: "Decide." },
-  { src: "/videos/s2-step10-transport.mp4", word: "Save lives." },
+  { src: "/videos/hero-nurse.mp4", discipline: "Nursing" },
+  { src: "/videos/hero-clip-1.mp4", discipline: "EMS" },
+  { src: "/videos/hero-clip-2.mp4", discipline: "EMS" },
+  { src: "/videos/hero-clip-3.mp4", discipline: "EMS" },
 ];
 
-const CUT_MS = 4200;
+const CUT_MS = 5200;
 
 export default function LandingPage() {
   const reduceMotion = useReducedMotion() ?? false;
@@ -126,50 +124,60 @@ export default function LandingPage() {
         </div>
 
         {/* Hero content */}
-        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
-          {/* Bold animated word */}
-          <div className="relative h-[1.25em] flex items-center justify-center mb-4 overflow-hidden text-6xl sm:text-8xl lg:text-9xl">
-            <AnimatePresence mode="wait">
-              <motion.h1
-                key={current.word}
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "-100%", opacity: 0 }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                className="font-bold tracking-tight leading-[1.1] text-white"
-                data-testid="text-hero-word"
-              >
-                {current.word}
-              </motion.h1>
-            </AnimatePresence>
+        <div className="relative z-10 h-full flex flex-col justify-center px-6 sm:px-12 lg:px-20 max-w-7xl mx-auto w-full">
+          <div className="max-w-2xl">
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="font-bold tracking-tight leading-[1.05] text-white text-5xl sm:text-6xl lg:text-7xl mb-5"
+              data-testid="text-hero-headline"
+            >
+              Perfect the scene.
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.25 }}
+              className="text-base sm:text-lg text-white/75 mb-8 font-light flex flex-wrap items-baseline gap-x-1.5"
+              data-testid="text-hero-subtitle"
+            >
+              <span>Immersive video simulations for</span>
+              <span className="relative inline-flex h-[1.25em] min-w-[3.5em] items-baseline overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={current.discipline}
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: "-100%", opacity: 0 }}
+                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                    className="font-semibold text-white"
+                    data-testid={`text-hero-discipline-${current.discipline.toLowerCase()}`}
+                  >
+                    {current.discipline}.
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.45 }}
+            >
+              <Link href={user ? "/ems" : "/signup"}>
+                <Button
+                  size="lg"
+                  className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+                  data-testid="button-hero-primary"
+                >
+                  Start Training
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </motion.div>
           </div>
-
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-base sm:text-lg text-white/75 max-w-xl mb-8 font-light"
-            data-testid="text-hero-subtitle"
-          >
-            Immersive video simulations for EMS and nursing.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-          >
-            <Link href="/ems">
-              <Button
-                size="lg"
-                className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
-                data-testid="button-hero-primary"
-              >
-                Start Training
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </motion.div>
         </div>
 
         {/* Cut indicator dots */}
