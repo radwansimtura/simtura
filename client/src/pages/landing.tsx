@@ -1,275 +1,391 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/theme-provider";
-import {
-  ArrowRight,
-  ChevronDown,
-  Moon,
-  Sun,
-  Stethoscope,
-  Siren,
-  Play,
-  Shield,
-  Clock,
-} from "lucide-react";
-import { motion } from "framer-motion";
-import simturaLogo from "@assets/Screenshot_2026-02-17_at_3.35.49_PM_1772603261236.png";
+import { ArrowRight, ChevronDown, Stethoscope, Siren, Quote, User } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import { useAuth } from "@/hooks/use-auth";
+import { SiteFooter } from "@/components/site-footer";
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "It's the closest I've felt to the real call without being on one. The pause-and-decide flow rewires how you think under pressure.",
+    name: "Maya Chen",
+    role: "Paramedic · Year 3",
+  },
+  {
+    quote:
+      "We piloted Simtura with our nursing cohort for stroke recognition. Pass rates on the unit competency jumped noticeably the first month.",
+    name: "Dr. Lisa Bowman",
+    role: "RN, MSN · Clinical Educator",
+  },
+  {
+    quote:
+      "Finally a sim platform that doesn't feel like a quiz. The first-person video makes you commit to a decision before you can second-guess it.",
+    name: "Marcus Reyes",
+    role: "EMT-B · Houston FD",
+  },
+];
+
+type Clip = { src: string; word: string };
+
+const MONTAGE: Clip[] = [
+  { src: "/videos/ambulance-driving.mp4", word: "Respond." },
+  { src: "/videos/s1-step1-ppe.mp4", word: "Prepare." },
+  { src: "/videos/patient-assessment.mp4", word: "Assess." },
+  { src: "/videos/treatment.mp4", word: "Treat." },
+  { src: "/videos/s1-step3-patient-contact.mp4", word: "Decide." },
+  { src: "/videos/s2-step10-transport.mp4", word: "Save lives." },
+];
+
+const CUT_MS = 4200;
 
 export default function LandingPage() {
-  const { theme, toggleTheme } = useTheme();
+  const reduceMotion = useReducedMotion() ?? false;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % MONTAGE.length);
+    }, CUT_MS);
+    return () => clearInterval(t);
+  }, [reduceMotion]);
+
+  const current = MONTAGE[idx];
+  const { user } = useAuth();
 
   return (
-    <div className="bg-background relative overflow-hidden">
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-950/20 via-background to-indigo-950/15 dark:from-blue-950/60 dark:via-background dark:to-indigo-950/40" />
-        <motion.div
-          className="absolute top-[-30%] left-[-15%] w-[70vw] h-[70vw] rounded-full bg-blue-500/4 dark:bg-blue-500/8 blur-[120px]"
-          animate={{
-            x: [0, 100, -50, 0],
-            y: [0, -80, 50, 0],
-            scale: [1, 1.2, 0.9, 1],
-          }}
-          transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-[-25%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-indigo-500/4 dark:bg-indigo-500/8 blur-[120px]"
-          animate={{
-            x: [0, -70, 50, 0],
-            y: [0, 60, -40, 0],
-            scale: [1, 0.85, 1.15, 1],
-          }}
-          transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full bg-cyan-500/3 dark:bg-cyan-500/6 blur-[100px]"
-          animate={{
-            x: [0, -120, 80, 0],
-            y: [0, 50, -70, 0],
-            scale: [1, 1.25, 0.8, 1],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-[5%] right-[15%] w-[28vw] h-[28vw] rounded-full bg-blue-400/3 dark:bg-blue-400/6 blur-[100px]"
-          animate={{
-            x: [0, 60, -90, 0],
-            y: [0, -100, 40, 0],
-            scale: [1, 1.1, 0.85, 1],
-          }}
-          transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-[15%] left-[25%] w-[22vw] h-[22vw] rounded-full bg-violet-400/2 dark:bg-violet-400/5 blur-[80px]"
-          animate={{
-            x: [0, -50, 70, 0],
-            y: [0, 70, -50, 0],
-            scale: [1, 0.8, 1.2, 1],
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent" data-testid="nav-bar">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <img src={simturaLogo} alt="Simtura" className="h-8" data-testid="img-logo" />
+    <div className="bg-black text-white relative">
+      {/* Top nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
+        <div className="mx-auto max-w-7xl px-6 sm:px-10">
+          <div className="flex h-20 items-center justify-between gap-4">
+            <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
+            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
+              <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
+              <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
             </div>
-            <Button size="icon" variant="ghost" onClick={toggleTheme} className="text-foreground/70 hover:text-foreground" data-testid="button-theme-toggle">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-3">
+              {user ? (
+                <Link href="/profile">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                    data-testid="button-nav-profile"
+                  >
+                    <User className="mr-1.5 h-3.5 w-3.5" />
+                    {user.name?.split(" ")[0] || "Profile"}
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors" data-testid="link-nav-signin">
+                    Sign in
+                  </Link>
+                  <Link href="/signup">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                      data-testid="button-nav-cta"
+                    >
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>
 
-      <section className="relative z-10 h-screen flex flex-col items-center justify-center px-4">
-        <motion.div
-          className="text-center max-w-4xl mx-auto"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-        >
-          <motion.div
-            className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10 backdrop-blur-sm text-sm text-blue-600 dark:text-blue-400 mb-10"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            AI-Powered Clinical Training
-          </motion.div>
+      {/* HERO MONTAGE */}
+      <section className="relative h-screen w-full overflow-hidden">
+        {/* Crossfading clips */}
+        <div className="absolute inset-0 z-0 bg-black">
+          <AnimatePresence>
+            <motion.video
+              key={current.src + idx}
+              className="absolute inset-0 h-full w-full object-cover"
+              src={current.src}
+              autoPlay
+              muted
+              playsInline
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ opacity: { duration: 0.45 }, scale: { duration: CUT_MS / 1000, ease: "linear" } }}
+              data-testid="video-hero-bg"
+            />
+          </AnimatePresence>
+          {/* Soft overlay for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/85" />
+        </div>
 
-          <h1 className="text-7xl sm:text-8xl lg:text-9xl font-bold tracking-tighter leading-none mb-8" data-testid="text-hero-title">
-            <motion.span
-              className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              Simtura
-            </motion.span>
-          </h1>
+        {/* Hero content */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
+          {/* Bold animated word */}
+          <div className="relative h-[1.25em] flex items-center justify-center mb-4 overflow-hidden text-6xl sm:text-8xl lg:text-9xl">
+            <AnimatePresence mode="wait">
+              <motion.h1
+                key={current.word}
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="font-bold tracking-tight leading-[1.1] text-white"
+                data-testid="text-hero-word"
+              >
+                {current.word}
+              </motion.h1>
+            </AnimatePresence>
+          </div>
 
           <motion.p
-            className="text-xl sm:text-2xl text-muted-foreground/80 max-w-2xl mx-auto leading-relaxed font-light mb-12"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="text-base sm:text-lg text-white/75 max-w-xl mb-8 font-light"
             data-testid="text-hero-subtitle"
           >
-            Immersive AI simulations for healthcare professionals.
-            <br className="hidden sm:block" />
-            Practice real scenarios. Build real confidence.
+            Immersive video simulations for EMS and nursing.
           </motion.p>
 
           <motion.div
-            className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
           >
-            <div className="flex items-center gap-2">
-              <Play className="h-3.5 w-3.5 text-blue-500/60" />
-              First-person video scenarios
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-3.5 w-3.5 text-blue-500/60" />
-              Evidence-based feedback
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5 text-blue-500/60" />
-              Practice anytime
-            </div>
+            <Link href="/ems">
+              <Button
+                size="lg"
+                className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+                data-testid="button-hero-primary"
+              >
+                Start Training
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </motion.div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="absolute bottom-10 left-1/2 -translate-x-1/2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
+        {/* Cut indicator dots */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+          {MONTAGE.map((_, i) => (
+            <div
+              key={i}
+              className={`h-0.5 transition-all duration-500 ${
+                i === idx ? "w-8 bg-white" : "w-3 bg-white/30"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Scroll hint */}
+        <button
+          onClick={() => document.getElementById("disciplines")?.scrollIntoView({ behavior: "smooth" })}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 text-white/50 hover:text-white transition-colors"
+          data-testid="button-scroll-down"
+          aria-label="Scroll to disciplines"
         >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="flex flex-col items-center gap-2 cursor-pointer"
-            onClick={() => document.getElementById("disciplines")?.scrollIntoView({ behavior: "smooth" })}
-            data-testid="button-scroll-down"
-          >
-            <span className="text-xs text-muted-foreground/40 uppercase tracking-widest">Explore</span>
-            <ChevronDown className="h-5 w-5 text-muted-foreground/30" />
-          </motion.div>
-        </motion.div>
+          <span className="text-[11px] uppercase tracking-[0.25em]">Explore</span>
+          <ChevronDown className="h-4 w-4 animate-bounce" />
+        </button>
       </section>
 
-      <section id="disciplines" className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-24">
+      {/* DISCIPLINES SECTION */}
+      <section id="disciplines" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
         <motion.div
-          className="w-full max-w-5xl mx-auto"
-          initial={{ opacity: 0, y: 60 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-14 sm:mb-20"
         >
-          <div className="text-center mb-16">
-            <p className="text-sm font-medium text-blue-500/70 dark:text-blue-400/70 mb-3 tracking-widest uppercase">
-              Training Paths
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
-              Choose your discipline
-            </h2>
-            <p className="text-muted-foreground/70 max-w-lg mx-auto">
-              Select your field to explore tailored clinical training scenarios built for your certification level.
-            </p>
-          </div>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight mb-4">
+            Choose your path.
+          </h2>
+          <p className="text-white/60 text-lg max-w-xl mx-auto">
+            Two tracks built around real patient scenarios.
+          </p>
+        </motion.div>
 
-          <div className="grid gap-8 sm:grid-cols-2">
-            <Link href="/ems">
-              <motion.div
-                className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-blue-500/40 hover:shadow-2xl hover:shadow-blue-500/10"
-                whileHover={{ y: -6, scale: 1.01 }}
-                transition={{ duration: 0.25 }}
-                data-testid="card-ems"
-              >
-                <div className="relative h-56 overflow-hidden">
-                  <img
-                    src="/images/ems-hero-background.jpg"
-                    alt="EMS emergency medical services"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-                  <div className="absolute bottom-5 left-5 right-5">
-                    <div className="flex items-center gap-2 text-white mb-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 backdrop-blur-sm border border-blue-400/20">
-                        <Siren className="h-4 w-4 text-blue-400" />
-                      </div>
-                      <span className="text-xs font-semibold uppercase tracking-widest text-blue-300/90">Emergency Medical Services</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <h2 className="text-2xl font-bold mb-3 group-hover:text-blue-500 transition-colors duration-300">EMS Training</h2>
-                  <p className="text-sm text-muted-foreground/80 leading-relaxed mb-5">
-                    Field-based scenarios for EMRs, EMTs, AEMTs, and Paramedics. Practice primary assessments,
-                    trauma management, and critical decision-making.
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-blue-500 dark:text-blue-400 font-medium">
-                    Browse Scenarios <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-2" />
-                  </div>
-                </div>
-              </motion.div>
-            </Link>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <DisciplineCard
+            href="/ems"
+            videoSrc="/videos/ambulance-driving.mp4"
+            label="Emergency Medical Services"
+            title="EMS"
+            description="Field response, primary assessments, and critical decisions for EMRs through Paramedics."
+            icon={<Siren className="h-4 w-4" />}
+            testId="card-ems"
+          />
+          <DisciplineCard
+            href="/nursing"
+            videoSrc="/videos/hospital-transport.mp4"
+            label="Nursing"
+            title="Nursing"
+            description="Bedside care, neuro checks, and clinical reasoning for LPNs, RNs, and BSNs."
+            icon={<Stethoscope className="h-4 w-4" />}
+            testId="card-nursing"
+          />
+        </div>
+      </section>
 
-            <Link href="/nursing">
-              <motion.div
-                className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md cursor-pointer transition-all duration-300 hover:border-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-500/10"
-                whileHover={{ y: -6, scale: 1.01 }}
-                transition={{ duration: 0.25 }}
-                data-testid="card-nursing"
-              >
-                <div className="relative h-56 overflow-hidden">
-                  <img
-                    src="/images/nursing-hero-background.jpg"
-                    alt="Nursing hospital environment"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-                  <div className="absolute bottom-5 left-5 right-5">
-                    <div className="flex items-center gap-2 text-white mb-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 backdrop-blur-sm border border-emerald-400/20">
-                        <Stethoscope className="h-4 w-4 text-emerald-400" />
-                      </div>
-                      <span className="text-xs font-semibold uppercase tracking-widest text-emerald-300/90">Nursing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <h2 className="text-2xl font-bold mb-3 group-hover:text-emerald-500 transition-colors duration-300">Nursing Training</h2>
-                  <p className="text-sm text-muted-foreground/80 leading-relaxed mb-5">
-                    Hospital-based scenarios for nursing students and practicing nurses. Stroke recognition,
-                    patient assessment, and interdisciplinary care coordination.
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-emerald-500 dark:text-emerald-400 font-medium">
-                    Browse Scenarios <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-2" />
-                  </div>
-                </div>
-              </motion.div>
-            </Link>
-          </div>
+      {/* TESTIMONIALS */}
+      <section id="testimonials" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-14 sm:mb-20"
+        >
+          <p className="text-[11px] uppercase tracking-[0.4em] text-white/50 mb-4">
+            What people say
+          </p>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">
+            Trusted by educators<br className="hidden sm:inline" /> and frontline crews.
+          </h2>
+        </motion.div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          {TESTIMONIALS.map((t, i) => (
+            <motion.figure
+              key={t.name}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="relative rounded-2xl border border-white/10 bg-white/[0.025] p-7 backdrop-blur-sm hover:border-white/20 transition-colors h-full flex flex-col"
+              data-testid={`testimonial-${i}`}
+            >
+              <Quote className="h-6 w-6 text-white/20 mb-4" />
+              <blockquote className="text-white/85 text-[15px] leading-relaxed flex-1">
+                "{t.quote}"
+              </blockquote>
+              <figcaption className="mt-6 pt-5 border-t border-white/10">
+                <div className="text-sm font-semibold text-white">{t.name}</div>
+                <div className="text-xs text-white/50 mt-0.5">{t.role}</div>
+              </figcaption>
+            </motion.figure>
+          ))}
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="relative z-10 px-6 sm:px-10 pb-24 sm:pb-32 max-w-4xl mx-auto text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.7 }}
+        >
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight mb-5">
+            Step into the call.
+          </h2>
+          <p className="text-white/60 text-lg max-w-xl mx-auto mb-8">
+            Free forever — one scenario a day. Upgrade anytime for unlimited access.
+          </p>
+          <Link href={user ? "/ems" : "/signup"}>
+            <Button
+              size="lg"
+              className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+              data-testid="button-cta-final"
+            >
+              {user ? "Continue training" : "Create your account"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </motion.div>
       </section>
 
-      <footer className="relative z-10 border-t border-border/20 py-10 bg-background/40 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <img src={simturaLogo} alt="Simtura" className="h-6 opacity-70" />
+      <SiteFooter />
+    </div>
+  );
+}
+
+function DisciplineCard({
+  href,
+  videoSrc,
+  label,
+  title,
+  description,
+  icon,
+  testId,
+}: {
+  href: string;
+  videoSrc: string;
+  label: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  testId: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reduceMotion = useReducedMotion() ?? false;
+
+  const playPreview = () => {
+    if (reduceMotion) return;
+    videoRef.current?.play().catch(() => {});
+  };
+  const pausePreview = () => {
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
+  };
+
+  return (
+    <Link href={href}>
+      <motion.div
+        whileHover={reduceMotion ? undefined : { y: -4 }}
+        transition={{ duration: 0.25 }}
+        onMouseEnter={playPreview}
+        onMouseLeave={pausePreview}
+        onFocus={playPreview}
+        onBlur={pausePreview}
+        onTouchStart={playPreview}
+        tabIndex={0}
+        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] cursor-pointer transition-all duration-300 hover:border-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        data-testid={testId}
+      >
+        <div className="relative h-72 sm:h-80 overflow-hidden">
+          <video
+            ref={videoRef}
+            className="absolute inset-0 h-full w-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+          <div className="absolute top-5 left-5 flex items-center gap-2 text-white/80">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+              {icon}
             </div>
-            <p className="text-xs text-muted-foreground/50">
-              Bridging the gap between classroom and clinical practice.
+            <span className="text-xs uppercase tracking-[0.2em]">{label}</span>
+          </div>
+          <div className="absolute bottom-6 left-6 right-6">
+            <h3 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-white">
+              {title}
+            </h3>
+            <p className="text-white/70 text-sm leading-relaxed mb-4 max-w-md">
+              {description}
             </p>
+            <div className="inline-flex items-center gap-2 text-sm font-medium text-white">
+              Browse Scenarios
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </motion.div>
+    </Link>
   );
 }

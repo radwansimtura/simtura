@@ -1,6 +1,5 @@
 import {
   type User,
-  type InsertUser,
   type Scenario,
   type InsertScenario,
   type ScenarioStep,
@@ -13,12 +12,13 @@ import {
   attempts,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc, and, gte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUserFull(data: { email: string; passwordHash: string; name: string }): Promise<User>;
+  setUserTier(id: string, tier: "free" | "pro"): Promise<User | undefined>;
 
   getAllScenarios(): Promise<Scenario[]>;
   getScenario(id: string): Promise<Scenario | undefined>;
@@ -31,6 +31,8 @@ export interface IStorage {
   createAttempt(attempt: InsertAttempt): Promise<Attempt>;
   updateAttempt(id: string, data: Partial<Attempt>): Promise<Attempt | undefined>;
   getAttempt(id: string): Promise<Attempt | undefined>;
+  countUserAttemptsSince(userId: string, since: Date): Promise<number>;
+  getUserAttempts(userId: string, limit?: number): Promise<Attempt[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -39,13 +41,22 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  async createUserFull(data: { email: string; passwordHash: string; name: string }): Promise<User> {
+    const [user] = await db.insert(users).values(data).returning();
+    return user;
+  }
+
+  async setUserTier(id: string, tier: "free" | "pro"): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ tier, proSince: tier === "pro" ? new Date() : null })
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 
@@ -98,6 +109,23 @@ export class DatabaseStorage implements IStorage {
   async getAttempt(id: string): Promise<Attempt | undefined> {
     const [attempt] = await db.select().from(attempts).where(eq(attempts.id, id));
     return attempt;
+  }
+
+  async countUserAttemptsSince(userId: string, since: Date): Promise<number> {
+    const rows = await db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), gte(attempts.startedAt, since)));
+    return rows.length;
+  }
+
+  async getUserAttempts(userId: string, limit = 50): Promise<Attempt[]> {
+    return db
+      .select()
+      .from(attempts)
+      .where(eq(attempts.userId, userId))
+      .orderBy(desc(attempts.startedAt))
+      .limit(limit);
   }
 }
 

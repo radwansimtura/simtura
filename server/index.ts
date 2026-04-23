@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import { setupSession, registerAuthRoutes } from "./auth";
 
 const REQUIRED_ENV = ["DATABASE_URL"] as const;
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
@@ -79,6 +80,8 @@ app.use((req, res, next) => {
 
 (async () => {
   const { registerRoutes } = await import("./routes");
+  setupSession(app);
+  registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

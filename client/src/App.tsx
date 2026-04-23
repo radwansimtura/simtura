@@ -4,18 +4,25 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import DisciplineScenariosPage from "@/pages/discipline-scenarios";
 import ScenarioTrainerPage from "@/pages/scenario-trainer";
+import SignInPage from "@/pages/signin";
+import SignUpPage from "@/pages/signup";
+import ProfilePage from "@/pages/profile";
+import ContactPage from "@/pages/contact";
+import LegalPage from "@/pages/legal";
 
 function EMSPage() {
   return (
     <DisciplineScenariosPage
       discipline="EMS"
-      title="EMS Training Scenarios"
-      subtitle="Field-based emergency scenarios for EMRs, EMTs, AEMTs, and Paramedics. Practice patient assessments and critical decision-making."
+      heroWord="EMS."
+      heroSubtitle="Field response, primary assessments, and critical decisions for EMRs through Paramedics."
       heroImage="/images/ems-hero-background.jpg"
+      heroVideo="/videos/ambulance-driving.mp4"
       accentColor="blue"
       certLevels={["EMR", "EMT", "AEMT", "Paramedic"]}
     />
@@ -26,9 +33,10 @@ function NursingPage() {
   return (
     <DisciplineScenariosPage
       discipline="Nursing"
-      title="Nursing Training Scenarios"
-      subtitle="Hospital-based clinical scenarios for nursing students and practicing nurses. Stroke recognition, patient assessment, and interdisciplinary care."
+      heroWord="Nursing."
+      heroSubtitle="Bedside care, neuro checks, and clinical reasoning for LPNs, RNs, and BSNs."
       heroImage="/images/nursing-hero-background.jpg"
+      heroVideo="/videos/hospital-transport.mp4"
       accentColor="emerald"
       certLevels={["RN", "LPN", "BSN"]}
     />
@@ -43,6 +51,11 @@ function Router() {
       <Route path="/nursing" component={NursingPage} />
       <Route path="/scenarios" component={EMSPage} />
       <Route path="/scenario/:id" component={ScenarioTrainerPage} />
+      <Route path="/signin" component={SignInPage} />
+      <Route path="/signup" component={SignUpPage} />
+      <Route path="/profile" component={ProfilePage} />
+      <Route path="/contact" component={ContactPage} />
+      <Route path="/legal" component={LegalPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -52,10 +65,12 @@ function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

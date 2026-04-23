@@ -31,8 +31,8 @@ export async function seedDatabase() {
   const existingS1 = await getScenarioByTitle("Sports Injury - Primary Assessment");
   if (existingS1) {
     const stepCount = await getStepCount(existingS1.id);
-    if (stepCount !== 6) {
-      log(`Scenario 1 has ${stepCount} steps (expected 6), re-seeding Scenario 1...`, "seed");
+    if (stepCount !== 7) {
+      log(`Scenario 1 has ${stepCount} steps (expected 7), re-seeding Scenario 1...`, "seed");
       await deleteScenarioData(existingS1.id);
       await seedScenario1Only();
       seededCount += 1;
@@ -269,7 +269,7 @@ async function createScenario1WithSteps() {
     storage.createScenarioStep({
       scenarioId: scenario1.id,
       stepOrder: 5,
-      phase: "Primary Assessment",
+      phase: "Primary Assessment - Breathing",
       prompt: "",
       patientState: null,
       vitalSigns: null,
@@ -296,6 +296,23 @@ async function createScenario1WithSteps() {
           hint: "The SpO2 is 88% and she's breathing fast and shallow. What oxygen delivery device provides the highest concentration at the BLS level?",
           isCritical: true,
         },
+      ],
+    }),
+    storage.createScenarioStep({
+      scenarioId: scenario1.id,
+      stepOrder: 6,
+      phase: "Primary Assessment - Circulation",
+      prompt: "",
+      patientState: null,
+      vitalSigns: null,
+      correctActions: [],
+      incorrectActions: [],
+      feedbackCorrect: "",
+      feedbackIncorrect: "",
+      hint: null,
+      isCritical: true,
+      videoUrl: null,
+      questions: [
         {
           prompt: "With the non-rebreather mask now on the patient at 15 LPM, evaluate circulation. You check the radial pulse - it is rapid at 124 bpm and slightly weak. The skin is cool, pale, and diaphoretic (she is noticeably sweaty). Capillary refill is 3 seconds. No gross external bleeding visible. What do these findings indicate and what do you do?",
           patientState: "Non-rebreather mask is in place delivering 15 LPM O2. Radial pulse is rapid at 124 and slightly thready. Skin is cool, pale, and diaphoretic with visible sweat on her forehead and arms. Capillary refill is delayed at 3 seconds. No external bleeding anywhere.",
@@ -315,7 +332,7 @@ async function createScenario1WithSteps() {
     }),
     storage.createScenarioStep({
       scenarioId: scenario1.id,
-      stepOrder: 6,
+      stepOrder: 7,
       phase: "Transport Decision",
       prompt: "Based on your complete primary assessment - blunt trauma to ribs, rapid shallow breathing at 32/min, SpO2 88%, tachycardia at 124, signs of shock with cool/diaphoretic skin and hypotension - what is your transport priority for this patient?",
       patientState: "The patient is sitting up wearing the non-rebreather mask with a blanket draped over her. She is still in significant pain, breathing rapidly, and showing signs of shock. The stretcher is positioned beside her.",
