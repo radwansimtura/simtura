@@ -98,53 +98,68 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/signup", async (req, res) => {
-    const parsed = signupSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
-    }
-    const email = parsed.data.email.toLowerCase().trim();
-    const existing = await storage.getUserByEmail(email);
-    if (existing) {
-      return res.status(409).json({ message: "An account with that email already exists." });
-    }
-    const passwordHash = await hashPassword(parsed.data.password);
-    const user = await storage.createUserFull({
-      email,
-      passwordHash,
-      name: parsed.data.name.trim(),
-    });
-    req.session.userId = user.id;
-    req.session.save((err) => {
-      if (err) {
-        console.error("[auth] Session save error on signup:", err);
-        return res.status(500).json({ message: "Session error, please try again." });
+    try {
+      const parsed = signupSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
       }
-      res.json(toPublic(user));
-    });
+      const email = parsed.data.email.toLowerCase().trim();
+      console.log(`[auth] signup attempt: ${email}`);
+      const existing = await storage.getUserByEmail(email);
+      if (existing) {
+        return res.status(409).json({ message: "An account with that email already exists." });
+      }
+      const passwordHash = await hashPassword(parsed.data.password);
+      const user = await storage.createUserFull({ email, passwordHash, name: parsed.data.name.trim() });
+      console.log(`[auth] user created: ${user.id} — saving session`);
+      req.session.userId = user.id;
+      req.session.save((err) => {
+        if (err) {
+          console.error(`[auth] session.save failed on signup — message: ${err?.message} — stack: ${err?.stack} — full: ${JSON.stringify(err)}`);
+          return res.status(500).json({ message: `Session error: ${err?.message ?? "unknown"}` });
+        }
+        console.log(`[auth] signup complete, session saved for ${user.id}`);
+        res.json(toPublic(user));
+      });
+    } catch (err: any) {
+      console.error(`[auth] signup threw — message: ${err?.message} — stack: ${err?.stack}`);
+      res.status(500).json({ message: `Signup error: ${err?.message ?? "unknown"}` });
+    }
   });
 
   app.post("/api/auth/signin", async (req, res) => {
-    const parsed = signinSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: "Invalid input" });
-    }
-    const email = parsed.data.email.toLowerCase().trim();
-    const user = await storage.getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-    const ok = await verifyPassword(parsed.data.password, user.passwordHash);
-    if (!ok) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-    req.session.userId = user.id;
-    req.session.save((err) => {
-      if (err) {
-        console.error("[auth] Session save error on signin:", err);
-        return res.status(500).json({ message: "Session error, please try again." });
+    try {
+      const parsed = signinSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input" });
       }
-      res.json(toPublic(user));
-    });
+      const email = parsed.data.email.toLowerCase().trim();
+      console.log(`[auth] signin attempt: ${email}`);
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        console.log(`[auth] signin failed — no user found for ${email}`);
+        return res.status(401).json({ message: "Invalid email or password." });
+      }
+      console.log(`[auth] user found: ${user.id} — verifying password (hash format: ${user.passwordHash?.includes(":") ? "scrypt salt:hash" : "UNKNOWN"})`);
+      const ok = await verifyPassword(parsed.data.password, user.passwordHash);
+      if (!ok) {
+        console.log(`[auth] signin failed — wrong password for ${email}`);
+        return res.status(401).json({ message: "Invalid email or password." });
+      }
+      console.log(`[auth] password ok — saving session for ${user.id}`);
+      req.session.userId = user.id;
+      req.session.save((err) => {
+        if (err) {
+          console.error(`[auth] session.save failed on signin — message: ${err?.message} — stack: ${err?.stack} — full: ${JSON.stringify(err)}`);
+          return res.status(500).json({ message: `Session error: ${err?.message ?? "unknown"}` });
+        }
+        console.log(`[auth] signin complete, session saved for ${user.id}`);
+        res.json(toPublic(user));
+      });
+    } catch (err: any) {
+      console.error(`[auth] signin threw — message: ${err?.message} — stack: ${err?.stack}`);
+      res.status(500).json({ message: `Signin error: ${err?.message ?? "unknown"}` });
+    }
   });
 
   app.post("/api/auth/signout", (req, res) => {
