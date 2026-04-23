@@ -19,20 +19,29 @@ try {
   process.exit(1);
 }
 
-// ── STEP 1: Create user_sessions table ──────────────────────────────────────
-console.log("[db-push] STEP 1: Creating user_sessions table...");
+// ── STEP 0: Log search_path so schema mismatches are visible ────────────────
+try {
+  const sp = await client.query(`SELECT current_schema(), current_schemas(true)`);
+  console.log("[db-push] STEP 0: current_schema =", sp.rows[0].current_schema);
+  console.log("[db-push] STEP 0: current_schemas =", JSON.stringify(sp.rows[0].current_schemas));
+} catch (err) {
+  console.warn("[db-push] STEP 0 WARNING: Could not read search_path:", err.message);
+}
+
+// ── STEP 1: Create user_sessions table in public schema ──────────────────────
+console.log("[db-push] STEP 1: Creating public.user_sessions table...");
 try {
   await client.query(`
-    CREATE TABLE IF NOT EXISTS "user_sessions" (
+    CREATE TABLE IF NOT EXISTS public."user_sessions" (
       "sid"    varchar      NOT NULL,
       "sess"   json         NOT NULL,
       "expire" timestamp(6) NOT NULL,
       CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
     );
     CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire"
-      ON "user_sessions" ("expire");
+      ON public."user_sessions" ("expire");
   `);
-  console.log("[db-push] STEP 1 SUCCESS: user_sessions table created (or already existed).");
+  console.log("[db-push] STEP 1 SUCCESS: public.user_sessions table created (or already existed).");
 } catch (err) {
   console.error("[db-push] STEP 1 FAILURE: Could not create user_sessions table:", err.message);
   await client.end();

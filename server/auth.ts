@@ -57,6 +57,7 @@ export function setupSession(app: Express) {
   const store = new PgStore({
     pool,
     createTableIfMissing: false,
+    schemaName: "public",
     tableName: "user_sessions",
   });
 
