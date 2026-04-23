@@ -8,12 +8,19 @@ if (!dbUrl) {
 }
 
 const masked = dbUrl.replace(/:([^:@]+)@/, ":****@");
-console.log(`[db-push] Using database: ${masked}`);
+console.log(`[db-push] Connecting to: ${masked}`);
 
 const client = new pg.Client({ connectionString: dbUrl });
-await client.connect();
+try {
+  await client.connect();
+  console.log("[db-push] Database connection established.");
+} catch (err) {
+  console.error("[db-push] ERROR: Failed to connect to database:", err.message);
+  process.exit(1);
+}
 
-// ── 1. Create session store table (independent — must always run) ──────────
+// ── STEP 1: Create user_sessions table ──────────────────────────────────────
+console.log("[db-push] STEP 1: Creating user_sessions table...");
 try {
   await client.query(`
     CREATE TABLE IF NOT EXISTS "user_sessions" (
@@ -25,13 +32,36 @@ try {
     CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire"
       ON "user_sessions" ("expire");
   `);
-  console.log("[db-push] user_sessions table ready.");
+  console.log("[db-push] STEP 1 SUCCESS: user_sessions table created (or already existed).");
 } catch (err) {
-  console.error("[db-push] ERROR creating user_sessions table:", err.message);
+  console.error("[db-push] STEP 1 FAILURE: Could not create user_sessions table:", err.message);
+  await client.end();
   process.exit(1);
 }
 
-// ── 2. Resolve users table schema differences before drizzle-kit runs ──────
+// ── STEP 2: Verify user_sessions table exists ────────────────────────────────
+console.log("[db-push] STEP 2: Verifying user_sessions table exists...");
+try {
+  const result = await client.query(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'user_sessions';
+  `);
+  if (result.rowCount === 0) {
+    console.error("[db-push] STEP 2 FAILURE: user_sessions table not found after creation attempt.");
+    await client.end();
+    process.exit(1);
+  }
+  console.log("[db-push] STEP 2 SUCCESS: user_sessions table confirmed present in database.");
+} catch (err) {
+  console.error("[db-push] STEP 2 FAILURE: Verification query failed:", err.message);
+  await client.end();
+  process.exit(1);
+}
+
+// ── STEP 3: Resolve users table schema differences before drizzle-kit runs ───
+console.log("[db-push] STEP 3: Running users table schema migration...");
 try {
   await client.query(`
     DO $$ BEGIN
@@ -168,21 +198,23 @@ try {
 
     END $$;
   `);
-  console.log("[db-push] Users table migration complete.");
+  console.log("[db-push] STEP 3 SUCCESS: Users table migration complete.");
 } catch (err) {
-  console.log("[db-push] Users migration note (non-fatal):", err.message);
+  console.log("[db-push] STEP 3 NOTE (non-fatal): Users migration encountered an issue:", err.message);
 }
 
 await client.end();
+console.log("[db-push] Database connection closed.");
 
-console.log("[db-push] Running drizzle-kit push...");
+// ── STEP 4: Run drizzle-kit push ─────────────────────────────────────────────
+console.log("[db-push] STEP 4: Running drizzle-kit push...");
 try {
   execSync("npx drizzle-kit push --force", {
     stdio: "inherit",
     env: { ...process.env },
   });
-  console.log("[db-push] Schema push completed successfully.");
+  console.log("[db-push] STEP 4 SUCCESS: drizzle-kit schema push completed.");
 } catch {
-  console.error("[db-push] Schema push failed — see output above for details.");
+  console.error("[db-push] STEP 4 FAILURE: drizzle-kit push failed — see output above for details.");
   process.exit(1);
 }
