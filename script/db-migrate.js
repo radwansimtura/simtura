@@ -153,6 +153,21 @@ try {
 
     END $$;
   `);
+  // ── Create session store table ─────────────────────────────────────────
+  // connect-pg-simple uses createTableIfMissing but emits errors silently.
+  // Create the table explicitly here so startup failures are visible.
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS "user_sessions" (
+      "sid"    varchar      NOT NULL COLLATE "default",
+      "sess"   json         NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
+    );
+    CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire"
+      ON "user_sessions" ("expire");
+  `);
+  console.log("[db-push] Session table ready.");
+
   console.log("[db-push] Pre-migration complete.");
 } catch (err) {
   console.log("[db-push] Pre-migration note:", err.message);

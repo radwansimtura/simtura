@@ -60,6 +60,10 @@ export function setupSession(app: Express) {
     tableName: "user_sessions",
   });
 
+  store.on("error", (err: Error) => {
+    console.error("[auth] Session store error:", err);
+  });
+
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
     if (process.env.NODE_ENV === "production") {
