@@ -37,6 +37,15 @@ const SCENARIO_COVERS: Record<string, string> = {
   "Pediatric Asthma Attack - Acute Exacerbation": "/images/covers/s9-cover.jpg",
 };
 
+const STEP_VIDEO_LOOPS: Record<string, string> = {
+  "/videos/s1-step1-ppe.mp4": "/videos/s1-step1-ppe-loop.mp4",
+  "/videos/s1-step2-scene-approach.mp4": "/videos/s1-step2-scene-approach-loop.mp4",
+  "/videos/s1-step3-patient-contact.mp4": "/videos/s1-step3-patient-contact-loop.mp4",
+  "/videos/s1-step4-general-impression.mp4": "/videos/s1-step4-general-impression-loop.mp4",
+  "/videos/s1-step5-breathing.mp4": "/videos/s1-step5-breathing-loop.mp4",
+  "/videos/s1-step7-transport.mp4": "/videos/s1-step7-transport-loop.mp4",
+};
+
 async function removeCopyScenarioIfPresent() {
   const copy = await getScenarioByTitle("Sports Injury - Primary Assessment (Copy)");
   if (copy) {
@@ -57,6 +66,22 @@ async function ensureScenarioCovers() {
   }
   if (updated > 0) {
     log(`Updated cover images for ${updated} scenario(s)`, "seed");
+  }
+}
+
+async function ensureStepLoopVideos() {
+  const allSteps = await db.select().from(scenarioSteps);
+  let updated = 0;
+  for (const step of allSteps) {
+    if (!step.videoUrl) continue;
+    const desired = STEP_VIDEO_LOOPS[step.videoUrl] ?? null;
+    if (step.loopVideoUrl !== desired) {
+      await db.update(scenarioSteps).set({ loopVideoUrl: desired }).where(eq(scenarioSteps.id, step.id));
+      updated += 1;
+    }
+  }
+  if (updated > 0) {
+    log(`Updated loop videos for ${updated} step(s)`, "seed");
   }
 }
 
@@ -110,6 +135,7 @@ export async function seedDatabase() {
 
   await removeCopyScenarioIfPresent();
   await ensureScenarioCovers();
+  await ensureStepLoopVideos();
 }
 
 async function seedScenario1Only() {

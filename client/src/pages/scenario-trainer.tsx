@@ -95,6 +95,7 @@ export default function ScenarioTrainerPage() {
   const [isGrading, setIsGrading] = useState(false);
   const [gradeError, setGradeError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const loopVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const speechSupported = typeof window !== "undefined" && (("SpeechRecognition" in window) || ("webkitSpeechRecognition" in window));
@@ -310,6 +311,37 @@ export default function ScenarioTrainerPage() {
   }, [speechSupported]);
 
   useEffect(() => () => stopListening(), [stopListening]);
+
+  const showLoopVideoEffect = (phase === "question" || phase === "feedback") && !!currentStep?.loopVideoUrl;
+  useEffect(() => {
+    const loopVid = loopVideoRef.current;
+    if (!loopVid) return;
+    let cancelled = false;
+    let canplayHandler: (() => void) | null = null;
+
+    if (showLoopVideoEffect) {
+      const tryPlay = () => {
+        if (cancelled) return;
+        loopVid.play().catch(() => {});
+      };
+      if (loopVid.readyState >= 2) {
+        tryPlay();
+      } else {
+        canplayHandler = () => {
+          if (canplayHandler) loopVid.removeEventListener("canplay", canplayHandler);
+          tryPlay();
+        };
+        loopVid.addEventListener("canplay", canplayHandler);
+      }
+    } else {
+      try { loopVid.pause(); } catch {}
+    }
+
+    return () => {
+      cancelled = true;
+      if (canplayHandler) loopVid.removeEventListener("canplay", canplayHandler);
+    };
+  }, [showLoopVideoEffect, currentStep?.loopVideoUrl]);
 
   const handleSubmit = async () => {
     if (!currentQuestion || !currentStep) return;
@@ -566,6 +598,7 @@ export default function ScenarioTrainerPage() {
 
   const showVideoPlaying = phase === "dispatch-video" || phase === "step-video" || phase === "departure-video";
   const showQuestionUI = phase === "question" || phase === "feedback";
+  const showLoopVideo = showQuestionUI && !!currentStep?.loopVideoUrl;
 
   const isLastQuestion = currentStepIndex + 1 >= steps.length && currentQuestionIndex + 1 >= currentQuestions.length;
   const hasMoreQuestionsInStep = currentQuestionIndex + 1 < currentQuestions.length;
@@ -573,9 +606,35 @@ export default function ScenarioTrainerPage() {
 
   return (
     <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-black" data-testid="video-trainer-container">
+      {currentStep?.loopVideoUrl && (
+        <video
+          ref={(el) => {
+            loopVideoRef.current = el;
+            if (el) {
+              el.muted = true;
+              el.defaultMuted = true;
+              el.loop = true;
+              el.playsInline = true;
+            }
+          }}
+          key={currentStep.loopVideoUrl}
+          src={currentStep.loopVideoUrl}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+            showLoopVideo ? "opacity-100" : "opacity-0"
+          }`}
+          muted
+          playsInline
+          loop
+          preload="auto"
+          aria-hidden="true"
+          data-testid="video-idle-loop"
+        />
+      )}
       <video
         ref={videoRef}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${videoFading ? "opacity-0" : "opacity-100"}`}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          videoFading || showLoopVideo ? "opacity-0" : "opacity-100"
+        }`}
         muted={isMuted}
         playsInline
         data-testid="video-background"

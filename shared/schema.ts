@@ -43,6 +43,7 @@ export const scenarioSteps = pgTable("scenario_steps", {
   hint: text("hint"),
   isCritical: boolean("is_critical").notNull().default(false),
   videoUrl: text("video_url"),
+  loopVideoUrl: text("loop_video_url"),
   questions: jsonb("questions"),
 });
 
