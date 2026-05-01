@@ -315,43 +315,6 @@ export default function ScenarioTrainerPage() {
     if (!currentQuestion || !currentStep) return;
     const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
 
-    if (currentStepIndex === 0) {
-      const trimmed = traineeAnswer.trim();
-      if (!trimmed) return;
-      stopListening();
-      setIsGrading(true);
-      setGradeError(null);
-      try {
-        const res = await apiRequest("POST", "/api/evaluate", {
-          question: currentQuestion.prompt,
-          correctAnswer: (currentQuestion.correctActions || []).join(" "),
-          traineeResponse: trimmed,
-        });
-        const result: GradeResult = await res.json();
-        setGradeResult(result);
-        const isCorrect = result.score >= PASS_THRESHOLD;
-        const response: StepResponse = {
-          stepId: currentStep.id,
-          questionIndex: currentQuestionIndex,
-          selectedAction: trimmed,
-          isCorrect,
-          timeSpent,
-          mode: "open-response",
-          aiScore: result.score,
-          aiIncluded: result.included,
-          aiMissed: result.missed,
-          aiSummary: result.summary,
-        };
-        setResponses((prev) => [...prev, response]);
-        setPhase("feedback");
-      } catch (err: any) {
-        setGradeError(err?.message || "Evaluation failed. Please try again.");
-      } finally {
-        setIsGrading(false);
-      }
-      return;
-    }
-
     if (mode === "multiple-choice") {
       if (!selectedAction) return;
       const isCorrect = (currentQuestion.correctActions || []).includes(selectedAction);
@@ -499,7 +462,6 @@ export default function ScenarioTrainerPage() {
   }
 
   const isCorrectAnswer = selectedAction && currentQuestion && (currentQuestion.correctActions || []).includes(selectedAction);
-  const isVoiceStep = currentStepIndex === 0;
 
   if (phase === "results") {
     const correctCount = responses.filter((r) => r.isCorrect).length;
@@ -882,7 +844,7 @@ export default function ScenarioTrainerPage() {
                 )}
               </div>
 
-              {mode === "multiple-choice" && !isVoiceStep && (
+              {mode === "multiple-choice" && (
                 <div className="space-y-1.5 mb-3">
                   {shuffledActions.map((action, i) => {
                     const isSelected = selectedAction === action;
@@ -933,7 +895,7 @@ export default function ScenarioTrainerPage() {
                 </div>
               )}
 
-              {(isVoiceStep || mode === "open-response") && phase === "question" && (
+              {mode === "open-response" && phase === "question" && (
                 <div className="mb-3 rounded-lg border border-white/10 bg-black/50 backdrop-blur-md p-3" data-testid="open-response-input">
                   <Textarea
                     value={traineeAnswer}
@@ -975,14 +937,14 @@ export default function ScenarioTrainerPage() {
                     onClick={handleSubmit}
                     disabled={
                       isGrading ||
-                      (isVoiceStep || mode === "open-response" ? !traineeAnswer.trim() : !selectedAction)
+                      (mode === "open-response" ? !traineeAnswer.trim() : !selectedAction)
                     }
                     className="bg-blue-600 text-white disabled:opacity-30"
                     data-testid="button-submit-answer"
                   >
                     {isGrading ? (
                       <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Grading...</>
-                    ) : isVoiceStep || mode === "open-response" ? (
+                    ) : mode === "open-response" ? (
                       "Submit for AI Grading"
                     ) : (
                       "Submit Answer"
@@ -1019,7 +981,7 @@ export default function ScenarioTrainerPage() {
               )}
 
               {phase === "feedback" && (() => {
-                const usesAI = isVoiceStep || mode === "open-response";
+                const usesAI = mode === "open-response";
                 const passedOpen = usesAI && gradeResult ? gradeResult.score >= PASS_THRESHOLD : false;
                 const headlineCorrect = usesAI ? passedOpen : !!isCorrectAnswer;
                 return (
