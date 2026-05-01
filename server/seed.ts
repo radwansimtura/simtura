@@ -1545,7 +1545,7 @@ async function createScenario7WithSteps() {
       feedbackIncorrect: "When direct pressure fails on an arterial extremity bleed, the answer is a tourniquet - placed HIGH AND PROXIMAL, not over the wound, not after another 90 seconds of waiting. Modern tourniquet doctrine prioritizes early application; limb loss from short tourniquet times is exceedingly rare and far less dangerous than exsanguination.",
       hint: "Direct pressure isn't working. What's the next escalation, and where exactly do you place it?",
       isCritical: true,
-      videoUrl: null,
+      videoUrl: "/videos/s7-step6-tourniquet.mp4",
       questions: null,
     }),
     storage.createScenarioStep({
@@ -1565,7 +1565,7 @@ async function createScenario7WithSteps() {
       feedbackIncorrect: "A controlled tourniquet does NOT mean a stable patient. He is still hemorrhagic-shock-positive (pale, tachycardic, marginal BP). High priority, rapid transport to a trauma center, history en route - not on scene.",
       hint: "Just because the bleeding is controlled doesn't mean he's stable. Where does he need to be?",
       isCritical: true,
-      videoUrl: null,
+      videoUrl: "/videos/s7-step7-transport.mp4",
       questions: null,
     }),
     storage.createScenarioStep({
