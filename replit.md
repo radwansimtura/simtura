@@ -57,7 +57,7 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 - Medical/healthcare aesthetic
 
 ## Seed Data
-- 7 scenarios seeded on startup (5 EMS + 1 Nursing + 1 EMS hemorrhage)
+- 8 scenarios seeded on startup (5 EMS + 1 Nursing + 1 EMS hemorrhage + 1 EMS combative overdose)
 - Scenario 1: Sports Injury - Primary Assessment (7 steps, EMS)
 - Scenario 2: Severe Asthma Attack (10 steps, EMS, adult patient Marcus 28M)
 - Scenario 3: Respiratory Failure - Elderly Patient (EMS)
@@ -65,6 +65,7 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 - Scenario 5: Cardiac Arrest - Witnessed (EMS)
 - Scenario 6: Acute Stroke - CVA Recognition (19 steps, Nursing, patient Robert Hernandez 67M, 7 scenes covering recognition through ICU transfer)
 - Scenario 7: Severe Hemorrhage - Thigh Laceration (8 steps, 12 questions, EMS, 22M arterial bleed from broken glass; tourniquet application is critical step). Videos shipped: s7-step1-ppe, s7-step2-scene-approach, s7-step3-patient-contact, s7-step5-breathing, s7-step6-tourniquet (AI-generated via Veo), s7-step7-transport (AI-generated via Veo), s7-step8-enroute. Step 4 (General Impression) has no video yet — handled by null videoUrl, question UI shows immediately.
+- Scenario 8: Combative Overdose - Suspected Opioid Reversal (9 steps, EMS, 30F suspected heroin overdose found unresponsive at home; opioid toxidrome → BVM → IN naloxone 4 mg → patient wakes combative and refuses transport; critical steps are 4, 5, 6, 7, 8). Videos shipped (Seedance-generated): s8-step1-arrival, s8-step3-discover, s8-step5-airway-opa, s8-step7-naloxone, s8-step8-combative, s8-step9-enroute. Steps 2 (Scene Size-Up door approach), 4 (General Impression / sternal rub), and 6 (BVM ventilations) have no video yet — handled by null videoUrl, question UI shows immediately. Title added to PUBLISHED_EMS_TITLES allowlist in server/routes.ts.
 - Public visibility for EMS scenarios is gated by `PUBLISHED_EMS_TITLES` allowlist in server/routes.ts — add the title there to surface a scenario on /ems.
 - Each step has a unique first-person POV video
 - Each scenario has a departure video
