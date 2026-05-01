@@ -42,6 +42,7 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 - Departure videos: `s{scenarioNum}-departure.mp4`
 - Generic dispatch video: `ambulance-driving.mp4`
 - 50+ scenario-specific first-person videos across 9 scenarios
+- Per-scenario cover images extracted from key video frames via ffmpeg, stored in `client/public/images/covers/sN-cover.jpg`. Mapping lives in `SCENARIO_COVERS` in server/seed.ts; `ensureScenarioCovers()` runs at startup to keep DB rows in sync (idempotent). To re-extract or change a cover: `ffmpeg -ss 00:00:03 -i client/public/videos/<src>.mp4 -vframes 1 -q:v 3 -vf scale=1280:-1 client/public/images/covers/sN-cover.jpg`.
 
 ## API Routes
 - `GET /api/scenarios` - List all scenarios (supports `?discipline=EMS` or `?discipline=Nursing` filter)

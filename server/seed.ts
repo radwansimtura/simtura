@@ -25,6 +25,41 @@ async function deleteScenarioData(scenarioId: string) {
   await db.delete(scenarios).where(eq(scenarios.id, scenarioId));
 }
 
+const SCENARIO_COVERS: Record<string, string> = {
+  "Sports Injury - Primary Assessment": "/images/covers/s1-cover.jpg",
+  "Severe Asthma Attack": "/images/covers/s2-cover.jpg",
+  "Respiratory Failure - Elderly Patient": "/images/covers/s3-cover.jpg",
+  "Motor Vehicle Collision": "/images/covers/s4-cover.jpg",
+  "Cardiac Arrest - Witnessed": "/images/covers/s5-cover.jpg",
+  "Acute Stroke - CVA Recognition": "/images/covers/s6-cover.jpg",
+  "Severe Hemorrhage - Thigh Laceration": "/images/covers/s7-cover.jpg",
+  "Combative Overdose - Suspected Opioid Reversal": "/images/covers/s8-cover.jpg",
+  "Pediatric Asthma Attack - Acute Exacerbation": "/images/covers/s9-cover.jpg",
+};
+
+async function removeCopyScenarioIfPresent() {
+  const copy = await getScenarioByTitle("Sports Injury - Primary Assessment (Copy)");
+  if (copy) {
+    log(`Removing legacy scenario: ${copy.title}`, "seed");
+    await deleteScenarioData(copy.id);
+  }
+}
+
+async function ensureScenarioCovers() {
+  const allScenarios = await db.select().from(scenarios);
+  let updated = 0;
+  for (const s of allScenarios) {
+    const desired = SCENARIO_COVERS[s.title];
+    if (desired && s.imageUrl !== desired) {
+      await db.update(scenarios).set({ imageUrl: desired }).where(eq(scenarios.id, s.id));
+      updated += 1;
+    }
+  }
+  if (updated > 0) {
+    log(`Updated cover images for ${updated} scenario(s)`, "seed");
+  }
+}
+
 export async function seedDatabase() {
   let seededCount = 0;
 
@@ -72,6 +107,9 @@ export async function seedDatabase() {
   } else {
     log(`Seeded ${seededCount} new scenarios`, "seed");
   }
+
+  await removeCopyScenarioIfPresent();
+  await ensureScenarioCovers();
 }
 
 async function seedScenario1Only() {
