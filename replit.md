@@ -57,13 +57,15 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 - Medical/healthcare aesthetic
 
 ## Seed Data
-- 6 scenarios seeded on startup (5 EMS + 1 Nursing)
-- Scenario 1: Sports Injury - Primary Assessment (12 steps, EMS)
+- 7 scenarios seeded on startup (5 EMS + 1 Nursing + 1 EMS hemorrhage)
+- Scenario 1: Sports Injury - Primary Assessment (7 steps, EMS)
 - Scenario 2: Severe Asthma Attack (10 steps, EMS, adult patient Marcus 28M)
 - Scenario 3: Respiratory Failure - Elderly Patient (EMS)
 - Scenario 4: Motor Vehicle Collision (EMS)
 - Scenario 5: Cardiac Arrest - Witnessed (EMS)
 - Scenario 6: Acute Stroke - CVA Recognition (19 steps, Nursing, patient Robert Hernandez 67M, 7 scenes covering recognition through ICU transfer)
+- Scenario 7: Severe Hemorrhage - Thigh Laceration (8 steps, 12 questions, EMS, 22M arterial bleed from broken glass; tourniquet application is critical step). Videos shipped: s7-step1-ppe, s7-step2-scene-approach, s7-step3-patient-contact, s7-step5-breathing, s7-step8-enroute. Steps 4, 6, 7 have no video yet (handled by null videoUrl, question UI shows immediately).
+- Public visibility for EMS scenarios is gated by `PUBLISHED_EMS_TITLES` allowlist in server/routes.ts — add the title there to surface a scenario on /ems.
 - Each step has a unique first-person POV video
 - Each scenario has a departure video
 - AI video generation: 8s clips, 16:9, first-person POV, person_generation: "allow_adult"
