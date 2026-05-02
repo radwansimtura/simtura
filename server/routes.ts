@@ -47,7 +47,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
-  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment", "Respiratory Failure - Elderly Patient", "Severe Hemorrhage - Thigh Laceration", "Combative Overdose - Suspected Opioid Reversal", "Pediatric Asthma Attack - Acute Exacerbation", "Multi-Patient MVC - Driver #1 (Post-Triage)", "Elderly Fall - Possible Head Injury (Anticoagulated)"];
+  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment", "Respiratory Failure - Elderly Patient", "Severe Hemorrhage - Thigh Laceration", "Combative Overdose - Suspected Opioid Reversal", "Pediatric Asthma Attack - Acute Exacerbation", "Multi-Patient MVC - Driver #1 (Post-Triage)", "Elderly Fall - Possible Head Injury (Anticoagulated)", "Tension Pneumothorax - Industrial Chest Trauma"];
 
   app.post("/api/grade-answer", async (req, res) => {
     const parsed = gradeAnswerSchema.safeParse(req.body);
