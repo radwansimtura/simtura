@@ -42,7 +42,7 @@ interface GradeResult {
   summary: string;
 }
 
-const PASS_THRESHOLD = 80;
+const PASS_THRESHOLD = 70;
 
 type TrainerPhase =
   | "intro"

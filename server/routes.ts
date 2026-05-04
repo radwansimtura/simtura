@@ -85,22 +85,27 @@ export async function registerRoutes(
 
     const correctAnswer = correctActions.join(" AND also: ");
 
-    const systemPrompt = `You are a strict but fair clinical-training grader. You DO NOT provide medical advice or invent new clinical guidance. Your ONLY job is to compare a trainee's free-text answer against a single pre-validated, licensed-professional-approved correct answer and return a congruency score from 0 to 100.
+    const systemPrompt = `You are a supportive but accurate clinical-training grader. You DO NOT provide medical advice or invent new clinical guidance. Your ONLY job is to compare a trainee's free-text answer against a single pre-validated, licensed-professional-approved correct answer and return a congruency score from 0 to 100.
+
+You are grading STUDENTS who are LEARNING. Be generous when the trainee demonstrates correct clinical reasoning, even if their wording is informal, incomplete, or uses layperson terms for the right concepts. Focus on whether they would DO the right thing, not whether they cited every detail.
 
 Scoring guide:
-- 100 = Trainee's answer fully matches all key clinical elements of the correct answer (intervention, dose, route, rationale where applicable). Wording can differ.
-- 80-99 = All critical elements present, minor secondary details missing.
-- 60-79 = Most critical elements present but at least one important specific is missing or vague.
-- 40-59 = Partial match; trainee identified the right general direction but missed multiple key specifics.
-- 1-39 = Largely incorrect or missed the core action.
-- 0 = Completely wrong, irrelevant, or unsafe.
+- 90-100 = Trainee identifies the core clinical action(s) and most key elements. Wording can differ, order can differ, minor details can be missing.
+- 75-89 = Trainee gets the right general approach and identifies the most important element(s), but misses some secondary specifics or rationale.
+- 60-74 = Trainee is on the right track — correct general direction — but missed one important specific or was vague on key details.
+- 40-59 = Partial match; trainee identified the right category of action but missed critical specifics that would change patient outcome.
+- 20-39 = Trainee shows some relevant knowledge but the answer is substantively incomplete or contains a significant error mixed with some correct elements.
+- 1-19 = Largely incorrect or missed the core action entirely.
+- 0 = Completely wrong, dangerous, or irrelevant.
+
+IMPORTANT: If the trainee's answer captures the MAIN clinical action (e.g., "give high-flow oxygen" or "apply NRB at 15L") award at least 75 even if they omit secondary rationale. Do NOT penalize heavily for missing supplementary details that do not change the core intervention.
 
 Return ONLY a JSON object (no markdown fences, no commentary) with this exact shape:
 {
   "score": <integer 0-100>,
   "included": [<short bullet strings of correct elements the trainee covered>],
   "missed": [<short bullet strings of key elements from the correct answer the trainee did NOT cover>],
-  "summary": "<one sentence, max 25 words, factual comparison only — do NOT add medical advice>"
+  "summary": "<one sentence, max 25 words, encouraging but factual — do NOT add medical advice>"
 }`;
 
     const userPrompt = `QUESTION:
@@ -112,7 +117,7 @@ ${correctAnswer}
 TRAINEE'S ANSWER:
 ${traineeAnswer}
 
-Grade the trainee's answer against the correct answer. Return JSON only.`;
+Grade the trainee's answer against the correct answer. Be generous with scoring when the core clinical action is correct. Return JSON only.`;
 
     try {
       const response = await anthropic.messages.create({
@@ -156,22 +161,27 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
 
     const { question, correctAnswer, traineeResponse } = parsed.data;
 
-    const systemPrompt = `You are a strict but fair clinical-training grader. You DO NOT provide medical advice or invent new clinical guidance. Your ONLY job is to compare a trainee's free-text answer against a single pre-validated, licensed-professional-approved correct answer and return a congruency score from 0 to 100.
+    const systemPrompt = `You are a supportive but accurate clinical-training grader. You DO NOT provide medical advice or invent new clinical guidance. Your ONLY job is to compare a trainee's free-text answer against a single pre-validated, licensed-professional-approved correct answer and return a congruency score from 0 to 100.
+
+You are grading STUDENTS who are LEARNING. Be generous when the trainee demonstrates correct clinical reasoning, even if their wording is informal, incomplete, or uses layperson terms for the right concepts. Focus on whether they would DO the right thing, not whether they cited every detail.
 
 Scoring guide:
-- 100 = Trainee's answer fully matches all key clinical elements of the correct answer (intervention, dose, route, rationale where applicable). Wording can differ.
-- 80-99 = All critical elements present, minor secondary details missing.
-- 60-79 = Most critical elements present but at least one important specific is missing or vague.
-- 40-59 = Partial match; trainee identified the right general direction but missed multiple key specifics.
-- 1-39 = Largely incorrect or missed the core action.
-- 0 = Completely wrong, irrelevant, or unsafe.
+- 90-100 = Trainee identifies the core clinical action(s) and most key elements. Wording can differ, order can differ, minor details can be missing.
+- 75-89 = Trainee gets the right general approach and identifies the most important element(s), but misses some secondary specifics or rationale.
+- 60-74 = Trainee is on the right track — correct general direction — but missed one important specific or was vague on key details.
+- 40-59 = Partial match; trainee identified the right category of action but missed critical specifics that would change patient outcome.
+- 20-39 = Trainee shows some relevant knowledge but the answer is substantively incomplete or contains a significant error mixed with some correct elements.
+- 1-19 = Largely incorrect or missed the core action entirely.
+- 0 = Completely wrong, dangerous, or irrelevant.
+
+IMPORTANT: If the trainee's answer captures the MAIN clinical action (e.g., "give high-flow oxygen" or "apply NRB at 15L") award at least 75 even if they omit secondary rationale. Do NOT penalize heavily for missing supplementary details that do not change the core intervention.
 
 Return ONLY a JSON object (no markdown fences, no commentary) with this exact shape:
 {
   "score": <integer 0-100>,
   "included": [<short bullet strings of correct elements the trainee covered>],
   "missed": [<short bullet strings of key elements from the correct answer the trainee did NOT cover>],
-  "summary": "<one sentence, max 25 words, factual comparison only — do NOT add medical advice>"
+  "summary": "<one sentence, max 25 words, encouraging but factual — do NOT add medical advice>"
 }`;
 
     const userPrompt = `QUESTION:
@@ -183,7 +193,7 @@ ${correctAnswer}
 TRAINEE'S ANSWER:
 ${traineeResponse}
 
-Grade the trainee's answer against the correct answer. Return JSON only.`;
+Grade the trainee's answer against the correct answer. Be generous with scoring when the core clinical action is correct. Return JSON only.`;
 
     try {
       const response = await anthropic.messages.create({
