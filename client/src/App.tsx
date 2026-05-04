@@ -22,7 +22,7 @@ function EMSPage() {
       heroWord="EMS."
       heroSubtitle="Field response, primary assessments, and critical decisions for EMRs through Paramedics."
       heroImage="/images/ems-hero-background.jpg"
-      heroVideo="/videos/ambulance-driving.mp4"
+      heroVideo="/videos/ems-hero-paramedic-iv.mp4"
       accentColor="blue"
       certLevels={["EMR", "EMT", "AEMT", "Paramedic"]}
     />
