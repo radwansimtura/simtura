@@ -679,7 +679,6 @@ export default function ScenarioTrainerPage() {
                   <Stethoscope className="h-8 w-8 text-blue-400" />
                 </div>
                 <h1 className="text-3xl font-bold text-white mb-3" data-testid="text-scenario-title">{scenario.title}</h1>
-                <p className="text-white/60 mb-2 text-sm">{scenario.description}</p>
                 <div className="flex items-center justify-center gap-3 mb-6">
                   <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.certLevel}</Badge>
                   <Badge className="bg-white/10 text-white/70 border-white/20">{scenario.difficulty}</Badge>

@@ -156,7 +156,7 @@ async function createScenario1WithSteps() {
   const scenario1 = await storage.createScenario({
     title: "Sports Injury - Primary Assessment",
     description: "A 22-year-old female is sitting on the ground holding her left side and breathing rapidly after falling during a soccer game. Her teammates report she was struck in the ribs by another player's elbow. Perform a complete primary assessment following proper EMS protocol.",
-    patientSummary: "22F soccer player, sitting on ground clutching left side, rapid shallow breathing, blunt trauma from elbow strike to ribs during game. Teammates on scene.",
+    patientSummary: "22F, soccer field, possible rib injury. Player down.",
     difficulty: "Beginner",
     category: "Trauma",
     certLevel: "EMT",
@@ -451,7 +451,7 @@ async function seedEMSScenarios() {
   const scenario2 = await storage.createScenario({
     title: "Severe Asthma Attack",
     description: "Respond to a residence where a 28-year-old male named Marcus is in severe respiratory distress from an acute asthma exacerbation. His girlfriend Jenna reports he was exercising outside when the attack began and it has been getting worse for the past 20 minutes. Perform a systematic assessment and provide emergency treatment.",
-    patientSummary: "28M 'Marcus', severe respiratory distress, tripod position, audible wheezing, nasal flaring, intercostal retractions, pale/diaphoretic, unable to speak full sentences. History of asthma. Girlfriend Jenna on scene.",
+    patientSummary: "28M, residence, difficulty breathing. History of asthma.",
     difficulty: "Intermediate",
     category: "Medical",
     certLevel: "EMT",
@@ -657,7 +657,7 @@ async function seedEMSScenarios() {
   const scenario4 = await storage.createScenario({
     title: "Motor Vehicle Collision",
     description: "Respond to a two-vehicle collision on a suburban road. One patient is trapped with multiple injuries. Perform a systematic trauma assessment.",
-    patientSummary: "35M, restrained driver, airbag deployed, complaining of chest and neck pain, possible entrapment.",
+    patientSummary: "MVC, two vehicles, suburban road. One patient possibly trapped.",
     difficulty: "Intermediate",
     category: "Trauma",
     certLevel: "EMT",
@@ -768,7 +768,7 @@ async function seedEMSScenarios() {
   const scenario5 = await storage.createScenario({
     title: "Cardiac Arrest - Witnessed",
     description: "A 58-year-old male collapses at a restaurant. Bystanders report he was eating, suddenly clutched his chest, and fell from his chair. He is now unresponsive.",
-    patientSummary: "58M, witnessed collapse, unresponsive, no pulse, no breathing.",
+    patientSummary: "58M, restaurant, unresponsive. Bystanders report sudden collapse.",
     difficulty: "Advanced",
     category: "Medical",
     certLevel: "EMT",
@@ -881,7 +881,7 @@ async function seedNursingScenario() {
   const scenario6 = await storage.createScenario({
     title: "Acute Stroke - CVA Recognition",
     description: "You are a student nurse precepting on a medical-surgical unit. During a routine assessment of a 67-year-old male patient admitted for hypertension and hyperlipidemia, you identify sudden neurological symptoms consistent with stroke. Activate the Code Stroke protocol and follow the patient through CT imaging, interventional radiology, and ICU transfer.",
-    patientSummary: "67M 'Robert Hernandez', admitted for HTN and hyperlipidemia management. Develops acute onset facial droop, right-sided weakness, and slurred speech during morning assessment. Last known well 15 minutes prior.",
+    patientSummary: "67M, Room 412. Admitted for HTN management. Your assigned patient this shift.",
     difficulty: "Intermediate",
     category: "Neurological",
     certLevel: "RN",
@@ -1261,7 +1261,7 @@ async function createScenario7WithSteps() {
   const scenario7 = await storage.createScenario({
     title: "Severe Hemorrhage - Thigh Laceration",
     description: "You are dispatched to a residential backyard for a 22-year-old male who lacerated his left thigh on a broken cocktail glass. Bystanders report 'a lot of blood.' Perform a complete primary assessment and control the life-threatening hemorrhage.",
-    patientSummary: "22M, deep left-thigh laceration from broken glass at a backyard gathering. Bright red arterial spurting bleed. Initial: HR 132, BP 90/60, SpO2 95%, pale/anxious, cap refill >3 sec. Friends present, no other patients.",
+    patientSummary: "22M, residence, laceration to the thigh. Caller reports heavy bleeding.",
     difficulty: "Intermediate",
     category: "Trauma",
     certLevel: "EMT",
@@ -1578,7 +1578,7 @@ async function createScenario8WithSteps() {
   const scenario8 = await storage.createScenario({
     title: "Combative Overdose - Suspected Opioid Reversal",
     description: "You are dispatched to a small residential apartment for an unresponsive 30-year-old female with a suspected opioid overdose. Recognize the toxidrome, support the airway and breathing, administer naloxone, and manage the patient when she wakes up combative and refuses transport.",
-    patientSummary: "30F found unresponsive in her apartment living room by a friend. Initial: agonal respirations 6/min, SpO2 72%, HR 48, BP 88/54, pinpoint pupils, cool/clammy skin. Suspected opioid overdose. After naloxone, becomes alert and combative.",
+    patientSummary: "30F, apartment, unresponsive. Found by a friend. Possible overdose.",
     difficulty: "Intermediate",
     category: "Medical",
     certLevel: "EMT",
@@ -1900,7 +1900,7 @@ async function createScenario9WithSteps() {
   const scenario9 = await storage.createScenario({
     title: "Pediatric Asthma Attack - Acute Exacerbation",
     description: "You are dispatched to a suburban home for a 6-year-old male in respiratory distress with a known history of asthma. He began struggling to breathe an hour ago after playing outside. Recognize a severe pediatric asthma exacerbation, assist with the patient's own rescue inhaler, support oxygenation, and transport rapidly with continuous reassessment.",
-    patientSummary: "6-year-old male, sitting upright on the family couch, audibly wheezing with nasal flaring and intercostal retractions. Mother reports asthma history and onset roughly one hour ago after outdoor play. SpO2 85% on room air, pale and diaphoretic, alert but only able to speak in 2-3 word phrases.",
+    patientSummary: "6M, residence, difficulty breathing. Mother reports asthma history.",
     difficulty: "Intermediate",
     category: "Pediatric Respiratory",
     certLevel: "EMT",
@@ -2257,7 +2257,7 @@ async function createScenario3WithSteps() {
   const scenario3 = await storage.createScenario({
     title: "Respiratory Failure - Elderly Patient",
     description: "You are dispatched to a private residence for a 72-year-old male with a history of COPD who was found unresponsive in bed by his daughter. Recognize the airway emergency, manage it with an OPA and assisted ventilations, and package the patient for rapid transport while a partner takes over the BVM.",
-    patientSummary: "72M with known COPD, found unresponsive in bed by his daughter. Initial: snoring respirations, RR 4/min and shallow, SpO2 70% on room air, HR 52 weak, BP 92/58, cyanotic lips and fingertips, cool clammy skin. Responds only to painful stimuli (P on AVPU). Improves with OPA + BVM at 15 LPM O2 to SpO2 86%, HR 66, RR 8 by the time of ED arrival.",
+    patientSummary: "72M, residence, unresponsive. Daughter on scene. History of COPD.",
     difficulty: "Advanced",
     category: "Medical",
     certLevel: "EMT",
@@ -2700,7 +2700,7 @@ async function createScenario10WithSteps() {
   const scenario10 = await storage.createScenario({
     title: "Multi-Patient MVC - Driver #1 (Post-Triage)",
     description: "You arrive at a 4-patient T-bone collision at a city intersection in the rain. After completing primary triage you have identified Driver #1 of the silver Camry as the RED (immediate) patient. Manage his care from initial patient contact through extrication and transport to the trauma center.",
-    patientSummary: "30s male, restrained driver of the silver Camry that was T-boned at an intersection. Airbag deployed. Brisk bleeding from a forehead laceration, AVPU=V, dazed and confused but oriented to person, suspected c-spine injury. Initial vitals on patient contact: HR 112 weak, BP 124/78, RR 24 shallow, SpO2 92% RA, skin pale and diaphoretic. Three other patients on scene (front passenger, blue car driver, blue car passenger) have already been triaged.",
+    patientSummary: "MVC, intersection, multiple vehicles. PD on scene. At least 4 patients.",
     difficulty: "Advanced",
     category: "Trauma",
     certLevel: "EMT",
@@ -3138,7 +3138,7 @@ async function createScenario11WithSteps() {
   const scenario11 = await storage.createScenario({
     title: "Elderly Fall - Possible Head Injury (Anticoagulated)",
     description: "You are dispatched to a skilled nursing facility for an 82-year-old female who fell from her walker and struck her head on the bedside table. Brief LOC reported by staff. The clinical twist: she is on apixaban (Eliquis) for atrial fibrillation, which puts her at very high risk for delayed intracranial hemorrhage even with a currently normal mental status.",
-    patientSummary: "82F, SNF resident in room 214. Witnessed fall from standing while attempting to walk to the bathroom without using her walker correctly - she lost balance, struck the right side of her forehead on the metal bedside table, and was reportedly briefly unresponsive (~30 seconds) before staff arrived. Now sitting up on the floor against the bed, mildly confused (baseline per staff is alert and oriented x4). PMH: AFib (on apixaban 5 mg BID, last dose this morning ~6 hours ago), HTN, hyperlipidemia, mild dementia. NKDA. Initial vitals: HR 88 irregular, BP 144/88, RR 18, SpO2 95% RA, BGL 118 mg/dL. Large boggy hematoma over right frontal scalp, developing periorbital ecchymosis. AVPU: A but oriented x2-3 only with prompting. Pupils 4 mm bilaterally, R sluggish reactive, L brisk reactive. No obvious extremity deformity, denies neck pain but is a poor historian.",
+    patientSummary: "82F, skilled nursing facility, fall with head injury. Staff on scene.",
     difficulty: "Advanced",
     category: "Trauma / Geriatric",
     certLevel: "EMT",
@@ -3576,7 +3576,7 @@ async function createScenario12WithSteps() {
   const scenario12 = await storage.createScenario({
     title: "Tension Pneumothorax - Industrial Chest Trauma",
     description: "You are dispatched to a high-rise foundation pour at a construction site. A 38-year-old laborer was struck in the right chest by a swinging steel I-beam approximately 10 minutes ago. Coworkers report he 'got the wind knocked out of him,' but he is now significantly worse than when they first sat him up. The clinical pearl: this is a developing tension pneumothorax. As an EMT you cannot needle-decompress (paramedic-only), so your job is RAPID recognition, high-flow oxygen, gentle handling, ALS intercept request, and rapid transport before he arrests.",
-    patientSummary: "38M construction laborer, ~80 kg, otherwise healthy, no PMH or meds per coworkers, NKA. Struck in the right anterior chest ~10 minutes ago by a swinging steel I-beam being lifted by an excavator at the foundation site. Initially 'just got the wind knocked out of him' per the foreman, helped to sit up against a rebar pile by coworkers, but now visibly worse: anxious, sweating, air-hungry, leaning forward, complaining 'I can't breathe.' Wearing hard hat, safety vest, work shirt with large purple ecchymosis becoming visible over the R anterior and lateral chest. AOx3 but anxious. Initial vitals: HR 130 sinus tach, BP 110/74, RR 30 labored with accessory muscle use, SpO2 88% on room air, skin pale and diaphoretic. Trachea midline at first contact but developing slight L deviation by step 4. R-sided breath sounds markedly diminished with hyperresonance to percussion; L side clear. JVD developing in semi-Fowler's. Pulse weak but palpable at radial bilaterally. Trending toward decompensation: HR 146, BP 86/55, SpO2 84% in the back of the rig en route.",
+    patientSummary: "38M, construction site, difficulty breathing. Struck in chest by steel beam.",
     difficulty: "Advanced",
     category: "Trauma / Industrial",
     certLevel: "EMT",
