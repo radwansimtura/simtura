@@ -113,6 +113,13 @@ export default function DisciplineScenariosPage({
               >
                 Nursing
               </Link>
+              <Link
+                href="/organizations"
+                className="transition-colors hover:text-white"
+                data-testid="link-nav-organizations"
+              >
+                For Organizations
+              </Link>
             </div>
             <div className="flex items-center gap-3">
               <Button

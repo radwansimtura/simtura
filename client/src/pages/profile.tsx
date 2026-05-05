@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { UpgradeModal } from "@/components/upgrade-modal";
+import { RedeemCodeCard } from "@/components/redeem-code-card";
 import {
   ArrowLeft,
   ArrowRight,
@@ -236,6 +237,17 @@ export default function ProfilePage() {
             </div>
           )}
         </motion.div>
+
+        {!isPro && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="mt-6"
+          >
+            <RedeemCodeCard />
+          </motion.div>
+        )}
 
         {/* Recent attempts */}
         <motion.div

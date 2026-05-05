@@ -6,19 +6,35 @@ import {
   type InsertScenarioStep,
   type Attempt,
   type InsertAttempt,
+  type Organization,
+  type OrganizationCode,
   users,
   scenarios,
   scenarioSteps,
   attempts,
+  organizations,
+  organizationCodes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, asc, desc, and, gte } from "drizzle-orm";
+import { eq, asc, desc, and, gte, isNull, isNotNull, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUserFull(data: { email: string; passwordHash: string; name: string }): Promise<User>;
   setUserTier(id: string, tier: "free" | "pro"): Promise<User | undefined>;
+  setUserOrgPremium(id: string, organizationId: string): Promise<User | undefined>;
+
+  createOrganization(data: Omit<Organization, "id" | "createdAt" | "paidAt"> & { paidAt?: Date | null }): Promise<Organization>;
+  getOrganization(id: string): Promise<Organization | undefined>;
+  getOrganizationsForOwner(userId: string): Promise<Organization[]>;
+  markOrganizationPaid(id: string): Promise<Organization | undefined>;
+
+  createOrganizationCodes(organizationId: string, codes: string[]): Promise<OrganizationCode[]>;
+  getOrganizationCodes(organizationId: string): Promise<OrganizationCode[]>;
+  getOrganizationCodeByCode(code: string): Promise<OrganizationCode | undefined>;
+  redeemOrganizationCode(code: string, userId: string, email: string): Promise<OrganizationCode | undefined>;
+  countRedeemedCodes(organizationId: string): Promise<number>;
 
   getAllScenarios(): Promise<Scenario[]>;
   getScenario(id: string): Promise<Scenario | undefined>;
@@ -58,6 +74,89 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async setUserOrgPremium(id: string, organizationId: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        tier: "pro",
+        proSince: new Date(),
+        organizationId,
+        premiumSource: "organization",
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async createOrganization(data: Omit<Organization, "id" | "createdAt" | "paidAt"> & { paidAt?: Date | null }): Promise<Organization> {
+    const [org] = await db
+      .insert(organizations)
+      .values({ ...data, paidAt: data.paidAt ?? null })
+      .returning();
+    return org;
+  }
+
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async getOrganizationsForOwner(userId: string): Promise<Organization[]> {
+    return db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerUserId, userId))
+      .orderBy(desc(organizations.createdAt));
+  }
+
+  async markOrganizationPaid(id: string): Promise<Organization | undefined> {
+    const [org] = await db
+      .update(organizations)
+      .set({ status: "active", paidAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return org;
+  }
+
+  async createOrganizationCodes(organizationId: string, codes: string[]): Promise<OrganizationCode[]> {
+    if (codes.length === 0) return [];
+    const rows = codes.map((code) => ({ organizationId, code }));
+    return db.insert(organizationCodes).values(rows).returning();
+  }
+
+  async getOrganizationCodes(organizationId: string): Promise<OrganizationCode[]> {
+    return db
+      .select()
+      .from(organizationCodes)
+      .where(eq(organizationCodes.organizationId, organizationId))
+      .orderBy(asc(organizationCodes.createdAt));
+  }
+
+  async getOrganizationCodeByCode(code: string): Promise<OrganizationCode | undefined> {
+    const [c] = await db
+      .select()
+      .from(organizationCodes)
+      .where(eq(organizationCodes.code, code));
+    return c;
+  }
+
+  async redeemOrganizationCode(code: string, userId: string, email: string): Promise<OrganizationCode | undefined> {
+    const [updated] = await db
+      .update(organizationCodes)
+      .set({ redeemedByUserId: userId, redeemedByEmail: email, redeemedAt: new Date() })
+      .where(and(eq(organizationCodes.code, code), isNull(organizationCodes.redeemedByUserId)))
+      .returning();
+    return updated;
+  }
+
+  async countRedeemedCodes(organizationId: string): Promise<number> {
+    const rows = await db
+      .select({ id: organizationCodes.id })
+      .from(organizationCodes)
+      .where(and(eq(organizationCodes.organizationId, organizationId), isNotNull(organizationCodes.redeemedByUserId)));
+    return rows.length;
   }
 
   async getAllScenarios(): Promise<Scenario[]> {

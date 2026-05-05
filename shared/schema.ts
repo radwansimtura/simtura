@@ -11,6 +11,35 @@ export const users = pgTable("users", {
   tier: text("tier").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   proSince: timestamp("pro_since"),
+  organizationId: varchar("organization_id"),
+  premiumSource: text("premium_source"),
+});
+
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  billingEmail: text("billing_email").notNull(),
+  orgType: text("org_type").notNull().default("Other"),
+  seats: integer("seats").notNull(),
+  pricePerSeatCents: integer("price_per_seat_cents").notNull(),
+  totalCents: integer("total_cents").notNull(),
+  status: text("status").notNull().default("pending"),
+  ownerUserId: varchar("owner_user_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  paidAt: timestamp("paid_at"),
+});
+
+export const organizationCodes = pgTable("organization_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  code: text("code").notNull().unique(),
+  redeemedByUserId: varchar("redeemed_by_user_id"),
+  redeemedByEmail: text("redeemed_by_email"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  redeemedAt: timestamp("redeemed_at"),
 });
 
 export const scenarios = pgTable("scenarios", {
@@ -77,6 +106,55 @@ export interface PublicUser {
   tier: "free" | "pro";
   createdAt: string;
   proSince: string | null;
+  organizationId: string | null;
+  premiumSource: string | null;
+}
+
+export const ORG_TYPES = [
+  "EMS Agency",
+  "Fire Department",
+  "Hospital / Health System",
+  "Nursing School",
+  "EMS / Paramedic Program",
+  "University",
+  "Community College",
+  "Other",
+] as const;
+
+export const createOrganizationSchema = z.object({
+  name: z.string().min(2).max(160),
+  contactName: z.string().min(2).max(160),
+  contactEmail: z.string().email().max(200),
+  billingEmail: z.string().email().max(200),
+  orgType: z.enum(ORG_TYPES).default("Other"),
+  seats: z.number().int().min(5).max(10000),
+  notes: z.string().max(2000).optional(),
+});
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+export const redeemCodeSchema = z.object({
+  code: z.string().min(4).max(64),
+});
+export type RedeemCodeInput = z.infer<typeof redeemCodeSchema>;
+
+export interface PricingTier {
+  minSeats: number;
+  pricePerSeatCents: number;
+  label: string;
+}
+
+export const PRICING_TIERS: PricingTier[] = [
+  { minSeats: 200, pricePerSeatCents: 1400, label: "Enterprise (200+)" },
+  { minSeats: 50, pricePerSeatCents: 1900, label: "Program (50–199)" },
+  { minSeats: 10, pricePerSeatCents: 2400, label: "Team (10–49)" },
+  { minSeats: 5, pricePerSeatCents: 2900, label: "Starter (5–9)" },
+];
+
+export function pricePerSeatCents(seats: number): number {
+  for (const t of PRICING_TIERS) {
+    if (seats >= t.minSeats) return t.pricePerSeatCents;
+  }
+  return PRICING_TIERS[PRICING_TIERS.length - 1].pricePerSeatCents;
 }
 
 export const contactSchema = z.object({
@@ -85,6 +163,33 @@ export const contactSchema = z.object({
   message: z.string().min(5).max(4000),
 });
 export type ContactInput = z.infer<typeof contactSchema>;
+
+export type Organization = typeof organizations.$inferSelect;
+export type OrganizationCode = typeof organizationCodes.$inferSelect;
+
+export interface PublicOrganization {
+  id: string;
+  name: string;
+  contactName: string;
+  contactEmail: string;
+  billingEmail: string;
+  orgType: string;
+  seats: number;
+  pricePerSeatCents: number;
+  totalCents: number;
+  status: string;
+  createdAt: string;
+  paidAt: string | null;
+  redeemedCount: number;
+}
+
+export interface PublicOrganizationCode {
+  id: string;
+  code: string;
+  redeemedByEmail: string | null;
+  createdAt: string;
+  redeemedAt: string | null;
+}
 
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });

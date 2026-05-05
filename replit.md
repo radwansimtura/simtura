@@ -52,6 +52,16 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 - `POST /api/attempts` - Start a new attempt
 - `PATCH /api/attempts/:id` - Update attempt with results
 
+## Organizations / Bulk Licensing
+- Tab "For Organizations" in nav (landing, EMS, Nursing pages) → `/organizations`
+- `/organizations` — marketing + pricing calculator + signup form. Volume tiers in `shared/schema.ts` `PRICING_TIERS` (5–9: $29, 10–49: $24, 50–199: $19, 200+: $14 per seat/year).
+- `/organizations/:id` — private dashboard: stats, code list, search, copy individual / copy all / CSV export.
+- Profile page shows a "Redeem code" card (RedeemCodeCard) for free users; redeeming sets `tier=pro`, `organizationId`, `premiumSource="organization"`.
+- Tables: `organizations`, `organization_codes`. Codes are 12-char base32 (ABCDEFGHJKLMNPQRSTUVWXYZ23456789, no 0/1/I/O), formatted `XXXX-XXXX-XXXX`.
+- Routes: `POST /api/organizations`, `GET /api/organizations/:id`, `GET /api/organizations/:id/codes`, `GET /api/organizations/mine/list`, `POST /api/redeem-code`.
+- Payment is currently MOCKED — `POST /api/organizations` immediately marks the org `active` and generates codes. Production should redirect to Stripe Checkout and only mark active + generate codes via webhook on `payment_intent.succeeded`. See comment in `server/routes.ts` POST /api/organizations.
+- Users have new fields `organizationId` and `premiumSource` ("organization" | null) — surfaced in `PublicUser`.
+
 ## Theme
 - Dark mode default with toggle support
 - Inter font family

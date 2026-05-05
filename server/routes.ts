@@ -5,7 +5,54 @@ import { seedDatabase } from "./seed";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth } from "./auth";
-import { contactSchema } from "@shared/schema";
+import {
+  contactSchema,
+  createOrganizationSchema,
+  redeemCodeSchema,
+  pricePerSeatCents,
+  type PublicOrganization,
+  type PublicOrganizationCode,
+} from "@shared/schema";
+import { randomBytes } from "crypto";
+
+function generateCode(): string {
+  // 12-character base32-style alphanumeric, easy to read (no 0/O/1/I)
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(12);
+  let out = "";
+  for (let i = 0; i < 12; i++) {
+    out += alphabet[bytes[i] % alphabet.length];
+  }
+  return `${out.slice(0, 4)}-${out.slice(4, 8)}-${out.slice(8, 12)}`;
+}
+
+function toPublicOrg(org: any, redeemedCount: number): PublicOrganization {
+  return {
+    id: org.id,
+    name: org.name,
+    contactName: org.contactName,
+    contactEmail: org.contactEmail,
+    billingEmail: org.billingEmail,
+    orgType: org.orgType,
+    seats: org.seats,
+    pricePerSeatCents: org.pricePerSeatCents,
+    totalCents: org.totalCents,
+    status: org.status,
+    createdAt: org.createdAt instanceof Date ? org.createdAt.toISOString() : org.createdAt,
+    paidAt: org.paidAt ? (org.paidAt instanceof Date ? org.paidAt.toISOString() : org.paidAt) : null,
+    redeemedCount,
+  };
+}
+
+function toPublicCode(c: any): PublicOrganizationCode {
+  return {
+    id: c.id,
+    code: c.code,
+    redeemedByEmail: c.redeemedByEmail ?? null,
+    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+    redeemedAt: c.redeemedAt ? (c.redeemedAt instanceof Date ? c.redeemedAt.toISOString() : c.redeemedAt) : null,
+  };
+}
 
 const FREE_DAILY_LIMIT = 1;
 
@@ -377,6 +424,124 @@ Grade the trainee's answer against the correct answer. Be generous with scoring 
       return res.status(404).json({ message: "Attempt not found" });
     }
     res.json(updated);
+  });
+
+  // ===== Organizations / Bulk Licensing =====
+
+  // Create an organization (mock checkout — replace with Stripe in production)
+  app.post("/api/organizations", async (req, res) => {
+    const parsed = createOrganizationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
+    }
+    const data = parsed.data;
+    const ppsc = pricePerSeatCents(data.seats);
+    const totalCents = ppsc * data.seats;
+    const ownerUserId = req.session.userId ?? null;
+
+    const org = await storage.createOrganization({
+      name: data.name.trim(),
+      contactName: data.contactName.trim(),
+      contactEmail: data.contactEmail.toLowerCase().trim(),
+      billingEmail: data.billingEmail.toLowerCase().trim(),
+      orgType: data.orgType,
+      seats: data.seats,
+      pricePerSeatCents: ppsc,
+      totalCents,
+      status: "pending",
+      ownerUserId,
+      notes: data.notes ?? null,
+    });
+
+    // MOCK PAYMENT — production should redirect to Stripe Checkout and only
+    // mark active + generate codes via webhook on payment_intent.succeeded
+    await storage.markOrganizationPaid(org.id);
+    const codeStrings: string[] = [];
+    const seen = new Set<string>();
+    while (codeStrings.length < data.seats) {
+      const c = generateCode();
+      if (seen.has(c)) continue;
+      seen.add(c);
+      codeStrings.push(c);
+    }
+    await storage.createOrganizationCodes(org.id, codeStrings);
+    const finalOrg = await storage.getOrganization(org.id);
+
+    console.log(`[orgs] Created org ${org.id} "${org.name}" — ${data.seats} seats @ $${(ppsc / 100).toFixed(2)} = $${(totalCents / 100).toFixed(2)}`);
+    res.json(toPublicOrg(finalOrg ?? org, 0));
+  });
+
+  // Get an organization (auth: anyone with the ID can view dashboard once,
+  // but we restrict mutations to owner). Returns 404 to non-owners if signed in
+  // as a different user.
+  app.get("/api/organizations/:id", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized for this organization" });
+    }
+    const redeemed = await storage.countRedeemedCodes(org.id);
+    res.json(toPublicOrg(org, redeemed));
+  });
+
+  // List codes for an org
+  app.get("/api/organizations/:id/codes", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized for this organization" });
+    }
+    const codes = await storage.getOrganizationCodes(org.id);
+    res.json(codes.map(toPublicCode));
+  });
+
+  // List orgs owned by the current user
+  app.get("/api/organizations/mine/list", requireAuth, async (req, res) => {
+    const orgs = await storage.getOrganizationsForOwner(req.session.userId!);
+    const out = await Promise.all(
+      orgs.map(async (o) => toPublicOrg(o, await storage.countRedeemedCodes(o.id))),
+    );
+    res.json(out);
+  });
+
+  // Redeem a code → upgrade current user to Pro
+  app.post("/api/redeem-code", requireAuth, async (req, res) => {
+    const parsed = redeemCodeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid code format" });
+    }
+    const code = parsed.data.code.trim().toUpperCase();
+    const existing = await storage.getOrganizationCodeByCode(code);
+    if (!existing) {
+      return res.status(404).json({ message: "Code not found. Double-check with your organization." });
+    }
+    if (existing.redeemedByUserId) {
+      if (existing.redeemedByUserId === req.session.userId!) {
+        return res.status(400).json({ message: "You've already redeemed this code." });
+      }
+      return res.status(409).json({ message: "This code has already been redeemed by another user." });
+    }
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const redeemed = await storage.redeemOrganizationCode(code, user.id, user.email);
+    if (!redeemed) {
+      return res.status(409).json({ message: "Code was just redeemed by someone else." });
+    }
+    const updatedUser = await storage.setUserOrgPremium(user.id, existing.organizationId);
+    const org = await storage.getOrganization(existing.organizationId);
+    res.json({
+      ok: true,
+      organizationName: org?.name ?? null,
+      user: updatedUser
+        ? {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            tier: updatedUser.tier,
+          }
+        : null,
+    });
   });
 
   return httpServer;

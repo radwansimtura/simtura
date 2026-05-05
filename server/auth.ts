@@ -41,6 +41,8 @@ function toPublic(u: {
   tier: string;
   createdAt: Date;
   proSince: Date | null;
+  organizationId: string | null;
+  premiumSource: string | null;
 }): PublicUser {
   return {
     id: u.id,
@@ -49,6 +51,8 @@ function toPublic(u: {
     tier: (u.tier === "pro" ? "pro" : "free") as "free" | "pro",
     createdAt: u.createdAt.toISOString(),
     proSince: u.proSince ? u.proSince.toISOString() : null,
+    organizationId: u.organizationId ?? null,
+    premiumSource: u.premiumSource ?? null,
   };
 }
 
