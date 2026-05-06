@@ -89,18 +89,23 @@ export default function OrganizationsPage() {
     mutationFn: async () => {
       const payload: CreateOrganizationInput = { ...form, seats };
       const res = await apiRequest("POST", "/api/organizations", payload);
-      return (await res.json()) as PublicOrganization;
+      return (await res.json()) as PublicOrganization & { checkoutUrl?: string };
     },
     onSuccess: (org) => {
-      toast({
-        title: "Organization created.",
-        description: `${seats} student codes generated for ${org.name}.`,
-      });
+      if (org.checkoutUrl) {
+        toast({
+          title: "Redirecting to checkout…",
+          description: `Securely complete payment for ${org.name}.`,
+        });
+        window.location.href = org.checkoutUrl;
+        return;
+      }
+      // Fallback if no checkoutUrl (shouldn't happen)
       setLocation(`/organizations/${org.id}`);
     },
     onError: (e: any) => {
       toast({
-        title: "Could not create organization",
+        title: "Could not start checkout",
         description: e?.message ?? "Please check the form and try again.",
         variant: "destructive",
       });

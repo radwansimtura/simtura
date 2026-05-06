@@ -28,6 +28,7 @@ export const organizations = pgTable("organizations", {
   status: text("status").notNull().default("pending"),
   ownerUserId: varchar("owner_user_id"),
   notes: text("notes"),
+  stripeSessionId: text("stripe_session_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   paidAt: timestamp("paid_at"),
 });

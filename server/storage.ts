@@ -29,6 +29,7 @@ export interface IStorage {
   getOrganization(id: string): Promise<Organization | undefined>;
   getOrganizationsForOwner(userId: string): Promise<Organization[]>;
   markOrganizationPaid(id: string): Promise<Organization | undefined>;
+  setOrganizationStripeSession(id: string, stripeSessionId: string): Promise<Organization | undefined>;
 
   createOrganizationCodes(organizationId: string, codes: string[]): Promise<OrganizationCode[]>;
   getOrganizationCodes(organizationId: string): Promise<OrganizationCode[]>;
@@ -111,10 +112,22 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(organizations.createdAt));
   }
 
+  // Atomic: only the caller that successfully transitions status from
+  // non-active → active gets a returned row. Concurrent webhook redeliveries
+  // hitting this method will get `undefined` and must skip fulfillment.
   async markOrganizationPaid(id: string): Promise<Organization | undefined> {
     const [org] = await db
       .update(organizations)
       .set({ status: "active", paidAt: new Date() })
+      .where(and(eq(organizations.id, id), sql`${organizations.status} <> 'active'`))
+      .returning();
+    return org;
+  }
+
+  async setOrganizationStripeSession(id: string, stripeSessionId: string): Promise<Organization | undefined> {
+    const [org] = await db
+      .update(organizations)
+      .set({ stripeSessionId })
       .where(eq(organizations.id, id))
       .returning();
     return org;

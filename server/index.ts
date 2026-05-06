@@ -33,6 +33,28 @@ declare module "http" {
   }
 }
 
+// Stripe webhook MUST be registered BEFORE express.json() — it requires the
+// raw request buffer for signature verification.
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature header" });
+    }
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+    try {
+      const { processWebhook } = await import("./webhookHandlers");
+      await processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error("[stripe] webhook error:", err?.message ?? err);
+      res.status(400).json({ error: err?.message ?? "Webhook processing failed" });
+    }
+  },
+);
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -80,9 +102,33 @@ app.use((req, res, next) => {
   next();
 });
 
+async function initStripe() {
+  try {
+    const { runMigrations } = await import("stripe-replit-sync");
+    const { getStripeSync } = await import("./stripeClient");
+
+    await runMigrations({ databaseUrl: process.env.DATABASE_URL! });
+    const stripeSync = await getStripeSync();
+
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    if (domain) {
+      const webhookUrl = `https://${domain}/api/stripe/webhook`;
+      await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+      log(`stripe webhook ready at ${webhookUrl}`, "stripe");
+    } else {
+      log("REPLIT_DOMAINS not set — skipping managed webhook creation", "stripe");
+    }
+    await stripeSync.syncBackfill();
+    log("stripe initialized", "stripe");
+  } catch (err: any) {
+    console.error("[stripe] init failed (payments will be unavailable):", err?.message ?? err);
+  }
+}
+
 (async () => {
   const { probeDatabase } = await import("./db");
   await probeDatabase();
+  await initStripe();
   const { registerRoutes } = await import("./routes");
   setupSession(app);
   registerAuthRoutes(app);

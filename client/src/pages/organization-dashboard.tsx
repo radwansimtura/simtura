@@ -34,6 +34,9 @@ export default function OrganizationDashboardPage() {
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const justPaid = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("paid") === "1";
+
   const { data: org, isLoading: orgLoading, error: orgError } = useQuery<PublicOrganization>({
     queryKey: ["/api/organizations", id],
     queryFn: async () => {
@@ -41,6 +44,9 @@ export default function OrganizationDashboardPage() {
       if (!res.ok) throw new Error((await res.json()).message ?? "Failed to load");
       return res.json();
     },
+    // After Stripe redirects back, poll until the webhook fulfills the org
+    refetchInterval: (query) =>
+      query.state.data?.status !== "active" ? 2000 : false,
   });
 
   const { data: codes, isLoading: codesLoading } = useQuery<PublicOrganizationCode[]>({
@@ -50,7 +56,12 @@ export default function OrganizationDashboardPage() {
       if (!res.ok) throw new Error("Failed to load codes");
       return res.json();
     },
+    enabled: org?.status === "active",
+    refetchInterval: (query) =>
+      org?.status === "active" && (query.state.data?.length ?? 0) === 0 ? 1500 : false,
   });
+
+  const pendingPayment = org && org.status !== "active";
 
   const filtered = codes?.filter((c) => {
     if (!search) return true;
@@ -139,9 +150,22 @@ export default function OrganizationDashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300 text-[11px] uppercase tracking-wider mb-5">
-            <Check className="h-3 w-3" /> Active
-          </div>
+          {pendingPayment ? (
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-300 text-[11px] uppercase tracking-wider mb-5"
+              data-testid="badge-status-pending"
+            >
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              {justPaid ? "Confirming payment…" : "Awaiting payment"}
+            </div>
+          ) : (
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300 text-[11px] uppercase tracking-wider mb-5"
+              data-testid="badge-status-active"
+            >
+              <Check className="h-3 w-3" /> Active
+            </div>
+          )}
           {orgLoading ? (
             <Skeleton className="h-12 w-2/3 bg-white/5 mb-3" />
           ) : (

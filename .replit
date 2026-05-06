@@ -46,3 +46,6 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
+
+[agent]
+integrations = ["stripe:1.0.0"]

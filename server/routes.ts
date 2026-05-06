@@ -14,6 +14,7 @@ import {
   type PublicOrganizationCode,
 } from "@shared/schema";
 import { randomBytes } from "crypto";
+import { getUncachableStripeClient } from "./stripeClient";
 
 function generateCode(): string {
   // 12-character base32-style alphanumeric, easy to read (no 0/O/1/I)
@@ -428,7 +429,9 @@ Grade the trainee's answer against the correct answer. Be generous with scoring 
 
   // ===== Organizations / Bulk Licensing =====
 
-  // Create an organization (mock checkout — replace with Stripe in production)
+  // Create an organization and a Stripe Checkout Session. Codes + active
+  // status are NOT generated here — that happens via the Stripe webhook
+  // (checkout.session.completed) so we only fulfill on confirmed payment.
   app.post("/api/organizations", async (req, res) => {
     const parsed = createOrganizationSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -451,24 +454,55 @@ Grade the trainee's answer against the correct answer. Be generous with scoring 
       status: "pending",
       ownerUserId,
       notes: data.notes ?? null,
+      stripeSessionId: null,
     });
 
-    // MOCK PAYMENT — production should redirect to Stripe Checkout and only
-    // mark active + generate codes via webhook on payment_intent.succeeded
-    await storage.markOrganizationPaid(org.id);
-    const codeStrings: string[] = [];
-    const seen = new Set<string>();
-    while (codeStrings.length < data.seats) {
-      const c = generateCode();
-      if (seen.has(c)) continue;
-      seen.add(c);
-      codeStrings.push(c);
-    }
-    await storage.createOrganizationCodes(org.id, codeStrings);
-    const finalOrg = await storage.getOrganization(org.id);
+    let checkoutUrl: string;
+    try {
+      const stripe = await getUncachableStripeClient();
+      const protocol = req.headers["x-forwarded-proto"] ?? "https";
+      const host = req.headers["x-forwarded-host"] ?? req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
 
-    console.log(`[orgs] Created org ${org.id} "${org.name}" — ${data.seats} seats @ $${(ppsc / 100).toFixed(2)} = $${(totalCents / 100).toFixed(2)}`);
-    res.json(toPublicOrg(finalOrg ?? org, 0));
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        customer_email: data.billingEmail.toLowerCase().trim(),
+        line_items: [
+          {
+            quantity: data.seats,
+            price_data: {
+              currency: "usd",
+              unit_amount: ppsc,
+              product_data: {
+                name: `Simtura.ai Pro — ${data.name.trim()}`,
+                description: `${data.seats} seats · 1 year of Pro access per seat · ${data.orgType}`,
+              },
+            },
+          },
+        ],
+        metadata: {
+          organizationId: org.id,
+          seats: String(data.seats),
+        },
+        success_url: `${baseUrl}/organizations/${org.id}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/organizations?canceled=1`,
+      });
+
+      if (!session.url) {
+        throw new Error("Stripe did not return a checkout URL");
+      }
+      await storage.setOrganizationStripeSession(org.id, session.id);
+      checkoutUrl = session.url;
+    } catch (err: any) {
+      console.error("[stripe] failed to create checkout session:", err?.message ?? err);
+      return res.status(502).json({
+        message: "Could not start payment. Please try again or contact support.",
+      });
+    }
+
+    console.log(`[orgs] Created org ${org.id} "${org.name}" — ${data.seats} seats @ $${(ppsc / 100).toFixed(2)} = $${(totalCents / 100).toFixed(2)} — awaiting payment`);
+    res.json({ ...toPublicOrg(org, 0), checkoutUrl });
   });
 
   // Get an organization (auth: anyone with the ID can view dashboard once,
