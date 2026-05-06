@@ -144,9 +144,8 @@ export interface PricingTier {
 }
 
 export const PRICING_TIERS: PricingTier[] = [
-  { minSeats: 200, pricePerSeatCents: 1400, label: "Enterprise (200+)" },
-  { minSeats: 50, pricePerSeatCents: 1900, label: "Program (50–199)" },
-  { minSeats: 10, pricePerSeatCents: 2400, label: "Team (10–49)" },
+  { minSeats: 50, pricePerSeatCents: 2500, label: "Program (50+)" },
+  { minSeats: 10, pricePerSeatCents: 2700, label: "Team (10–49)" },
   { minSeats: 5, pricePerSeatCents: 2900, label: "Starter (5–9)" },
 ];
 

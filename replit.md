@@ -54,7 +54,7 @@ Simtura.ai is an AI-powered training platform for healthcare professionals (EMS 
 
 ## Organizations / Bulk Licensing
 - Tab "For Organizations" in nav (landing, EMS, Nursing pages) → `/organizations`
-- `/organizations` — marketing + pricing calculator + signup form. Volume tiers in `shared/schema.ts` `PRICING_TIERS` (5–9: $29, 10–49: $24, 50–199: $19, 200+: $14 per seat/year).
+- `/organizations` — marketing + pricing calculator + signup form. Volume tiers in `shared/schema.ts` `PRICING_TIERS` (5–9: $29 Starter, 10–49: $27 Team, 50+: $25 Program per seat/year).
 - `/organizations/:id` — private dashboard: stats, code list, search, copy individual / copy all / CSV export.
 - Profile page shows a "Redeem code" card (RedeemCodeCard) for free users; redeeming sets `tier=pro`, `organizationId`, `premiumSource="organization"`.
 - Tables: `organizations`, `organization_codes`. Codes are 12-char base32 (ABCDEFGHJKLMNPQRSTUVWXYZ23456789, no 0/1/I/O), formatted `XXXX-XXXX-XXXX`.
