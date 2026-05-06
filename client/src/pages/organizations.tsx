@@ -126,6 +126,23 @@ export default function OrganizationsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white relative">
+      {/* Background video */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <video
+          src="/videos/organizations-bg.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          data-testid="video-organizations-bg"
+        />
+        <div className="absolute inset-0 bg-black/65" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/80" />
+      </div>
+
+      {/* Content wrapper above video */}
+      <div className="relative z-10">
       {/* Top nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/40 border-b border-white/5">
         <div className="mx-auto max-w-7xl px-6 sm:px-10 h-20 flex items-center justify-between">
@@ -457,6 +474,7 @@ export default function OrganizationsPage() {
       </section>
 
       <SiteFooter />
+      </div>
     </div>
   );
 }
