@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   proSince: timestamp("pro_since"),
   organizationId: varchar("organization_id"),
   premiumSource: text("premium_source"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
 });
 
 export const organizations = pgTable("organizations", {

@@ -9,8 +9,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<PublicUser>;
   signUp: (email: string, password: string, name: string) => Promise<PublicUser>;
   signOut: () => Promise<void>;
-  upgrade: () => Promise<PublicUser>;
-  downgrade: () => Promise<PublicUser>;
+  upgrade: () => Promise<void>;
+  manageBilling: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -57,22 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const upgradeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/auth/upgrade");
-      return res.json() as Promise<PublicUser>;
-    },
-    onSuccess: (u) => {
-      queryClient.setQueryData(["/api/auth/me"], u);
-      queryClient.invalidateQueries({ queryKey: ["/api/me/stats"] });
+      const data = (await res.json()) as { checkoutUrl?: string };
+      if (!data.checkoutUrl) throw new Error("Could not start checkout.");
+      window.location.assign(data.checkoutUrl);
     },
   });
 
-  const downgradeMutation = useMutation({
+  const billingPortalMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/downgrade");
-      return res.json() as Promise<PublicUser>;
-    },
-    onSuccess: (u) => {
-      queryClient.setQueryData(["/api/auth/me"], u);
-      queryClient.invalidateQueries({ queryKey: ["/api/me/stats"] });
+      const res = await apiRequest("POST", "/api/auth/billing-portal");
+      const data = (await res.json()) as { portalUrl?: string };
+      if (!data.portalUrl) throw new Error("Could not open billing portal.");
+      window.location.assign(data.portalUrl);
     },
   });
 
@@ -83,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp: (email, password, name) => signUpMutation.mutateAsync({ email, password, name }),
     signOut: () => signOutMutation.mutateAsync(),
     upgrade: () => upgradeMutation.mutateAsync(),
-    downgrade: () => downgradeMutation.mutateAsync(),
+    manageBilling: () => billingPortalMutation.mutateAsync(),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

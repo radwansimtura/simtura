@@ -30,6 +30,10 @@ export interface IStorage {
   getOrganizationsForOwner(userId: string): Promise<Organization[]>;
   markOrganizationPaid(id: string): Promise<Organization | undefined>;
   setOrganizationStripeSession(id: string, stripeSessionId: string): Promise<Organization | undefined>;
+  setUserStripeCustomer(id: string, stripeCustomerId: string): Promise<User | undefined>;
+  getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+  activateUserSubscription(userId: string, stripeCustomerId: string, stripeSubscriptionId: string): Promise<User | undefined>;
+  deactivateUserSubscription(stripeCustomerId: string): Promise<User | undefined>;
 
   createOrganizationCodes(organizationId: string, codes: string[]): Promise<OrganizationCode[]>;
   getOrganizationCodes(organizationId: string): Promise<OrganizationCode[]>;
@@ -131,6 +135,59 @@ export class DatabaseStorage implements IStorage {
       .where(eq(organizations.id, id))
       .returning();
     return org;
+  }
+
+  async setUserStripeCustomer(id: string, stripeCustomerId: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ stripeCustomerId })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.stripeCustomerId, stripeCustomerId));
+    return user;
+  }
+
+  async activateUserSubscription(
+    userId: string,
+    stripeCustomerId: string,
+    stripeSubscriptionId: string,
+  ): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        tier: "pro",
+        proSince: new Date(),
+        premiumSource: "stripe",
+        stripeCustomerId,
+        stripeSubscriptionId,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async deactivateUserSubscription(stripeCustomerId: string): Promise<User | undefined> {
+    // Only revert users whose Pro came from a personal Stripe subscription.
+    // Org-redeemed users keep their Pro tier even if they happen to also have a
+    // stripeCustomerId from a previous personal subscription.
+    const [user] = await db
+      .update(users)
+      .set({
+        tier: "free",
+        proSince: null,
+        premiumSource: null,
+        stripeSubscriptionId: null,
+      })
+      .where(and(eq(users.stripeCustomerId, stripeCustomerId), eq(users.premiumSource, "stripe")))
+      .returning();
+    return user;
   }
 
   async createOrganizationCodes(organizationId: string, codes: string[]): Promise<OrganizationCode[]> {

@@ -27,19 +27,15 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
   const handleUpgrade = async () => {
     setLoading(true);
     try {
+      // Redirects the browser to Stripe Checkout. On success the user lands
+      // back on /profile?upgraded=1 and the webhook flips them to Pro.
       await upgrade();
-      toast({
-        title: "Welcome to Pro.",
-        description: "Unlimited scenarios are now unlocked.",
-      });
-      onClose();
     } catch (e: any) {
       toast({
-        title: "Upgrade failed",
+        title: "Couldn't start checkout",
         description: e?.message ?? "Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -113,7 +109,7 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
               data-testid="button-confirm-upgrade"
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              {loading ? "Activating..." : "Upgrade to Pro"}
+              {loading ? "Redirecting to checkout…" : "Upgrade to Pro"}
             </Button>
             {!user && (
               <p className="text-center text-xs text-white/50 mt-3">

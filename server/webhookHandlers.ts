@@ -14,6 +14,29 @@ function generateCode(): string {
 }
 
 async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
+  // Personal Pro subscription checkout
+  if (session.mode === 'subscription') {
+    const userId = session.metadata?.userId;
+    if (!userId) {
+      console.warn('[stripe] subscription session without userId metadata; skipping');
+      return;
+    }
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+    const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+    if (!customerId || !subscriptionId) {
+      console.warn(`[stripe] subscription session ${session.id} missing customer/subscription`);
+      return;
+    }
+    const user = await storage.activateUserSubscription(userId, customerId, subscriptionId);
+    if (!user) {
+      console.warn(`[stripe] activateUserSubscription failed for userId=${userId}`);
+      return;
+    }
+    console.log(`[stripe] activated Pro subscription for user ${userId} (sub ${subscriptionId})`);
+    return;
+  }
+
+  // Org bulk-licensing one-off payment
   const orgId = session.metadata?.organizationId;
   if (!orgId) {
     console.warn('[stripe] checkout.session.completed without organizationId metadata; skipping');
@@ -68,5 +91,29 @@ export async function processWebhook(rawBody: Buffer, signature: string): Promis
 
   if (event.type === 'checkout.session.completed') {
     await fulfillCheckoutSession(event.data.object as Stripe.Checkout.Session);
+    return;
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as Stripe.Subscription;
+    const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+    const user = await storage.deactivateUserSubscription(customerId);
+    if (user) {
+      console.log(`[stripe] deactivated Pro for user ${user.id} (sub ${sub.id} canceled)`);
+    }
+    return;
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    const sub = event.data.object as Stripe.Subscription;
+    const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+    const isActive = sub.status === 'active' || sub.status === 'trialing';
+    if (!isActive) {
+      const user = await storage.deactivateUserSubscription(customerId);
+      if (user) {
+        console.log(`[stripe] deactivated Pro for user ${user.id} (sub ${sub.id} status=${sub.status})`);
+      }
+    }
+    return;
   }
 }

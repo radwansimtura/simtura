@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,16 +43,73 @@ interface Stats {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, signOut, downgrade } = useAuth();
-  const [, setLocation] = useLocation();
+  const { user, isLoading, signOut, manageBilling } = useAuth();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [managingBilling, setManagingBilling] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       setLocation("/signin");
     }
   }, [user, isLoading, setLocation]);
+
+  // Handle return from Stripe Checkout. ?upgraded=1 → poll until webhook
+  // flips tier to pro. ?canceled=1 → quick toast, nothing else.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "1") {
+      toast({
+        title: "Payment received.",
+        description: "Activating your Pro membership…",
+      });
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    } else if (params.get("canceled") === "1") {
+      toast({
+        title: "Checkout canceled.",
+        description: "No charge was made. You can upgrade anytime.",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // While we're waiting for the Stripe webhook to flip us to Pro, refetch
+  // /api/auth/me every 2s so the UI updates as soon as fulfillment lands.
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const justUpgraded =
+      params.get("upgraded") === "1" ||
+      sessionStorage.getItem("simtura:awaiting-pro") === "1";
+    if (justUpgraded && user.tier !== "pro") {
+      sessionStorage.setItem("simtura:awaiting-pro", "1");
+      const t = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/stats"] });
+      }, 2000);
+      return () => clearInterval(t);
+    }
+    if (user.tier === "pro") {
+      sessionStorage.removeItem("simtura:awaiting-pro");
+    }
+  }, [user, location]);
+
+  const handleManageBilling = async () => {
+    setManagingBilling(true);
+    try {
+      await manageBilling();
+    } catch (e: any) {
+      toast({
+        title: "Couldn't open billing portal",
+        description: e?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+      setManagingBilling(false);
+    }
+  };
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/me/stats"],
@@ -189,18 +247,22 @@ export default function ProfilePage() {
                   Train as many cases as you need, every day.
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={async () => {
-                  await downgrade();
-                  toast({ title: "Reverted to Free.", description: "You can re-upgrade anytime." });
-                }}
-                className="text-white/50 hover:text-white hover:bg-white/5"
-                data-testid="button-downgrade"
-              >
-                Manage plan
-              </Button>
+              {user.premiumSource === "stripe" ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleManageBilling}
+                  disabled={managingBilling}
+                  className="text-white/50 hover:text-white hover:bg-white/5"
+                  data-testid="button-manage-billing"
+                >
+                  {managingBilling ? "Opening…" : "Manage billing"}
+                </Button>
+              ) : user.premiumSource === "organization" ? (
+                <span className="text-xs text-white/40" data-testid="text-org-pro">
+                  Pro via your organization
+                </span>
+              ) : null}
             </div>
           ) : (
             <div>

@@ -186,17 +186,75 @@ export function registerAuthRoutes(app: Express) {
     res.json(toPublic(user));
   });
 
-  // Mock upgrade — in production this would be a Stripe webhook
+  // Start a Stripe Checkout session for a personal Pro subscription ($19/mo).
+  // Returns { checkoutUrl } — the client redirects the browser to it. The user
+  // is only flipped to tier=pro when checkout.session.completed fires on our
+  // webhook (see server/webhookHandlers.ts).
   app.post("/api/auth/upgrade", requireAuth, async (req, res) => {
-    const user = await storage.setUserTier(req.session.userId!, "pro");
+    const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(toPublic(user));
+    if (user.tier === "pro") {
+      return res.status(400).json({ message: "You're already on Pro." });
+    }
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const origin = `${req.protocol}://${req.get("host")}`;
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: user.stripeCustomerId ?? undefined,
+        customer_email: user.stripeCustomerId ? undefined : user.email,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "usd",
+              unit_amount: 1900,
+              recurring: { interval: "month" },
+              product_data: {
+                name: "Simtura Pro",
+                description: "Unlimited scenarios, full EMS + Nursing libraries, priority access.",
+              },
+            },
+          },
+        ],
+        metadata: { userId: user.id },
+        subscription_data: { metadata: { userId: user.id } },
+        success_url: `${origin}/profile?upgraded=1`,
+        cancel_url: `${origin}/profile?canceled=1`,
+        allow_promotion_codes: true,
+      });
+
+      res.json({ checkoutUrl: session.url });
+    } catch (err) {
+      console.error("[stripe] failed to create subscription checkout:", err);
+      res.status(502).json({ message: "Could not start checkout. Please try again." });
+    }
   });
 
-  app.post("/api/auth/downgrade", requireAuth, async (req, res) => {
-    const user = await storage.setUserTier(req.session.userId!, "free");
+  // Open a Stripe Customer Portal session so the user can manage / cancel
+  // their subscription. Stripe will fire customer.subscription.updated /
+  // .deleted webhooks back to us when they make changes.
+  app.post("/api/auth/billing-portal", requireAuth, async (req, res) => {
+    const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(toPublic(user));
+    if (!user.stripeCustomerId) {
+      return res.status(400).json({ message: "No active subscription to manage." });
+    }
+    try {
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const origin = `${req.protocol}://${req.get("host")}`;
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${origin}/profile`,
+      });
+      res.json({ portalUrl: portal.url });
+    } catch (err) {
+      console.error("[stripe] failed to create portal session:", err);
+      res.status(502).json({ message: "Could not open billing portal. Please try again." });
+    }
   });
 }
 
