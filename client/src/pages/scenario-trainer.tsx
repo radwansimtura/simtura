@@ -1096,6 +1096,22 @@ export default function ScenarioTrainerPage() {
                       )}
                     </div>
                   )}
+                  {usesAI && gradeResult && !passedOpen && gradeResult.tip && (
+                    <div
+                      className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-md"
+                      data-testid="coaching-tip-panel"
+                    >
+                      <div className="flex items-start gap-2">
+                        <Lightbulb className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-amber-400/80 font-medium mb-1">
+                            Coaching tip
+                          </div>
+                          <p className="text-xs text-white/70 leading-relaxed">{gradeResult.tip}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
                     headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
@@ -1110,13 +1126,17 @@ export default function ScenarioTrainerPage() {
                       <div>
                         <div className="font-semibold text-sm text-white mb-0.5">
                           {usesAI
-                            ? (passedOpen ? `Pass (≥${PASS_THRESHOLD})` : `Below passing (${PASS_THRESHOLD}+ to pass)`)
+                            ? (passedOpen
+                                ? `Pass (≥${PASS_THRESHOLD})`
+                                : (gradeResult?.whyItMatters ? "Why this matters" : `Below passing (${PASS_THRESHOLD}+ to pass)`))
                             : (headlineCorrect ? "Correct!" : "Not quite right")}
                         </div>
                         <p className="text-xs text-white/70 leading-relaxed">
                           {headlineCorrect
                             ? currentQuestion.feedbackCorrect
-                            : currentQuestion.feedbackIncorrect}
+                            : (usesAI && gradeResult?.whyItMatters
+                                ? gradeResult.whyItMatters
+                                : currentQuestion.feedbackIncorrect)}
                         </p>
                       </div>
                     </div>
