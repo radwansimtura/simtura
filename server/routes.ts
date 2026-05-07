@@ -85,6 +85,7 @@ const gradeAnswerSchema = z.object({
 const evaluateSchema = z.object({
   stepId: z.string().min(1),
   traineeResponse: z.string().min(1).max(2000),
+  questionIndex: z.number().int().min(0).optional(),
 });
 
 const createAttemptSchema = z.object({
@@ -221,19 +222,37 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
       return res.status(500).json({ message: "Evaluation service not configured" });
     }
 
-    const { stepId, traineeResponse } = parsed.data;
+    const { stepId, traineeResponse, questionIndex } = parsed.data;
 
     const step = await storage.getScenarioStep(stepId);
     if (!step) {
       return res.status(404).json({ message: "Step not found" });
     }
 
+    let prompt: string;
+    let correctActions: string[];
+    const questionsArr = (step.questions as any[]) || null;
+    if (questionsArr && Array.isArray(questionsArr) && questionsArr.length > 0) {
+      const qIdx = typeof questionIndex === "number" ? questionIndex : 0;
+      const q = questionsArr[qIdx];
+      if (!q) return res.status(400).json({ message: "Invalid questionIndex" });
+      prompt = String(q.prompt || "");
+      correctActions = Array.isArray(q.correctActions) ? q.correctActions.map(String) : [];
+    } else {
+      prompt = step.prompt || "";
+      correctActions = step.correctActions || [];
+    }
+
+    if (!prompt || correctActions.length === 0) {
+      return res.status(400).json({ message: "Step has no gradable content" });
+    }
+
     const scenario = await storage.getScenario(step.scenarioId);
     const gradingMode = scenario?.gradingMode ?? "flexible";
     const systemPrompt = gradingMode === "nremt_medical" ? getNremtMedicalPrompt() : getFlexiblePrompt();
 
-    const userMessage = `Step Prompt: ${step.prompt}
-Correct Actions Required: ${JSON.stringify(step.correctActions)}
+    const userMessage = `Step Prompt: ${prompt}
+Correct Actions Required: ${JSON.stringify(correctActions)}
 Common Incorrect Actions: ${JSON.stringify(step.incorrectActions)}
 Critical Criterion This Step Can Violate: ${step.criticalCriterion || "None"}
 Why It Matters Clinically: ${step.whyItMatters || "Not specified"}

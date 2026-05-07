@@ -325,56 +325,6 @@ export default function ScenarioTrainerPage() {
     if (!currentQuestion || !currentStep) return;
     const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
 
-    if (currentStepIndex === 0) {
-      const trimmed = traineeAnswer.trim();
-      if (!trimmed) return;
-      stopListening();
-      setIsGrading(true);
-      setGradeError(null);
-      try {
-        const res = await apiRequest("POST", "/api/evaluate", {
-          stepId: currentStep.id,
-          traineeResponse: trimmed,
-        });
-        const result: GradeResult = await res.json();
-        setGradeResult(result);
-        if (result.criticalFailure) {
-          await apiRequest("PATCH", `/api/attempts/${attemptId}`, {
-            criticalFailure: true,
-            criticalCriterionViolated: result.criticalCriterionViolated,
-            endedEarly: true,
-            completedAt: new Date().toISOString(),
-          });
-          setCriticalFailureState({
-            show: true,
-            criterion: result.criticalCriterionViolated,
-            summary: result.summary,
-          });
-          return;
-        }
-        const isCorrect = result.score >= PASS_THRESHOLD;
-        const response: StepResponse = {
-          stepId: currentStep.id,
-          questionIndex: currentQuestionIndex,
-          selectedAction: trimmed,
-          isCorrect,
-          timeSpent,
-          mode: "open-response",
-          aiScore: result.score,
-          aiIncluded: result.correct,
-          aiMissed: result.missed,
-          aiSummary: result.summary,
-        };
-        setResponses((prev) => [...prev, response]);
-        setPhase("feedback");
-      } catch (err: any) {
-        setGradeError(err?.message || "Evaluation failed. Please try again.");
-      } finally {
-        setIsGrading(false);
-      }
-      return;
-    }
-
     if (mode === "multiple-choice") {
       if (!selectedAction) return;
       const isCorrect = (currentQuestion.correctActions || []).includes(selectedAction);
@@ -397,13 +347,27 @@ export default function ScenarioTrainerPage() {
     setIsGrading(true);
     setGradeError(null);
     try {
-      const res = await apiRequest("POST", "/api/grade-answer", {
+      const res = await apiRequest("POST", "/api/evaluate", {
         stepId: currentStep.id,
+        traineeResponse: trimmed,
         questionIndex: currentQuestionIndex,
-        traineeAnswer: trimmed,
       });
       const result: GradeResult = await res.json();
       setGradeResult(result);
+      if (result.criticalFailure) {
+        await apiRequest("PATCH", `/api/attempts/${attemptId}`, {
+          criticalFailure: true,
+          criticalCriterionViolated: result.criticalCriterionViolated,
+          endedEarly: true,
+          completedAt: new Date().toISOString(),
+        });
+        setCriticalFailureState({
+          show: true,
+          criterion: result.criticalCriterionViolated,
+          summary: result.summary,
+        });
+        return;
+      }
       const isCorrect = result.score >= PASS_THRESHOLD;
       const response: StepResponse = {
         stepId: currentStep.id,
@@ -420,7 +384,7 @@ export default function ScenarioTrainerPage() {
       setResponses((prev) => [...prev, response]);
       setPhase("feedback");
     } catch (err: any) {
-      setGradeError(err?.message || "Grading failed. Please try again.");
+      setGradeError(err?.message || "Evaluation failed. Please try again.");
     } finally {
       setIsGrading(false);
     }
