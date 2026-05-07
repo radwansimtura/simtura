@@ -26,6 +26,7 @@ export const scenarios = pgTable("scenarios", {
   estimatedMinutes: integer("estimated_minutes").notNull().default(10),
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
   departureVideoUrl: text("departure_video_url"),
+  gradingMode: text("grading_mode").notNull().default("flexible"),
 });
 
 export const scenarioSteps = pgTable("scenario_steps", {

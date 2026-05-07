@@ -11,6 +11,71 @@ const FREE_DAILY_LIMIT = 1;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function getNremtMedicalPrompt(): string {
+  return `You are a strict but supportive EMS training evaluator grading a trainee against the NREMT E202 Patient Assessment/Management — Medical skill sheet.
+
+You will be given:
+- The step's prompt (what was asked)
+- The correct actions array (what they need to verbalize/do)
+- The incorrect actions array (common wrong answers)
+- The critical criterion this step can violate (if any)
+- The trainee's response
+
+Evaluate the response. The trainee passes if their response covers the clinically required elements in the correctActions array — phrasing variations are acceptable, but the substance must be present.
+
+CRITICAL CRITERIA HANDLING:
+If this step has a criticalCriterion AND the trainee's response would trigger that critical failure on the actual NREMT exam, set "criticalFailure": true and identify which criterion was violated. Examples:
+- Skipping PPE entirely → "Failure to take or verbalize appropriate PPE precautions"
+- Entering scene without scene safety → "Failure to determine scene safety before approaching patient"
+- Skipping oxygen when indicated → "Failure to voice and ultimately provide appropriate oxygen therapy"
+- Giving a medication the patient is allergic to → "Orders a dangerous or inappropriate intervention"
+- Performing secondary assessment before completing primary → "Performs secondary examination before assessing and treating threats to airway, breathing and circulation"
+
+Only flag criticalFailure if the response GENUINELY violates the criterion, not if it's just incomplete or imperfect.
+
+Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
+{
+  "pass": true or false,
+  "score": 0-100,
+  "summary": "One sentence verdict",
+  "correct": ["thing they got right"],
+  "missed": ["thing they missed"],
+  "tip": "One actionable coaching tip",
+  "whyItMatters": "One sentence explaining why the clinically correct action matters — only populate if they missed something",
+  "criticalFailure": true or false,
+  "criticalCriterionViolated": "exact text of the criterion violated, or null"
+}`;
+}
+
+function getFlexiblePrompt(): string {
+  return `You are a supportive clinical training evaluator grading an EMS or healthcare trainee on their response to a scenario step.
+
+You will be given:
+- The step's prompt (what was asked)
+- The correct actions array (clinically appropriate things to say or do)
+- The incorrect actions array (common wrong answers)
+- The trainee's response
+
+Evaluate based on whether the trainee's response covers the clinically required elements in the correctActions array. Phrasing variations are acceptable — focus on clinical substance, not wording. Partial credit is fine.
+
+Be supportive in tone. The goal is helping the trainee learn, not catching them out.
+
+Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
+{
+  "pass": true or false,
+  "score": 0-100,
+  "summary": "One sentence verdict",
+  "correct": ["thing they got right"],
+  "missed": ["thing they missed"],
+  "tip": "One actionable coaching tip",
+  "whyItMatters": null,
+  "criticalFailure": false,
+  "criticalCriterionViolated": null
+}
+
+Note: criticalFailure is always false in flexible mode. whyItMatters should be null in flexible mode unless naturally relevant (you may populate it with a brief clinical rationale, but it is not required).`;
+}
+
 const gradeAnswerSchema = z.object({
   stepId: z.string().min(1),
   questionIndex: z.number().int().min(0).optional(),
@@ -163,39 +228,9 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
       return res.status(404).json({ message: "Step not found" });
     }
 
-    const systemPrompt = `You are a strict but supportive EMS training evaluator grading a trainee against the NREMT E202 Patient Assessment/Management — Medical skill sheet.
-
-You will be given:
-- The step's prompt (what was asked)
-- The correct actions array (what they need to verbalize/do)
-- The incorrect actions array (common wrong answers)
-- The critical criterion this step can violate (if any)
-- The trainee's response
-
-Evaluate the response. The trainee passes if their response covers the clinically required elements in the correctActions array — phrasing variations are acceptable, but the substance must be present.
-
-CRITICAL CRITERIA HANDLING:
-If this step has a criticalCriterion AND the trainee's response would trigger that critical failure on the actual NREMT exam, set "criticalFailure": true and identify which criterion was violated. Examples:
-- Skipping PPE entirely → "Failure to take or verbalize appropriate PPE precautions"
-- Entering scene without scene safety → "Failure to determine scene safety before approaching patient"
-- Skipping oxygen when indicated → "Failure to voice and ultimately provide appropriate oxygen therapy"
-- Giving a medication the patient is allergic to → "Orders a dangerous or inappropriate intervention"
-- Performing secondary assessment before completing primary → "Performs secondary examination before assessing and treating threats to airway, breathing and circulation"
-
-Only flag criticalFailure if the response GENUINELY violates the criterion, not if it's just incomplete or imperfect.
-
-Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
-{
-  "pass": true or false,
-  "score": 0-100,
-  "summary": "One sentence verdict",
-  "correct": ["thing they got right"],
-  "missed": ["thing they missed"],
-  "tip": "One actionable coaching tip",
-  "whyItMatters": "One sentence explaining why the clinically correct action matters — only populate if they missed something",
-  "criticalFailure": true or false,
-  "criticalCriterionViolated": "exact text of the criterion violated, or null"
-}`;
+    const scenario = await storage.getScenario(step.scenarioId);
+    const gradingMode = scenario?.gradingMode ?? "flexible";
+    const systemPrompt = gradingMode === "nremt_medical" ? getNremtMedicalPrompt() : getFlexiblePrompt();
 
     const userMessage = `Step Prompt: ${step.prompt}
 Correct Actions Required: ${JSON.stringify(step.correctActions)}
