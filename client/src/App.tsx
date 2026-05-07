@@ -7,6 +7,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import LandingPageV2 from "@/pages/landing-v2";
+import { getLandingVersion } from "@/components/design-toggle";
+
+function LandingRouter() {
+  return getLandingVersion() === "v1" ? <LandingPage /> : <LandingPageV2 />;
+}
 import DisciplineScenariosPage from "@/pages/discipline-scenarios";
 import ScenarioTrainerPage from "@/pages/scenario-trainer";
 import SignInPage from "@/pages/signin";
@@ -49,7 +55,7 @@ function NursingPage() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
+      <Route path="/" component={LandingRouter} />
       <Route path="/ems" component={EMSPage} />
       <Route path="/nursing" component={NursingPage} />
       <Route path="/scenarios" component={EMSPage} />

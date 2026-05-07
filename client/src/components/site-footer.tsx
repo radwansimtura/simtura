@@ -19,6 +19,15 @@ export function SiteFooter() {
           <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-footer-nursing">
             Nursing
           </Link>
+          <Link href="/#pricing" className="hover:text-white transition-colors" data-testid="link-footer-pricing">
+            Pricing
+          </Link>
+          <Link href="/#faq" className="hover:text-white transition-colors" data-testid="link-footer-faq">
+            FAQ
+          </Link>
+          <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-footer-organizations">
+            For Organizations
+          </Link>
           <Link href="/contact" className="hover:text-white transition-colors" data-testid="link-footer-contact">
             Contact
           </Link>
