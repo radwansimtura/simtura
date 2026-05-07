@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -60,6 +60,7 @@ export const scenarios = pgTable("scenarios", {
   estimatedMinutes: integer("estimated_minutes").notNull().default(10),
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
   departureVideoUrl: text("departure_video_url"),
+  gradingMode: text("grading_mode").notNull().default("flexible"),
 });
 
 export const scenarioSteps = pgTable("scenario_steps", {
@@ -78,6 +79,9 @@ export const scenarioSteps = pgTable("scenario_steps", {
   isCritical: boolean("is_critical").notNull().default(false),
   videoUrl: text("video_url"),
   questions: jsonb("questions"),
+  criticalCriterion: text("critical_criterion"),
+  whyItMatters: text("why_it_matters"),
+  nremtSkillSheetItem: text("nremt_skill_sheet_item"),
 });
 
 export const attempts = pgTable("attempts", {
@@ -90,6 +94,46 @@ export const attempts = pgTable("attempts", {
   totalSteps: integer("total_steps").notNull(),
   correctSteps: integer("correct_steps").notNull().default(0),
   responses: jsonb("responses").notNull().default(sql`'[]'::jsonb`),
+  criticalFailure: boolean("critical_failure").notNull().default(false),
+  criticalCriterionViolated: text("critical_criterion_violated"),
+  endedEarly: boolean("ended_early").notNull().default(false),
+});
+
+export const flashcardDecks = pgTable("flashcard_decks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  attemptId: varchar("attempt_id"),
+  scenarioId: varchar("scenario_id").notNull(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const flashcards = pgTable("flashcards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deckId: varchar("deck_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  front: text("front").notNull(),
+  back: text("back").notNull(),
+  tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+  sourceStepId: varchar("source_step_id"),
+  easeFactor: real("ease_factor").notNull().default(2.5),
+  interval: integer("interval").notNull().default(0),
+  repetitions: integer("repetitions").notNull().default(0),
+  dueDate: timestamp("due_date").notNull().defaultNow(),
+  lastReviewedAt: timestamp("last_reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const flashcardReviews = pgTable("flashcard_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cardId: varchar("card_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  quality: integer("quality").notNull(),
+  previousInterval: integer("previous_interval").notNull(),
+  newInterval: integer("new_interval").notNull(),
+  previousEaseFactor: real("previous_ease_factor").notNull(),
+  newEaseFactor: real("new_ease_factor").notNull(),
+  reviewedAt: timestamp("reviewed_at").notNull().defaultNow(),
 });
 
 export const SECURITY_QUESTIONS = [
@@ -226,6 +270,9 @@ export interface PublicOrganizationCode {
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true });
+export const insertFlashcardDeckSchema = createInsertSchema(flashcardDecks).omit({ id: true });
+export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true });
+export const insertFlashcardReviewSchema = createInsertSchema(flashcardReviews).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type Scenario = typeof scenarios.$inferSelect;
@@ -234,6 +281,12 @@ export type ScenarioStep = typeof scenarioSteps.$inferSelect;
 export type InsertScenarioStep = z.infer<typeof insertScenarioStepSchema>;
 export type Attempt = typeof attempts.$inferSelect;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
+export type FlashcardDeck = typeof flashcardDecks.$inferSelect;
+export type InsertFlashcardDeck = z.infer<typeof insertFlashcardDeckSchema>;
+export type Flashcard = typeof flashcards.$inferSelect;
+export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
+export type FlashcardReview = typeof flashcardReviews.$inferSelect;
+export type InsertFlashcardReview = z.infer<typeof insertFlashcardReviewSchema>;
 
 export interface VitalSigns {
   hr?: number;
