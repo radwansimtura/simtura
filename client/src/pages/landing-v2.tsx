@@ -102,14 +102,14 @@ const PRICING = [
   },
   {
     name: "Programs",
-    price: "$25",
-    period: "/ seat / year",
+    price: "$21",
+    period: "/ seat / month",
     blurb: "Bulk licenses for schools, agencies, and shift crews.",
     features: [
-      "Volume pricing from $25/seat",
+      "From $21/seat/mo (50+ seats)",
+      "Pay only for your course duration",
       "Single-code redemption",
       "Cohort dashboard",
-      "Invoiced billing",
     ],
     cta: "For organizations",
     href: "/organizations",

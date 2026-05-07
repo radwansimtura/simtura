@@ -6,12 +6,14 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
+  CalendarClock,
   Check,
   GraduationCap,
   KeyRound,
   Mail,
   ShieldCheck,
   Sparkles,
+  Star,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,7 +73,8 @@ export default function OrganizationsPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [seats, setSeats] = useState(25);
-  const [form, setForm] = useState<Omit<CreateOrganizationInput, "seats">>({
+  const [courseMonths, setCourseMonths] = useState(4);
+  const [form, setForm] = useState<Omit<CreateOrganizationInput, "seats" | "courseMonths">>({
     name: "",
     contactName: user?.name ?? "",
     contactEmail: user?.email ?? "",
@@ -81,13 +84,14 @@ export default function OrganizationsPage() {
   });
 
   const ppsc = useMemo(() => pricePerSeatCents(seats), [seats]);
-  const totalCents = ppsc * seats;
-  const fullPriceCents = 2900 * seats;
+  const monthlyTotalCents = ppsc * seats;
+  const totalCents = monthlyTotalCents * courseMonths;
+  const fullPriceCents = 2500 * seats * courseMonths;
   const savedCents = fullPriceCents - totalCents;
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const payload: CreateOrganizationInput = { ...form, seats };
+      const payload: CreateOrganizationInput = { ...form, seats, courseMonths };
       const res = await apiRequest("POST", "/api/organizations", payload);
       return (await res.json()) as PublicOrganization & { checkoutUrl?: string };
     },
@@ -242,33 +246,57 @@ export default function OrganizationsPage() {
         <div className="mb-12">
           <p className="text-[11px] uppercase tracking-[0.4em] text-white/50 mb-3">Pricing</p>
           <h2 className="text-3xl sm:text-5xl font-bold tracking-tight mb-3">
-            Volume pricing, annual seats.
+            Pay for your course, not the calendar year.
           </h2>
           <p className="text-white/60 max-w-2xl">
-            One year of Pro access per seat. The more you buy, the lower the per-seat price.
+            Seats priced by how long your program actually runs — a 4-week course pays
+            less than a 6-month one.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...PRICING_TIERS].reverse().map((t) => (
-            <div
-              key={t.minSeats}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
-              data-testid={`pricing-tier-${t.minSeats}`}
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50 mb-3">{t.label}</p>
-              <div className="flex items-baseline gap-1 mb-3">
-                <span className="text-4xl font-bold">${(t.pricePerSeatCents / 100).toFixed(0)}</span>
-                <span className="text-sm text-white/50">/seat/year</span>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[...PRICING_TIERS].reverse().map((t) => {
+            const isPopular = !!t.popular;
+            return (
+              <div
+                key={t.minSeats}
+                className={`relative rounded-2xl p-6 flex flex-col ${
+                  isPopular
+                    ? "border-2 border-white/40 bg-white/[0.06]"
+                    : "border border-white/10 bg-white/[0.03]"
+                }`}
+                data-testid={`pricing-tier-${t.minSeats}`}
+              >
+                {isPopular && (
+                  <div className="absolute -top-3 left-6 inline-flex items-center gap-1.5 rounded-full bg-white text-black text-[10px] font-semibold uppercase tracking-[0.2em] px-3 py-1">
+                    <Star className="h-3 w-3 fill-black" />
+                    Most popular
+                  </div>
+                )}
+                <p className="text-xs uppercase tracking-[0.2em] text-white/50 mb-2">
+                  {t.name}
+                </p>
+                <p className="text-sm text-white/60 mb-4">{t.seatRange}</p>
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-4xl font-bold">${(t.pricePerSeatCents / 100).toFixed(0)}</span>
+                  <span className="text-sm text-white/50">/seat/month</span>
+                </div>
+                <p className="text-sm text-white/60 mb-5 leading-relaxed">{t.description}</p>
+                <ul className="text-sm text-white/70 space-y-2 mt-auto">
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Unlimited scenarios</li>
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Individual student codes</li>
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Redemption dashboard</li>
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Access ends with course</li>
+                </ul>
               </div>
-              <ul className="text-sm text-white/70 space-y-2">
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Unlimited scenarios</li>
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Individual student codes</li>
-                <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Redemption dashboard</li>
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        <p className="mt-8 text-sm text-white/50 text-center max-w-2xl mx-auto">
+          Payment is collected upfront for the full course duration. Access automatically
+          ends when your course does.
+        </p>
       </section>
 
       {/* GET STARTED FORM */}
@@ -414,7 +442,7 @@ export default function OrganizationsPage() {
                 <span className="text-white/50">seats</span>
               </div>
               <p className="text-sm text-white/50 mb-6">
-                {formatMoney(ppsc)} per seat / year
+                {formatMoney(ppsc)} per seat / month
               </p>
 
               <Slider
@@ -443,9 +471,45 @@ export default function OrganizationsPage() {
                 data-testid="input-seats"
               />
 
-              <div className="space-y-3 pt-5 border-t border-white/10">
+              <div className="pt-5 border-t border-white/10">
+                <Label className="text-[11px] uppercase tracking-[0.2em] text-white/50 mb-3 flex items-center gap-2">
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Course duration
+                </Label>
+                <Select
+                  value={String(courseMonths)}
+                  onValueChange={(v) => setCourseMonths(Number(v))}
+                >
+                  <SelectTrigger
+                    className="h-11 bg-white/[0.04] border-white/10 text-white mb-2"
+                    data-testid="select-course-months"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 month (~4 weeks)</SelectItem>
+                    <SelectItem value="2">2 months</SelectItem>
+                    <SelectItem value="3">3 months</SelectItem>
+                    <SelectItem value="4">4 months (a semester)</SelectItem>
+                    <SelectItem value="6">6 months</SelectItem>
+                    <SelectItem value="9">9 months (academic year)</SelectItem>
+                    <SelectItem value="12">12 months</SelectItem>
+                    <SelectItem value="18">18 months</SelectItem>
+                    <SelectItem value="24">24 months</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-white/40 mb-1">
+                  Access ends automatically when the course does.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-5 border-t border-white/10 mt-5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">Subtotal</span>
+                  <span className="text-white/60">{seats} seats × {formatMoney(ppsc)}/mo</span>
+                  <span className="tabular-nums">{formatMoney(monthlyTotalCents)}/mo</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/60">× {courseMonths} month{courseMonths === 1 ? "" : "s"}</span>
                   <span className="tabular-nums">{formatMoney(totalCents)}</span>
                 </div>
                 {savedCents > 0 && (
@@ -455,7 +519,7 @@ export default function OrganizationsPage() {
                   </div>
                 )}
                 <div className="flex justify-between items-baseline pt-3 border-t border-white/10">
-                  <span className="text-white/60 text-sm">Total / year</span>
+                  <span className="text-white/60 text-sm">Total upfront</span>
                   <span
                     className="text-2xl font-bold tabular-nums"
                     data-testid="text-total"

@@ -28,6 +28,7 @@ export const organizations = pgTable("organizations", {
   orgType: text("org_type").notNull().default("Other"),
   seats: integer("seats").notNull(),
   pricePerSeatCents: integer("price_per_seat_cents").notNull(),
+  courseMonths: integer("course_months").notNull().default(1),
   totalCents: integer("total_cents").notNull(),
   status: text("status").notNull().default("pending"),
   ownerUserId: varchar("owner_user_id"),
@@ -205,6 +206,7 @@ export const createOrganizationSchema = z.object({
   billingEmail: z.string().email().max(200),
   orgType: z.enum(ORG_TYPES).default("Other"),
   seats: z.number().int().min(5).max(10000),
+  courseMonths: z.number().int().min(1).max(24).default(4),
   notes: z.string().max(2000).optional(),
 });
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
@@ -216,14 +218,44 @@ export type RedeemCodeInput = z.infer<typeof redeemCodeSchema>;
 
 export interface PricingTier {
   minSeats: number;
+  maxSeats: number | null;
   pricePerSeatCents: number;
   label: string;
+  name: string;
+  seatRange: string;
+  description: string;
+  popular?: boolean;
 }
 
 export const PRICING_TIERS: PricingTier[] = [
-  { minSeats: 50, pricePerSeatCents: 2500, label: "Program (50+)" },
-  { minSeats: 10, pricePerSeatCents: 2700, label: "Team (10–49)" },
-  { minSeats: 5, pricePerSeatCents: 2900, label: "Starter (5–9)" },
+  {
+    minSeats: 50,
+    maxSeats: null,
+    pricePerSeatCents: 2100,
+    label: "Program (50+)",
+    name: "Program",
+    seatRange: "50+ seats",
+    description: "For full degree programs and large academies running multiple cohorts.",
+  },
+  {
+    minSeats: 10,
+    maxSeats: 49,
+    pricePerSeatCents: 2300,
+    label: "Team (10–49)",
+    name: "Team",
+    seatRange: "10–49 seats",
+    description: "For mid-sized cohorts, departments, and shift crews.",
+    popular: true,
+  },
+  {
+    minSeats: 5,
+    maxSeats: 9,
+    pricePerSeatCents: 2500,
+    label: "Starter (5–9)",
+    name: "Starter",
+    seatRange: "5–9 seats",
+    description: "For small classes, study groups, and pilot programs.",
+  },
 ];
 
 export function pricePerSeatCents(seats: number): number {
@@ -252,6 +284,7 @@ export interface PublicOrganization {
   orgType: string;
   seats: number;
   pricePerSeatCents: number;
+  courseMonths: number;
   totalCents: number;
   status: string;
   createdAt: string;

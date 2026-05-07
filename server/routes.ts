@@ -37,6 +37,7 @@ function toPublicOrg(org: any, redeemedCount: number): PublicOrganization {
     orgType: org.orgType,
     seats: org.seats,
     pricePerSeatCents: org.pricePerSeatCents,
+    courseMonths: org.courseMonths ?? 1,
     totalCents: org.totalCents,
     status: org.status,
     createdAt: org.createdAt instanceof Date ? org.createdAt.toISOString() : org.createdAt,
@@ -518,7 +519,8 @@ Evaluate the trainee's response.`;
     }
     const data = parsed.data;
     const ppsc = pricePerSeatCents(data.seats);
-    const totalCents = ppsc * data.seats;
+    const months = data.courseMonths;
+    const totalCents = ppsc * data.seats * months;
     const ownerUserId = req.session.userId ?? null;
 
     const org = await storage.createOrganization({
@@ -529,6 +531,7 @@ Evaluate the trainee's response.`;
       orgType: data.orgType,
       seats: data.seats,
       pricePerSeatCents: ppsc,
+      courseMonths: months,
       totalCents,
       status: "pending",
       ownerUserId,
@@ -552,10 +555,10 @@ Evaluate the trainee's response.`;
             quantity: data.seats,
             price_data: {
               currency: "usd",
-              unit_amount: ppsc,
+              unit_amount: ppsc * months,
               product_data: {
                 name: `Simtura.ai Pro — ${data.name.trim()}`,
-                description: `${data.seats} seats · 1 year of Pro access per seat · ${data.orgType}`,
+                description: `${data.seats} seats · ${months} month${months === 1 ? "" : "s"} of Pro access per seat · ${data.orgType}`,
               },
             },
           },
@@ -563,6 +566,7 @@ Evaluate the trainee's response.`;
         metadata: {
           organizationId: org.id,
           seats: String(data.seats),
+          courseMonths: String(months),
         },
         success_url: `${baseUrl}/organizations/${org.id}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/organizations?canceled=1`,
@@ -580,7 +584,7 @@ Evaluate the trainee's response.`;
       });
     }
 
-    console.log(`[orgs] Created org ${org.id} "${org.name}" — ${data.seats} seats @ $${(ppsc / 100).toFixed(2)} = $${(totalCents / 100).toFixed(2)} — awaiting payment`);
+    console.log(`[orgs] Created org ${org.id} "${org.name}" — ${data.seats} seats × ${months}mo @ $${(ppsc / 100).toFixed(2)}/seat/mo = $${(totalCents / 100).toFixed(2)} — awaiting payment`);
     res.json({ ...toPublicOrg(org, 0), checkoutUrl });
   });
 

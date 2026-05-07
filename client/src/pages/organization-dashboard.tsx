@@ -199,7 +199,7 @@ export default function OrganizationDashboardPage() {
           />
           <StatCard
             icon={<Building2 className="h-4 w-4" />}
-            label="Per seat / yr"
+            label="Per seat / mo"
             value={org ? formatMoney(org.pricePerSeatCents) : "—"}
             loading={orgLoading}
           />
@@ -226,7 +226,7 @@ export default function OrganizationDashboardPage() {
               <h3 className="text-lg font-semibold mb-1">Send these codes to your students.</h3>
               <p className="text-sm text-white/60 leading-relaxed">
                 Each student creates a free Simtura account, then enters their code on the
-                profile page to unlock Pro for one year.
+                profile page to unlock Pro for the full course duration.
               </p>
             </div>
             <Button
