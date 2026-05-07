@@ -8,10 +8,9 @@ import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import LandingPageV2 from "@/pages/landing-v2";
-import { getLandingVersion } from "@/components/design-toggle";
 
 function LandingRouter() {
-  return getLandingVersion() === "v1" ? <LandingPage /> : <LandingPageV2 />;
+  return <LandingPageV2 />;
 }
 import DisciplineScenariosPage from "@/pages/discipline-scenarios";
 import ScenarioTrainerPage from "@/pages/scenario-trainer";
