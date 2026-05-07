@@ -15,6 +15,8 @@ export const users = pgTable("users", {
   premiumSource: text("premium_source"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  securityQuestion: text("security_question"),
+  securityAnswerHash: text("security_answer_hash"),
 });
 
 export const organizations = pgTable("organizations", {
@@ -90,14 +92,41 @@ export const attempts = pgTable("attempts", {
   responses: jsonb("responses").notNull().default(sql`'[]'::jsonb`),
 });
 
+export const SECURITY_QUESTIONS = [
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What was the make of your first car?",
+  "What is your mother's maiden name?",
+  "What was the name of your elementary school?",
+  "What street did you grow up on?",
+] as const;
+export type SecurityQuestion = (typeof SECURITY_QUESTIONS)[number];
+
 export const signupSchema = z.object({
   email: z.string().email().max(200),
   password: z.string().min(8).max(200),
   name: z.string().min(1).max(120),
-});
+  securityQuestion: z.enum(SECURITY_QUESTIONS).optional(),
+  securityAnswer: z.string().min(2).max(200).optional(),
+}).refine(
+  (d) => (d.securityQuestion && d.securityAnswer) || (!d.securityQuestion && !d.securityAnswer),
+  { message: "Provide both a security question and an answer, or neither.", path: ["securityAnswer"] },
+);
 export const signinSchema = z.object({
   email: z.string().email().max(200),
   password: z.string().min(1).max(200),
+});
+export const setSecurityQuestionSchema = z.object({
+  securityQuestion: z.enum(SECURITY_QUESTIONS),
+  securityAnswer: z.string().min(2).max(200),
+});
+export const forgotPasswordLookupSchema = z.object({
+  email: z.string().email().max(200),
+});
+export const resetPasswordSchema = z.object({
+  email: z.string().email().max(200),
+  securityAnswer: z.string().min(1).max(200),
+  newPassword: z.string().min(8).max(200),
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 export type SigninInput = z.infer<typeof signinSchema>;
@@ -111,6 +140,7 @@ export interface PublicUser {
   proSince: string | null;
   organizationId: string | null;
   premiumSource: string | null;
+  hasSecurityQuestion: boolean;
 }
 
 export const ORG_TYPES = [

@@ -42,6 +42,7 @@ Simtura.ai provides AI-powered, interactive patient scenario simulations with im
 *   **Stripe for Payments**: All payment and subscription logic (individual Pro, organizational licensing) is handled through real Stripe Checkout and webhooks for robust, secure transactions.
 *   **Idempotent Seed Data**: Database seeding logic in `server/seed.ts` is designed to be idempotent, ensuring consistent scenario data across deployments.
 *   **Dedicated Webhook Handler**: Stripe webhook processing is explicitly handled with raw body parsing *before* `express.json()` to ensure signature verification, enhancing security.
+*   **Password Recovery via Security Question**: No email-based reset. Each user picks a question from `SECURITY_QUESTIONS` (in `shared/schema.ts`) at signup and answers it; the answer is normalized (trim + lowercase + collapsed whitespace) and scrypt-hashed using the same `hashPassword` as passwords. The `/forgot-password` flow looks up the question by email and verifies the answer in a single atomic reset call. Endpoints are IP rate-limited and return generic errors to avoid leaking which emails exist.
 
 ## Product
 
@@ -50,6 +51,7 @@ Simtura.ai provides AI-powered, interactive patient scenario simulations with im
 *   **Organizational Licensing**: Bulk seat purchasing, code generation, and dashboard for managing users.
 *   **Individual Pro Subscription**: Monthly subscription for premium features managed via Stripe.
 *   **Dark Mode**: Default dark mode with toggle support.
+*   **Password Recovery**: Self-service reset via a security question chosen at signup; managed from the profile page or the `/forgot-password` flow.
 
 ## User preferences
 

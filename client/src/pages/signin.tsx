@@ -126,7 +126,13 @@ export default function SignInPage() {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-white/60">
+          <p className="mt-6 text-center text-sm">
+            <Link href="/forgot-password" className="text-white/60 hover:text-white hover:underline" data-testid="link-forgot-password">
+              Forgot password?
+            </Link>
+          </p>
+
+          <p className="mt-4 text-center text-sm text-white/60">
             New here?{" "}
             <Link href="/signup" className="text-white hover:underline font-medium" data-testid="link-signup">
               Create an account

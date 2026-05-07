@@ -7,7 +7,7 @@ interface AuthContextValue {
   user: PublicUser | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<PublicUser>;
-  signUp: (email: string, password: string, name: string) => Promise<PublicUser>;
+  signUp: (vars: { email: string; password: string; name: string; securityQuestion?: string; securityAnswer?: string }) => Promise<PublicUser>;
   signOut: () => Promise<void>;
   upgrade: () => Promise<void>;
   manageBilling: () => Promise<void>;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const signUpMutation = useMutation({
-    mutationFn: async (vars: { email: string; password: string; name: string }) => {
+    mutationFn: async (vars: { email: string; password: string; name: string; securityQuestion?: string; securityAnswer?: string }) => {
       const res = await apiRequest("POST", "/api/auth/signup", vars);
       return res.json() as Promise<PublicUser>;
     },
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: user ?? null,
     isLoading,
     signIn: (email, password) => signInMutation.mutateAsync({ email, password }),
-    signUp: (email, password, name) => signUpMutation.mutateAsync({ email, password, name }),
+    signUp: (vars) => signUpMutation.mutateAsync(vars),
     signOut: () => signOutMutation.mutateAsync(),
     upgrade: () => upgradeMutation.mutateAsync(),
     manageBilling: () => billingPortalMutation.mutateAsync(),

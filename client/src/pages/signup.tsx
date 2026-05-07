@@ -4,8 +4,16 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { SECURITY_QUESTIONS } from "@shared/schema";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
 
@@ -16,6 +24,8 @@ export default function SignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [securityQuestion, setSecurityQuestion] = useState<string>(SECURITY_QUESTIONS[0]);
+  const [securityAnswer, setSecurityAnswer] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,9 +38,17 @@ export default function SignUpPage() {
       });
       return;
     }
+    if (securityAnswer.trim().length < 2) {
+      toast({
+        title: "Security answer required",
+        description: "We use this so you can recover your account if you forget your password.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
-      await signUp(email, password, name);
+      await signUp({ email, password, name, securityQuestion, securityAnswer });
       toast({ title: "Account created.", description: "You're all set." });
       setLocation("/profile");
     } catch (err: any) {
@@ -131,6 +149,47 @@ export default function SignUpPage() {
                 placeholder="At least 8 characters"
                 data-testid="input-password"
               />
+            </div>
+
+            <div className="pt-2">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-white/40 mb-3">
+                Account recovery
+              </p>
+              <Label className="text-white/70 text-xs uppercase tracking-wider">
+                Security question
+              </Label>
+              <Select value={securityQuestion} onValueChange={setSecurityQuestion}>
+                <SelectTrigger
+                  className="mt-2 h-12 rounded-xl bg-white/[0.04] border-white/10 text-white focus:ring-white/30"
+                  data-testid="select-security-question"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                  {SECURITY_QUESTIONS.map((q) => (
+                    <SelectItem key={q} value={q} data-testid={`option-question-${q.slice(0, 16)}`}>
+                      {q}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="security-answer" className="text-white/70 text-xs uppercase tracking-wider">
+                Your answer
+              </Label>
+              <Input
+                id="security-answer"
+                required
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                className="mt-2 h-12 rounded-xl bg-white/[0.04] border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/30"
+                placeholder="Something only you'd know"
+                data-testid="input-security-answer"
+              />
+              <p className="mt-2 text-xs text-white/40">
+                Case- and space-insensitive. You'll use this if you ever forget your password.
+              </p>
             </div>
 
             <Button

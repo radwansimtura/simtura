@@ -5,7 +5,14 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { pool } from "./db";
 import { storage } from "./storage";
-import { signupSchema, signinSchema, type PublicUser } from "@shared/schema";
+import {
+  signupSchema,
+  signinSchema,
+  setSecurityQuestionSchema,
+  forgotPasswordLookupSchema,
+  resetPasswordSchema,
+  type PublicUser,
+} from "@shared/schema";
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -43,6 +50,8 @@ function toPublic(u: {
   proSince: Date | null;
   organizationId: string | null;
   premiumSource: string | null;
+  securityQuestion?: string | null;
+  securityAnswerHash?: string | null;
 }): PublicUser {
   return {
     id: u.id,
@@ -53,7 +62,34 @@ function toPublic(u: {
     proSince: u.proSince ? u.proSince.toISOString() : null,
     organizationId: u.organizationId ?? null,
     premiumSource: u.premiumSource ?? null,
+    hasSecurityQuestion: !!(u.securityQuestion && u.securityAnswerHash),
   };
+}
+
+function normalizeAnswer(a: string): string {
+  return a.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Per-IP rate limiter for forgot-password endpoints. In-memory only — fine for
+// a single-instance deployment; if we ever scale horizontally this should move
+// to Redis or a DB table.
+const resetAttempts = new Map<string, { count: number; resetAt: number }>();
+function rateLimitReset(req: Request, res: Response): boolean {
+  const key = `${req.ip}`;
+  const now = Date.now();
+  const WINDOW_MS = 15 * 60 * 1000;
+  const MAX = 10;
+  const entry = resetAttempts.get(key);
+  if (!entry || entry.resetAt < now) {
+    resetAttempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  entry.count += 1;
+  if (entry.count > MAX) {
+    res.status(429).json({ message: "Too many attempts. Try again in a few minutes." });
+    return false;
+  }
+  return true;
 }
 
 export function setupSession(app: Express) {
@@ -115,7 +151,16 @@ export function registerAuthRoutes(app: Express) {
         return res.status(409).json({ message: "An account with that email already exists." });
       }
       const passwordHash = await hashPassword(parsed.data.password);
-      const user = await storage.createUserFull({ email, passwordHash, name: parsed.data.name.trim() });
+      const securityAnswerHash = parsed.data.securityAnswer
+        ? await hashPassword(normalizeAnswer(parsed.data.securityAnswer))
+        : null;
+      const user = await storage.createUserFull({
+        email,
+        passwordHash,
+        name: parsed.data.name.trim(),
+        securityQuestion: parsed.data.securityQuestion ?? null,
+        securityAnswerHash,
+      });
       console.log(`[auth] user created: ${user.id} — saving session`);
       req.session.userId = user.id;
       req.session.save((err) => {
@@ -231,6 +276,77 @@ export function registerAuthRoutes(app: Express) {
       console.error("[stripe] failed to create subscription checkout:", err);
       res.status(502).json({ message: "Could not start checkout. Please try again." });
     }
+  });
+
+  // Set or change the current user's security question + answer.
+  app.post("/api/auth/security-question", requireAuth, async (req, res) => {
+    const parsed = setSecurityQuestionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
+    }
+    const answerHash = await hashPassword(normalizeAnswer(parsed.data.securityAnswer));
+    const user = await storage.setUserSecurityQuestion(
+      req.session.userId!,
+      parsed.data.securityQuestion,
+      answerHash,
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(toPublic(user));
+  });
+
+  // Public: look up a user's security question by email so they can answer it.
+  // To avoid leaking which emails are registered, we always return 200 — when
+  // there's no user (or the user hasn't set a question), return question:null.
+  app.post("/api/auth/forgot-password/lookup", async (req, res) => {
+    if (!rateLimitReset(req, res)) return;
+    const parsed = forgotPasswordLookupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+    const email = parsed.data.email.toLowerCase().trim();
+    const user = await storage.getUserByEmail(email);
+    if (!user || !user.securityQuestion || !user.securityAnswerHash) {
+      return res.json({ question: null });
+    }
+    res.json({ question: user.securityQuestion });
+  });
+
+  // Public: verify the answer and reset the password in one shot. Always
+  // returns the same generic error message on any failure path so we don't
+  // leak whether the email exists, whether the question is set, or whether
+  // only the answer was wrong.
+  app.post("/api/auth/forgot-password/reset", async (req, res) => {
+    if (!rateLimitReset(req, res)) return;
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
+    }
+    const email = parsed.data.email.toLowerCase().trim();
+    const generic = { message: "We couldn't reset your password with that answer. Double-check and try again." };
+
+    const user = await storage.getUserByEmail(email);
+    if (!user || !user.securityAnswerHash) {
+      return res.status(400).json(generic);
+    }
+    const ok = await verifyPassword(normalizeAnswer(parsed.data.securityAnswer), user.securityAnswerHash);
+    if (!ok) {
+      return res.status(400).json(generic);
+    }
+    const newHash = await hashPassword(parsed.data.newPassword);
+    await storage.setUserPasswordHash(user.id, newHash);
+    // Invalidate every existing session for this user so any stolen / stale
+    // sessions can't be used after a recovery flow. connect-pg-simple stores
+    // the session blob with the column name "sess".
+    try {
+      const result = await pool.query(
+        `DELETE FROM user_sessions WHERE sess->>'userId' = $1`,
+        [user.id],
+      );
+      console.log(`[auth] password reset for ${user.id} — invalidated ${result.rowCount ?? 0} session(s)`);
+    } catch (err: any) {
+      console.error(`[auth] failed to invalidate sessions after reset for ${user.id}: ${err?.message}`);
+    }
+    res.json({ ok: true });
   });
 
   // Open a Stripe Customer Portal session so the user can manage / cancel

@@ -11,6 +11,7 @@ import DisciplineScenariosPage from "@/pages/discipline-scenarios";
 import ScenarioTrainerPage from "@/pages/scenario-trainer";
 import SignInPage from "@/pages/signin";
 import SignUpPage from "@/pages/signup";
+import ForgotPasswordPage from "@/pages/forgot-password";
 import ProfilePage from "@/pages/profile";
 import ContactPage from "@/pages/contact";
 import LegalPage from "@/pages/legal";
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/scenario/:id" component={ScenarioTrainerPage} />
       <Route path="/signin" component={SignInPage} />
       <Route path="/signup" component={SignUpPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/legal" component={LegalPage} />

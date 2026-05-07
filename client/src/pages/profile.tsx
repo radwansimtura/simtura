@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { RedeemCodeCard } from "@/components/redeem-code-card";
+import { SecurityQuestionCard } from "@/components/security-question-card";
 import {
   ArrowLeft,
   ArrowRight,
@@ -310,6 +311,15 @@ export default function ProfilePage() {
             <RedeemCodeCard />
           </motion.div>
         )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.28 }}
+          className="mt-6"
+        >
+          <SecurityQuestionCard />
+        </motion.div>
 
         {/* Recent attempts */}
         <motion.div

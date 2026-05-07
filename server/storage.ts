@@ -21,7 +21,9 @@ import { eq, asc, desc, and, gte, isNull, isNotNull, sql } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUserFull(data: { email: string; passwordHash: string; name: string }): Promise<User>;
+  createUserFull(data: { email: string; passwordHash: string; name: string; securityQuestion?: string | null; securityAnswerHash?: string | null }): Promise<User>;
+  setUserSecurityQuestion(id: string, securityQuestion: string, securityAnswerHash: string): Promise<User | undefined>;
+  setUserPasswordHash(id: string, passwordHash: string): Promise<User | undefined>;
   setUserTier(id: string, tier: "free" | "pro"): Promise<User | undefined>;
   setUserOrgPremium(id: string, organizationId: string): Promise<User | undefined>;
 
@@ -67,8 +69,26 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUserFull(data: { email: string; passwordHash: string; name: string }): Promise<User> {
+  async createUserFull(data: { email: string; passwordHash: string; name: string; securityQuestion?: string | null; securityAnswerHash?: string | null }): Promise<User> {
     const [user] = await db.insert(users).values(data).returning();
+    return user;
+  }
+
+  async setUserSecurityQuestion(id: string, securityQuestion: string, securityAnswerHash: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ securityQuestion, securityAnswerHash })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async setUserPasswordHash(id: string, passwordHash: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ passwordHash })
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 
