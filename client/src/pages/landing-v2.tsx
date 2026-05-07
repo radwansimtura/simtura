@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   ChevronDown,
+  PlayCircle,
   Eye,
   Brain,
   Gauge,
@@ -487,16 +488,29 @@ export default function LandingPageV2() {
           <p className="text-white/60 text-lg max-w-xl mx-auto mb-8">
             Free forever — one scenario a day. Upgrade anytime for unlimited access.
           </p>
-          <Link href={user ? "/ems" : "/signup"}>
-            <Button
-              size="lg"
-              className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
-              data-testid="button-cta-final"
-            >
-              {user ? "Continue training" : "Create your account"}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href="/scenarios">
+              <Button
+                size="lg"
+                className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+                data-testid="button-cta-final-primary"
+              >
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Try a sample free
+              </Button>
+            </Link>
+            <Link href={user ? "/ems" : "/signup"}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-full border-white/30 bg-transparent text-white hover:bg-white/10 font-medium px-6"
+                data-testid="button-cta-final-secondary"
+              >
+                {user ? "Continue training" : "Create your account"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </motion.div>
       </section>
 
