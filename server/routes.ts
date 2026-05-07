@@ -18,8 +18,7 @@ const gradeAnswerSchema = z.object({
 });
 
 const evaluateSchema = z.object({
-  question: z.string().min(1).max(1000),
-  correctAnswer: z.string().min(1).max(2000),
+  stepId: z.string().min(1),
   traineeResponse: z.string().min(1).max(2000),
 });
 
@@ -39,6 +38,9 @@ const updateAttemptSchema = z.object({
     isCorrect: z.boolean(),
     timeSpent: z.number(),
   })).optional(),
+  criticalFailure: z.boolean().optional(),
+  criticalCriterionViolated: z.string().nullable().optional(),
+  endedEarly: z.boolean().optional(),
 });
 
 export async function registerRoutes(
@@ -98,7 +100,7 @@ Scoring guide:
 Return ONLY a JSON object (no markdown fences, no commentary) with this exact shape:
 {
   "score": <integer 0-100>,
-  "included": [<short bullet strings of correct elements the trainee covered>],
+  "correct": [<short bullet strings of correct elements the trainee covered>],
   "missed": [<short bullet strings of key elements from the correct answer the trainee did NOT cover>],
   "summary": "<one sentence, max 25 words, factual comparison only — do NOT add medical advice>"
 }`;
@@ -134,11 +136,11 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
 
       const parsedResp = JSON.parse(raw);
       const score = Math.max(0, Math.min(100, Math.round(Number(parsedResp.score) || 0)));
-      const included = Array.isArray(parsedResp.included) ? parsedResp.included.map(String).slice(0, 8) : [];
+      const correct = Array.isArray(parsedResp.correct) ? parsedResp.correct.map(String).slice(0, 8) : [];
       const missed = Array.isArray(parsedResp.missed) ? parsedResp.missed.map(String).slice(0, 8) : [];
       const summary = typeof parsedResp.summary === "string" ? parsedResp.summary.slice(0, 300) : "";
 
-      res.json({ score, included, missed, summary });
+      res.json({ score, correct, missed, summary });
     } catch (err: any) {
       console.error("Grading error:", err);
       res.status(500).json({ message: "Grading failed", error: err?.message ?? "unknown" });
@@ -154,43 +156,63 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
       return res.status(500).json({ message: "Evaluation service not configured" });
     }
 
-    const { question, correctAnswer, traineeResponse } = parsed.data;
+    const { stepId, traineeResponse } = parsed.data;
 
-    const systemPrompt = `You are a strict but fair clinical-training grader. You DO NOT provide medical advice or invent new clinical guidance. Your ONLY job is to compare a trainee's free-text answer against a single pre-validated, licensed-professional-approved correct answer and return a congruency score from 0 to 100.
+    const step = await storage.getScenarioStep(stepId);
+    if (!step) {
+      return res.status(404).json({ message: "Step not found" });
+    }
 
-Scoring guide:
-- 100 = Trainee's answer fully matches all key clinical elements of the correct answer (intervention, dose, route, rationale where applicable). Wording can differ.
-- 80-99 = All critical elements present, minor secondary details missing.
-- 60-79 = Most critical elements present but at least one important specific is missing or vague.
-- 40-59 = Partial match; trainee identified the right general direction but missed multiple key specifics.
-- 1-39 = Largely incorrect or missed the core action.
-- 0 = Completely wrong, irrelevant, or unsafe.
+    const systemPrompt = `You are a strict but supportive EMS training evaluator grading a trainee against the NREMT E202 Patient Assessment/Management — Medical skill sheet.
 
-Return ONLY a JSON object (no markdown fences, no commentary) with this exact shape:
+You will be given:
+- The step's prompt (what was asked)
+- The correct actions array (what they need to verbalize/do)
+- The incorrect actions array (common wrong answers)
+- The critical criterion this step can violate (if any)
+- The trainee's response
+
+Evaluate the response. The trainee passes if their response covers the clinically required elements in the correctActions array — phrasing variations are acceptable, but the substance must be present.
+
+CRITICAL CRITERIA HANDLING:
+If this step has a criticalCriterion AND the trainee's response would trigger that critical failure on the actual NREMT exam, set "criticalFailure": true and identify which criterion was violated. Examples:
+- Skipping PPE entirely → "Failure to take or verbalize appropriate PPE precautions"
+- Entering scene without scene safety → "Failure to determine scene safety before approaching patient"
+- Skipping oxygen when indicated → "Failure to voice and ultimately provide appropriate oxygen therapy"
+- Giving a medication the patient is allergic to → "Orders a dangerous or inappropriate intervention"
+- Performing secondary assessment before completing primary → "Performs secondary examination before assessing and treating threats to airway, breathing and circulation"
+
+Only flag criticalFailure if the response GENUINELY violates the criterion, not if it's just incomplete or imperfect.
+
+Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
 {
-  "score": <integer 0-100>,
-  "included": [<short bullet strings of correct elements the trainee covered>],
-  "missed": [<short bullet strings of key elements from the correct answer the trainee did NOT cover>],
-  "summary": "<one sentence, max 25 words, factual comparison only — do NOT add medical advice>"
+  "pass": true or false,
+  "score": 0-100,
+  "summary": "One sentence verdict",
+  "correct": ["thing they got right"],
+  "missed": ["thing they missed"],
+  "tip": "One actionable coaching tip",
+  "whyItMatters": "One sentence explaining why the clinically correct action matters — only populate if they missed something",
+  "criticalFailure": true or false,
+  "criticalCriterionViolated": "exact text of the criterion violated, or null"
 }`;
 
-    const userPrompt = `QUESTION:
-${question}
+    const userMessage = `Step Prompt: ${step.prompt}
+Correct Actions Required: ${JSON.stringify(step.correctActions)}
+Common Incorrect Actions: ${JSON.stringify(step.incorrectActions)}
+Critical Criterion This Step Can Violate: ${step.criticalCriterion || "None"}
+Why It Matters Clinically: ${step.whyItMatters || "Not specified"}
+NREMT Skill Sheet Item: ${step.nremtSkillSheetItem || "Not specified"}
+Trainee's Response: "${traineeResponse}"
 
-CORRECT ANSWER (validated by licensed clinician — this is the source of truth):
-${correctAnswer}
-
-TRAINEE'S ANSWER:
-${traineeResponse}
-
-Grade the trainee's answer against the correct answer. Return JSON only.`;
+Evaluate the trainee's response.`;
 
     try {
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
-        max_tokens: 600,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
         system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
+        messages: [{ role: "user", content: userMessage }],
       });
 
       const textBlock = response.content.find((b) => b.type === "text");
@@ -204,12 +226,17 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
       }
 
       const parsedResp = JSON.parse(raw);
-      const score = Math.max(0, Math.min(100, Math.round(Number(parsedResp.score) || 0)));
-      const included = Array.isArray(parsedResp.included) ? parsedResp.included.map(String).slice(0, 8) : [];
-      const missed = Array.isArray(parsedResp.missed) ? parsedResp.missed.map(String).slice(0, 8) : [];
-      const summary = typeof parsedResp.summary === "string" ? parsedResp.summary.slice(0, 300) : "";
-
-      res.json({ score, included, missed, summary });
+      res.json({
+        pass: Boolean(parsedResp.pass),
+        score: Math.max(0, Math.min(100, Math.round(Number(parsedResp.score) || 0))),
+        summary: typeof parsedResp.summary === "string" ? parsedResp.summary.slice(0, 300) : "",
+        correct: Array.isArray(parsedResp.correct) ? parsedResp.correct.map(String).slice(0, 8) : [],
+        missed: Array.isArray(parsedResp.missed) ? parsedResp.missed.map(String).slice(0, 8) : [],
+        tip: typeof parsedResp.tip === "string" ? parsedResp.tip.slice(0, 300) : "",
+        whyItMatters: typeof parsedResp.whyItMatters === "string" ? parsedResp.whyItMatters.slice(0, 500) : null,
+        criticalFailure: Boolean(parsedResp.criticalFailure),
+        criticalCriterionViolated: typeof parsedResp.criticalCriterionViolated === "string" ? parsedResp.criticalCriterionViolated : null,
+      });
     } catch (err: any) {
       console.error("Evaluation error:", err);
       res.status(500).json({ message: "Evaluation failed", error: err?.message ?? "unknown" });
@@ -362,6 +389,9 @@ Grade the trainee's answer against the correct answer. Return JSON only.`;
       score: parsed.data.score,
       correctSteps: parsed.data.correctSteps,
       responses: parsed.data.responses,
+      criticalFailure: parsed.data.criticalFailure,
+      criticalCriterionViolated: parsed.data.criticalCriterionViolated ?? undefined,
+      endedEarly: parsed.data.endedEarly,
     });
     if (!updated) {
       return res.status(404).json({ message: "Attempt not found" });

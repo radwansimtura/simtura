@@ -35,12 +35,17 @@ import { Textarea } from "@/components/ui/textarea";
 
 type TrainerMode = "multiple-choice" | "open-response";
 
-interface GradeResult {
+type GradeResult = {
+  pass: boolean;
   score: number;
-  included: string[];
-  missed: string[];
   summary: string;
-}
+  correct: string[];
+  missed: string[];
+  tip?: string;
+  whyItMatters?: string;
+  criticalFailure: boolean;
+  criticalCriterionViolated: string | null;
+};
 
 const PASS_THRESHOLD = 80;
 
@@ -94,6 +99,11 @@ export default function ScenarioTrainerPage() {
   const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
   const [isGrading, setIsGrading] = useState(false);
   const [gradeError, setGradeError] = useState<string | null>(null);
+  const [criticalFailureState, setCriticalFailureState] = useState<{
+    show: boolean;
+    criterion: string | null;
+    summary: string;
+  }>({ show: false, criterion: null, summary: "" });
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -323,12 +333,25 @@ export default function ScenarioTrainerPage() {
       setGradeError(null);
       try {
         const res = await apiRequest("POST", "/api/evaluate", {
-          question: currentQuestion.prompt,
-          correctAnswer: (currentQuestion.correctActions || []).join(" "),
+          stepId: currentStep.id,
           traineeResponse: trimmed,
         });
         const result: GradeResult = await res.json();
         setGradeResult(result);
+        if (result.criticalFailure) {
+          await apiRequest("PATCH", `/api/attempts/${attemptId}`, {
+            criticalFailure: true,
+            criticalCriterionViolated: result.criticalCriterionViolated,
+            endedEarly: true,
+            completedAt: new Date().toISOString(),
+          });
+          setCriticalFailureState({
+            show: true,
+            criterion: result.criticalCriterionViolated,
+            summary: result.summary,
+          });
+          return;
+        }
         const isCorrect = result.score >= PASS_THRESHOLD;
         const response: StepResponse = {
           stepId: currentStep.id,
@@ -338,7 +361,7 @@ export default function ScenarioTrainerPage() {
           timeSpent,
           mode: "open-response",
           aiScore: result.score,
-          aiIncluded: result.included,
+          aiIncluded: result.correct,
           aiMissed: result.missed,
           aiSummary: result.summary,
         };
@@ -390,7 +413,7 @@ export default function ScenarioTrainerPage() {
         timeSpent,
         mode: "open-response",
         aiScore: result.score,
-        aiIncluded: result.included,
+        aiIncluded: result.correct,
         aiMissed: result.missed,
         aiSummary: result.summary,
       };
@@ -1045,11 +1068,11 @@ export default function ScenarioTrainerPage() {
                       {gradeResult.summary && (
                         <p className="text-xs text-white/70 leading-relaxed mb-3" data-testid="text-ai-summary">{gradeResult.summary}</p>
                       )}
-                      {gradeResult.included.length > 0 && (
+                      {gradeResult.correct.length > 0 && (
                         <div className="mb-2">
-                          <div className="text-[10px] uppercase tracking-wider text-green-400/80 font-medium mb-1">You included</div>
+                          <div className="text-[10px] uppercase tracking-wider text-green-400/80 font-medium mb-1">You covered</div>
                           <ul className="space-y-0.5">
-                            {gradeResult.included.map((item, i) => (
+                            {gradeResult.correct.map((item, i) => (
                               <li key={i} className="text-xs text-white/80 flex items-start gap-1.5">
                                 <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
                                 <span>{item}</span>
@@ -1123,6 +1146,65 @@ export default function ScenarioTrainerPage() {
         }}
         reason="You've used your free scenario for today. Upgrade to Pro for unlimited training."
       />
+
+      <AnimatePresence>
+        {criticalFailureState.show && (
+          <motion.div
+            key="critical-failure-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="w-full max-w-md mx-4"
+            >
+              <div className="rounded-2xl bg-red-950/90 backdrop-blur-xl border border-red-500/30 p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/20 ring-2 ring-red-500/40">
+                    <XCircle className="h-5 w-5 text-red-400" />
+                  </div>
+                  <h2 className="text-lg font-bold text-white leading-tight">
+                    Scenario Ended — Critical Failure
+                  </h2>
+                </div>
+
+                {criticalFailureState.criterion && (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 mb-4">
+                    <div className="text-[10px] uppercase tracking-wider text-red-400/80 font-medium mb-1">
+                      Criterion Violated
+                    </div>
+                    <p className="text-sm text-white/90 leading-snug">
+                      {criticalFailureState.criterion}
+                    </p>
+                  </div>
+                )}
+
+                {criticalFailureState.summary && (
+                  <p className="text-xs text-white/60 mb-2 leading-relaxed italic">
+                    {criticalFailureState.summary}
+                  </p>
+                )}
+
+                <p className="text-xs text-white/50 mb-5 leading-relaxed">
+                  On the NREMT exam, this would be an automatic failure regardless of other points earned.
+                </p>
+
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold"
+                  data-testid="button-restart-after-critical-failure"
+                >
+                  Restart Scenario
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
