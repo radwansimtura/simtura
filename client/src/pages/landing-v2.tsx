@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   ChevronDown,
-  PlayCircle,
   Eye,
   Brain,
   Gauge,
-  ShieldCheck,
   Quote,
   Check,
   User,
@@ -222,25 +220,13 @@ export default function LandingPageV2() {
               data-testid="video-hero-bg"
             />
           </AnimatePresence>
-          {/* Stronger overlay so the new headline is readable */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/90" />
+          {/* Soft overlay for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/85" />
         </div>
 
         {/* Hero content */}
         <div className="relative z-10 h-full flex flex-col justify-center px-6 sm:px-12 lg:px-20 max-w-7xl mx-auto w-full">
-          <div className="max-w-3xl">
-            {/* Trust badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.08] backdrop-blur-md px-3.5 py-1.5 text-[11px] uppercase tracking-[0.18em] text-white/85 mb-6"
-              data-testid="badge-hero-trust"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Reviewed by NREMT paramedics &amp; practicing RNs
-            </motion.div>
-
+          <div className="max-w-2xl">
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -248,57 +234,63 @@ export default function LandingPageV2() {
               className="font-bold tracking-tight leading-[1.05] text-white text-5xl sm:text-6xl lg:text-7xl mb-5"
               data-testid="text-hero-headline"
             >
-              Train for the call <br className="hidden sm:inline" />before you take it.
+              Perfect the scene.
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-lg sm:text-xl text-white/80 mb-8 font-light max-w-2xl leading-relaxed"
+              transition={{ duration: 0.8, delay: 0.25 }}
+              className="text-base sm:text-lg text-white/75 mb-8 font-light flex flex-wrap items-baseline gap-x-1.5"
               data-testid="text-hero-subtitle"
             >
-              First-person video patient scenarios with instant, NREMT-aligned feedback. Built for EMS and nursing students preparing for boards — and the field.
+              <span>Immersive video simulations for</span>
+              <span className="relative inline-flex h-[1.25em] min-w-[3.5em] items-baseline overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={current.discipline}
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: "-100%", opacity: 0 }}
+                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                    className="font-semibold text-white"
+                    data-testid={`text-hero-discipline-${current.discipline.toLowerCase()}`}
+                  >
+                    {current.discipline}.
+                  </motion.span>
+                </AnimatePresence>
+              </span>
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-wrap items-center gap-3"
+              transition={{ duration: 0.8, delay: 0.45 }}
             >
-              <Link href="/scenarios">
+              <Link href={user ? "/ems" : "/signup"}>
                 <Button
                   size="lg"
                   className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
                   data-testid="button-hero-primary"
                 >
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  Try a sample free
+                  Start Training
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <a href="#how-it-works">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-12 rounded-full border-white/30 bg-transparent text-white hover:bg-white/10 font-medium px-6"
-                  data-testid="button-hero-secondary"
-                >
-                  See how it works
-                </Button>
-              </a>
             </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="text-xs text-white/50 mt-5"
-              data-testid="text-hero-microcopy"
-            >
-              Free forever — one scenario a day. No credit card required.
-            </motion.p>
           </div>
+        </div>
+
+        {/* Cut indicator dots */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+          {MONTAGE.map((_, i) => (
+            <div
+              key={i}
+              className={`h-0.5 transition-all duration-500 ${
+                i === idx ? "w-8 bg-white" : "w-3 bg-white/30"
+              }`}
+            />
+          ))}
         </div>
 
         <button
@@ -307,7 +299,7 @@ export default function LandingPageV2() {
           data-testid="button-scroll-down"
           aria-label="Scroll to how it works"
         >
-          <span className="text-[11px] uppercase tracking-[0.25em]">How it works</span>
+          <span className="text-[11px] uppercase tracking-[0.25em]">Explore</span>
           <ChevronDown className="h-4 w-4 animate-bounce" />
         </button>
       </section>
@@ -495,29 +487,16 @@ export default function LandingPageV2() {
           <p className="text-white/60 text-lg max-w-xl mx-auto mb-8">
             Free forever — one scenario a day. Upgrade anytime for unlimited access.
           </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/scenarios">
-              <Button
-                size="lg"
-                className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
-                data-testid="button-cta-final-primary"
-              >
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Try a sample free
-              </Button>
-            </Link>
-            <Link href={user ? "/ems" : "/signup"}>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12 rounded-full border-white/30 bg-transparent text-white hover:bg-white/10 font-medium px-6"
-                data-testid="button-cta-final-secondary"
-              >
-                {user ? "Continue training" : "Create your account"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+          <Link href={user ? "/ems" : "/signup"}>
+            <Button
+              size="lg"
+              className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
+              data-testid="button-cta-final"
+            >
+              {user ? "Continue training" : "Create your account"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </motion.div>
       </section>
 
