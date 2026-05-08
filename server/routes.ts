@@ -156,6 +156,39 @@ Output ONLY valid JSON in this exact shape:
 }`;
 }
 
+function getDidNotKnowPrompt(hasPreviousStep: boolean): string {
+  const sequenceFraming = hasPreviousStep
+    ? `The trainee did NOT know why the correct action is the right step immediately after the previous one. They need a teaching-focused explanation of the procedural sequence, not just a restatement of the canonical rationale.`
+    : `The trainee did NOT know why the correct action is the right first step in this scenario. They need a teaching-focused explanation that connects this action to the broader patient-care logic, not just a restatement of the canonical rationale.`;
+
+  return `You are an EMS educator working with a trainee who has admitted they don't understand WHY the correct action is right. Your role is to teach them — warmly, clearly, and concretely — the reasoning behind it.
+
+${sequenceFraming}
+
+You will receive:
+- The scenario question
+- The correct action(s) they should have taken
+- The previous step's correct action (if applicable)
+- The canonical clinical rationale (whyItMatters)
+
+Your job: Generate a richer, more pedagogical explanation than the canonical rationale alone. Help the trainee build a mental model. Specifically:
+
+1. State the core reason clearly in plain language (1 sentence)
+2. Connect it to clinical reasoning they likely already know (1-2 sentences) — e.g., reference anatomy, physiology, the "why" behind ABCs, or the logic of patient assessment progression
+3. Give a concrete example or scenario that makes the abstract idea click (1-2 sentences) — e.g., "Imagine if you skipped this step and the patient turned out to have..."
+4. End with a brief "remember this" anchor that connects to the procedural sequence
+
+Tone: warm, patient, like a senior medic explaining something for the third time without making the trainee feel stupid. Encouraging but substantive — actually teach, don't just sympathize.
+
+Output ONLY valid JSON in this exact shape:
+{
+  "feedback": "3-5 sentences of teaching-focused explanation following the structure above",
+  "captured": [],
+  "didNotMention": ["concept they should now understand", "another key concept"],
+  "isReasonable": false
+}`;
+}
+
 const gradeAnswerSchema = z.object({
   stepId: z.string().min(1),
   questionIndex: z.number().int().min(0).optional(),
@@ -404,17 +437,8 @@ Evaluate the trainee's response.`;
       return res.status(404).json({ message: "Step not found" });
     }
 
-    if (dontKnow) {
-      return res.json({
-        feedback: "That's okay — not every concept clicks right away. Review the rationale above and it'll stick next time.",
-        captured: [],
-        didNotMention: [],
-        isReasonable: false,
-      });
-    }
-
     const explanation = traineeExplanation?.trim() || "";
-    if (!explanation) {
+    if (!dontKnow && !explanation) {
       return res.status(400).json({ message: "traineeExplanation required when dontKnow is not set" });
     }
 
@@ -428,7 +452,14 @@ Evaluate the trainee's response.`;
     const correctActions = step.correctActions || [];
     const whyItMatters = step.whyItMatters || "Not specified";
 
-    const userMessage = `Scenario Question: ${step.prompt}
+    const userMessage = dontKnow
+      ? `Scenario Question: ${step.prompt}
+Previous Step's Correct Action: ${previousStepAction || "(none — this is the first step)"}
+Current Step's Correct Action(s): ${correctActions.join("; ")}
+Clinical Rationale (whyItMatters): ${whyItMatters}
+
+The trainee said they don't know why this is the correct ${previousStepAction ? "step immediately after the previous action" : "first action"}. Teach them the reasoning following the structured format in your instructions.`
+      : `Scenario Question: ${step.prompt}
 Previous Step's Correct Action: ${previousStepAction || "(none — this is the first step)"}
 Current Step's Correct Action(s): ${correctActions.join("; ")}
 Clinical Rationale (whyItMatters): ${whyItMatters}
@@ -440,7 +471,7 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
         max_tokens: 600,
-        system: getElaborationPrompt(!!previousStepAction),
+        system: dontKnow ? getDidNotKnowPrompt(!!previousStepAction) : getElaborationPrompt(!!previousStepAction),
         messages: [{ role: "user", content: userMessage }],
       });
 

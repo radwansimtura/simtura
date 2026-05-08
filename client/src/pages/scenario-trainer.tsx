@@ -1089,7 +1089,7 @@ export default function ScenarioTrainerPage() {
                       )}
                     </div>
                   )}
-                  {usesAI && gradeResult && !passedOpen && gradeResult.tip && (scenario?.gradingMode !== "nremt_medical" || !!elaborationResult) && (
+                  {usesAI && gradeResult && !passedOpen && gradeResult.tip && scenario?.gradingMode !== "nremt_medical" && (
                     <div
                       className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-md"
                       data-testid="coaching-tip-panel"
@@ -1105,7 +1105,7 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   )}
-                  {!(scenario?.gradingMode === "nremt_medical" && !headlineCorrect && !elaborationResult && !criticalFailureState.show) && (
+                  {!(scenario?.gradingMode === "nremt_medical" && !headlineCorrect && !criticalFailureState.show) && (
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
                     headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
