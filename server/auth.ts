@@ -46,6 +46,7 @@ function toPublic(u: {
   email: string;
   name: string;
   tier: string;
+  isAdmin: boolean;
   createdAt: Date;
   proSince: Date | null;
   organizationId: string | null;
@@ -58,6 +59,7 @@ function toPublic(u: {
     email: u.email,
     name: u.name,
     tier: (u.tier === "pro" ? "pro" : "free") as "free" | "pro",
+    isAdmin: u.isAdmin === true,
     createdAt: u.createdAt.toISOString(),
     proSince: u.proSince ? u.proSince.toISOString() : null,
     organizationId: u.organizationId ?? null,
@@ -238,7 +240,7 @@ export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/upgrade", requireAuth, async (req, res) => {
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.tier === "pro") {
+    if (user.isAdmin || user.tier === "pro") {
       return res.status(400).json({ message: "You're already on Pro." });
     }
     try {

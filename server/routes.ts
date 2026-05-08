@@ -397,7 +397,7 @@ Evaluate the trainee's response.`;
       return res.status(401).json({ message: "Session expired", code: "auth_required" });
     }
 
-    if (user.tier !== "pro") {
+    if (!user.isAdmin && user.tier !== "pro") {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
       const todayCount = await storage.countUserAttemptsSince(userId, startOfDay);
@@ -460,7 +460,7 @@ Evaluate the trainee's response.`;
       bestScore,
       passed,
       todayCount,
-      dailyLimit: user.tier === "pro" ? null : FREE_DAILY_LIMIT,
+      dailyLimit: (user.isAdmin || user.tier === "pro") ? null : FREE_DAILY_LIMIT,
       tier: user.tier,
       recent,
     });

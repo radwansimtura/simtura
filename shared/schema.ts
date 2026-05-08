@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull().default(""),
   tier: text("tier").notNull().default("free"),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   proSince: timestamp("pro_since"),
   organizationId: varchar("organization_id"),
@@ -181,6 +182,7 @@ export interface PublicUser {
   email: string;
   name: string;
   tier: "free" | "pro";
+  isAdmin: boolean;
   createdAt: string;
   proSince: string | null;
   organizationId: string | null;
