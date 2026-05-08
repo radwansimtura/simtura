@@ -359,6 +359,10 @@ export interface StepResponse {
   aiIncluded?: string[];
   aiMissed?: string[];
   aiSummary?: string;
+  elaborationText?: string;
+  elaborationFeedback?: string;
+  elaborationCaptured?: string[];
+  elaborationDidNotMention?: string[];
 }
 
 export interface GradeAnswerRequest {
@@ -372,4 +376,17 @@ export interface GradeAnswerResponse {
   included: string[];
   missed: string[];
   summary: string;
+}
+
+export interface GradeElaborationRequest {
+  stepId: string;
+  traineeExplanation?: string;
+  dontKnow?: boolean;
+}
+
+export interface GradeElaborationResponse {
+  feedback: string;
+  captured: string[];
+  didNotMention: string[];
+  isReasonable: boolean;
 }

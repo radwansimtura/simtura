@@ -125,10 +125,47 @@ Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
 Note: criticalFailure is always false in flexible mode. whyItMatters should be null in flexible mode unless naturally relevant (you may populate it with a brief clinical rationale, but it is not required).`;
 }
 
+function getElaborationPrompt(hasPreviousStep: boolean): string {
+  const sequenceFraming = hasPreviousStep
+    ? `The trainee was asked WHY the correct action is the right step IMMEDIATELY AFTER the previous action they completed. Their explanation should articulate the procedural transition logic — why one step necessitates or enables the next. Look for reasoning about clinical sequencing, dependencies between assessment phases, and why this ordering is required (not arbitrary).`
+    : `The trainee was asked WHY the correct action is the right FIRST step in this scenario. Their explanation should articulate why this action takes priority before any other action — typically related to scene safety, BSI/PPE, or establishing a foundation for the rest of the call.`;
+
+  return `You are an EMS educator providing encouraging feedback on a trainee's clinical reasoning. They have just gotten a question wrong and are trying to articulate WHY the correct answer is the correct next step in the procedural sequence.
+
+${sequenceFraming}
+
+You will receive:
+- The scenario question
+- The correct action(s) they should have taken
+- The previous step's correct action (if applicable)
+- The canonical clinical rationale (whyItMatters)
+- The trainee's attempted explanation
+
+Your job: ENCOURAGE cognitive engagement. ANY reasonable attempt at reasoning about the sequence deserves positive feedback. Highlight what they captured. Gently note things they didn't mention. Do NOT be strict, punitive, or critical. The trainee already got the question wrong — your role here is to reward the act of trying to reason about WHY the procedural order matters.
+
+Tone: warm, supportive, like a senior medic saying "Yeah, you've got the right idea."
+
+If the trainee's explanation is brief, off-topic, or shows confusion: still find something to validate, then provide the rationale gently.
+
+Output ONLY valid JSON in this exact shape:
+{
+  "feedback": "2-3 warm encouraging sentences acknowledging their reasoning",
+  "captured": ["concept they got right", "another concept they got right"],
+  "didNotMention": ["aspect they didn't address — phrase neutrally, not as failure"],
+  "isReasonable": true or false
+}`;
+}
+
 const gradeAnswerSchema = z.object({
   stepId: z.string().min(1),
   questionIndex: z.number().int().min(0).optional(),
   traineeAnswer: z.string().min(1).max(2000),
+});
+
+const gradeElaborationSchema = z.object({
+  stepId: z.string().min(1),
+  traineeExplanation: z.string().max(2000).optional(),
+  dontKnow: z.boolean().optional(),
 });
 
 const evaluateSchema = z.object({
@@ -345,9 +382,88 @@ Evaluate the trainee's response.`;
         criticalFailure: Boolean(parsedResp.criticalFailure),
         criticalCriterionViolated: typeof parsedResp.criticalCriterionViolated === "string" ? parsedResp.criticalCriterionViolated : null,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Evaluation error:", err);
       res.status(500).json({ message: "Evaluation failed", error: err && err.message ? err.message : "unknown" });
+    }
+  });
+
+  app.post("/api/grade-elaboration", async (req, res) => {
+    const parsed = gradeElaborationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request", errors: parsed.error.format() });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ message: "Grading service not configured" });
+    }
+
+    const { stepId, traineeExplanation, dontKnow } = parsed.data;
+
+    const step = await storage.getScenarioStep(stepId);
+    if (!step) {
+      return res.status(404).json({ message: "Step not found" });
+    }
+
+    if (dontKnow) {
+      return res.json({
+        feedback: "That's okay — not every concept clicks right away. Review the rationale above and it'll stick next time.",
+        captured: [],
+        didNotMention: [],
+        isReasonable: false,
+      });
+    }
+
+    const explanation = traineeExplanation?.trim() || "";
+    if (!explanation) {
+      return res.status(400).json({ message: "traineeExplanation required when dontKnow is not set" });
+    }
+
+    // Look up the previous step for sequence-focused elaboration framing
+    const allSteps = await storage.getScenarioSteps(step.scenarioId);
+    const previousStep = allSteps
+      .filter((s) => s.stepOrder === step.stepOrder - 1)
+      .at(0);
+    const previousStepAction = previousStep?.correctActions?.[0] || null;
+
+    const correctActions = step.correctActions || [];
+    const whyItMatters = step.whyItMatters || "Not specified";
+
+    const userMessage = `Scenario Question: ${step.prompt}
+Previous Step's Correct Action: ${previousStepAction || "(none — this is the first step)"}
+Current Step's Correct Action(s): ${correctActions.join("; ")}
+Clinical Rationale (whyItMatters): ${whyItMatters}
+Trainee's Explanation: "${explanation}"
+
+Evaluate their reasoning about why this is the correct ${previousStepAction ? "step immediately after the previous action" : "first action"}.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 600,
+        system: getElaborationPrompt(!!previousStepAction),
+        messages: [{ role: "user", content: userMessage }],
+      });
+
+      const textBlock = response.content.find((b) => b.type === "text");
+      if (!textBlock || textBlock.type !== "text") {
+        return res.status(502).json({ message: "Elaboration grader returned no text" });
+      }
+
+      let raw = textBlock.text.trim();
+      if (raw.startsWith("```")) {
+        raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+      }
+
+      const parsedResp = JSON.parse(raw);
+      res.json({
+        feedback: typeof parsedResp.feedback === "string" ? parsedResp.feedback.slice(0, 600) : "",
+        captured: Array.isArray(parsedResp.captured) ? parsedResp.captured.map(String).slice(0, 8) : [],
+        didNotMention: Array.isArray(parsedResp.didNotMention) ? parsedResp.didNotMention.map(String).slice(0, 8) : [],
+        isReasonable: Boolean(parsedResp.isReasonable),
+      });
+    } catch (err: any) {
+      console.error("Elaboration grading error:", err);
+      res.status(500).json({ message: "Elaboration grading failed", error: err?.message ?? "unknown" });
     }
   });
 
@@ -485,14 +601,14 @@ Evaluate the trainee's response.`;
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
     }
-    const existing = await storage.getAttempt(req.params.id);
+    const existing = await storage.getAttempt(req.params.id as string);
     if (!existing) {
       return res.status(404).json({ message: "Attempt not found" });
     }
     if (existing.userId !== (req.session as any).userId) {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const updated = await storage.updateAttempt(req.params.id, {
+    const updated = await storage.updateAttempt(req.params.id as string, {
       completedAt: parsed.data.completedAt ? new Date(parsed.data.completedAt) : undefined,
       score: parsed.data.score,
       correctSteps: parsed.data.correctSteps,

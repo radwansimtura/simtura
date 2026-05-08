@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { UpgradeModal } from "@/components/upgrade-modal";
-import type { Scenario, ScenarioStep, VitalSigns, StepQuestion, StepResponse } from "@shared/schema";
+import type { Scenario, ScenarioStep, VitalSigns, StepQuestion, StepResponse, GradeElaborationResponse } from "@shared/schema";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -99,6 +99,10 @@ export default function ScenarioTrainerPage() {
   const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
   const [isGrading, setIsGrading] = useState(false);
   const [gradeError, setGradeError] = useState<string | null>(null);
+  const [elaborationText, setElaborationText] = useState("");
+  const [elaborationResult, setElaborationResult] = useState<GradeElaborationResponse | null>(null);
+  const [elaborationLoading, setElaborationLoading] = useState(false);
+  const [elaborationError, setElaborationError] = useState<string | null>(null);
   const [criticalFailureState, setCriticalFailureState] = useState<{
     show: boolean;
     criterion: string | null;
@@ -390,6 +394,25 @@ export default function ScenarioTrainerPage() {
     }
   };
 
+  const handleSubmitElaboration = async (dontKnow = false) => {
+    if (!currentStep) return;
+    setElaborationLoading(true);
+    setElaborationError(null);
+    try {
+      const res = await apiRequest("POST", "/api/grade-elaboration", {
+        stepId: currentStep.id,
+        traineeExplanation: dontKnow ? undefined : elaborationText,
+        dontKnow: dontKnow || undefined,
+      });
+      const result: GradeElaborationResponse = await res.json();
+      setElaborationResult(result);
+    } catch (err: any) {
+      setElaborationError(err?.message || "Failed to submit. Please try again.");
+    } finally {
+      setElaborationLoading(false);
+    }
+  };
+
   const handleNext = () => {
     if (!steps || !currentStep) return;
 
@@ -402,6 +425,9 @@ export default function ScenarioTrainerPage() {
       setTraineeAnswer("");
       setGradeResult(null);
       setGradeError(null);
+      setElaborationText("");
+      setElaborationResult(null);
+      setElaborationError(null);
       setPhase("question");
       setStepStartTime(Date.now());
       return;
@@ -429,6 +455,9 @@ export default function ScenarioTrainerPage() {
       setTraineeAnswer("");
       setGradeResult(null);
       setGradeError(null);
+      setElaborationText("");
+      setElaborationResult(null);
+      setElaborationError(null);
       const nextStep = steps[nextStepIndex];
       if (nextStep?.videoUrl) {
         setPhase("step-video");
@@ -1060,7 +1089,7 @@ export default function ScenarioTrainerPage() {
                       )}
                     </div>
                   )}
-                  {usesAI && gradeResult && !passedOpen && gradeResult.tip && (
+                  {usesAI && gradeResult && !passedOpen && gradeResult.tip && (scenario?.gradingMode !== "nremt_medical" || !!elaborationResult) && (
                     <div
                       className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-md"
                       data-testid="coaching-tip-panel"
@@ -1076,6 +1105,7 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   )}
+                  {!(scenario?.gradingMode === "nremt_medical" && !headlineCorrect && !elaborationResult && !criticalFailureState.show) && (
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
                     headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
@@ -1105,10 +1135,117 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   </div>
+                  )}
+                  {!headlineCorrect && scenario?.gradingMode === "nremt_medical" && !criticalFailureState.show && (
+                    <div
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-md"
+                      data-testid="elaboration-panel"
+                    >
+                      {!elaborationResult ? (
+                        <>
+                          <div className="flex items-start gap-2.5 mb-3">
+                            <Brain className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
+                            <div>
+                              <div className="font-semibold text-sm text-white mb-0.5">
+                                {(() => {
+                                  const currentAction = gradeResult?.missed?.[0];
+                                  const previousStep = steps && currentStepIndex > 0 ? steps[currentStepIndex - 1] : null;
+                                  const previousAction = previousStep?.correctActions?.[0];
+                                  if (!currentAction) return "Why is this the correct action?";
+                                  if (previousAction) {
+                                    return `Why is "${currentAction}" the correct step immediately after "${previousAction}"?`;
+                                  }
+                                  return `Why is "${currentAction}" the correct first action?`;
+                                })()}
+                              </div>
+                              <p className="text-xs text-white/60 leading-relaxed">
+                                Explaining in your own words helps build durable understanding.
+                              </p>
+                            </div>
+                          </div>
+                          <textarea
+                            value={elaborationText}
+                            onChange={(e) => setElaborationText(e.target.value)}
+                            placeholder="Type your explanation..."
+                            className="w-full min-h-[80px] rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                            disabled={elaborationLoading}
+                            data-testid="textarea-elaboration"
+                          />
+                          {elaborationError && (
+                            <p className="text-xs text-red-400 mt-2" data-testid="text-elaboration-error">
+                              {elaborationError}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between gap-2 mt-3">
+                            <Button
+                              variant="ghost"
+                              onClick={() => handleSubmitElaboration(true)}
+                              disabled={elaborationLoading}
+                              className="text-white/60 hover:text-white/90 hover:bg-white/5 text-xs"
+                              data-testid="button-elaboration-dont-know"
+                            >
+                              I don't know
+                            </Button>
+                            <Button
+                              onClick={() => handleSubmitElaboration(false)}
+                              disabled={elaborationLoading || elaborationText.trim().length === 0}
+                              className="bg-blue-600 text-white hover:bg-blue-700"
+                              data-testid="button-elaboration-submit"
+                            >
+                              {elaborationLoading ? "Submitting..." : "Submit explanation"}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-start gap-2.5">
+                          <CheckCircle2 className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm text-white mb-1">
+                              {elaborationResult.isReasonable ? "Good thinking" : "Here's the reasoning"}
+                            </div>
+                            <p className="text-xs text-white/80 leading-relaxed mb-2">
+                              {elaborationResult.feedback}
+                            </p>
+                            {elaborationResult.captured.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-[10px] uppercase tracking-wider text-green-400/80 font-medium mb-1">
+                                  You connected
+                                </div>
+                                <ul className="space-y-0.5">
+                                  {elaborationResult.captured.map((item, i) => (
+                                    <li key={i} className="text-xs text-white/70 flex items-start gap-1.5">
+                                      <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {elaborationResult.didNotMention.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-[10px] uppercase tracking-wider text-amber-400/80 font-medium mb-1">
+                                  Also worth knowing
+                                </div>
+                                <ul className="space-y-0.5">
+                                  {elaborationResult.didNotMention.map((item, i) => (
+                                    <li key={i} className="text-xs text-white/70 flex items-start gap-1.5">
+                                      <Lightbulb className="h-3 w-3 text-amber-400 mt-0.5 shrink-0" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="flex justify-end">
                     <Button
                       onClick={handleNext}
-                      className="bg-blue-600 text-white"
+                      disabled={!headlineCorrect && scenario?.gradingMode === "nremt_medical" && !criticalFailureState.show && !elaborationResult}
+                      className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       data-testid="button-next-step"
                     >
                       {nextButtonLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
