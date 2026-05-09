@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { gradeCard, newCardState } from "./flashcards";
 import { seedDatabase } from "./seed";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
@@ -805,6 +806,205 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
             tier: updatedUser.tier,
           }
         : null,
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Flashcards (FSRS-based spaced repetition)
+  // ---------------------------------------------------------------
+
+  /**
+   * Sync flashcards from a completed attempt.
+   * - Creates a deck for the scenario+user if it doesn't exist
+   * - Creates one card per scenario step if cards don't exist
+   * - Marks cards from missed steps with priorityBoost = true
+   */
+  app.post("/api/flashcards/sync-from-attempt", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const schema = z.object({
+      attemptId: z.string().min(1),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+
+    const attempt = await storage.getAttempt(parsed.data.attemptId);
+    if (!attempt) return res.status(404).json({ message: "Attempt not found" });
+    if (attempt.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+
+    const scenario = await storage.getScenario(attempt.scenarioId);
+    if (!scenario) return res.status(404).json({ message: "Scenario not found" });
+
+    const steps = await storage.getScenarioSteps(scenario.id);
+    if (steps.length === 0) return res.json({ created: 0, boosted: 0 });
+
+    // Find or create deck
+    let deck = await storage.getDeckByScenarioAndUser(scenario.id, userId);
+    if (!deck) {
+      deck = await storage.createDeck({
+        userId,
+        scenarioId: scenario.id,
+        attemptId: attempt.id,
+        title: scenario.title,
+      });
+    }
+
+    // Find existing cards in this deck (by sourceStepId)
+    const existingCards = await storage.getCardsByDeck(deck.id);
+    const existingStepIds = new Set(existingCards.map(c => c.sourceStepId).filter(Boolean));
+
+    // Determine which steps were missed in this attempt
+    const responses = (attempt.responses ?? []) as Array<{ stepId: string; score?: number; isCorrect?: boolean }>;
+    const missedStepIds = new Set(
+      responses
+        .filter(r => r.isCorrect === false || (typeof r.score === "number" && r.score < 70))
+        .map(r => r.stepId)
+    );
+
+    // Create cards for any new steps. Each step may have:
+    //   - Legacy shape: step.prompt + step.correctActions (one card per step)
+    //   - Multi-question shape: step.questions JSONB array (one card per question)
+    let created = 0;
+    for (const step of steps) {
+      if (existingStepIds.has(step.id)) continue;
+      const why = step.whyItMatters ?? "";
+      const initialState = newCardState();
+      const isBoosted = missedStepIds.has(step.id);
+
+      // Determine question shape
+      const questions = Array.isArray(step.questions) ? step.questions as Array<{ prompt?: string; correctActions?: string[] }> : [];
+
+      if (questions.length > 0) {
+        // Multi-question: one card per question
+        for (const q of questions) {
+          const qPrompt = typeof q.prompt === "string" ? q.prompt.trim() : "";
+          const qActions = Array.isArray(q.correctActions) ? q.correctActions.map(String) : [];
+          if (!qPrompt || qActions.length === 0) continue;
+          const correctActions = qActions.join("; ");
+          const back = why ? `${correctActions}\n\nWhy it matters: ${why}` : correctActions;
+          await storage.createCard({
+            deckId: deck.id,
+            userId,
+            front: qPrompt,
+            back,
+            sourceStepId: step.id,
+            tags: [scenario.title],
+            difficulty: initialState.difficulty,
+            stability: initialState.stability,
+            state: initialState.state,
+            lapses: initialState.lapses,
+            reps: initialState.reps,
+            dueDate: initialState.dueDate,
+            priorityBoost: isBoosted,
+          });
+          created++;
+        }
+      } else {
+        // Legacy: one card per step using step.prompt + step.correctActions
+        const stepPrompt = typeof step.prompt === "string" ? step.prompt.trim() : "";
+        const stepActions = (step.correctActions ?? []).map(String);
+        if (!stepPrompt || stepActions.length === 0) continue;
+        const correctActions = stepActions.join("; ");
+        const back = why ? `${correctActions}\n\nWhy it matters: ${why}` : correctActions;
+        await storage.createCard({
+          deckId: deck.id,
+          userId,
+          front: stepPrompt,
+          back,
+          sourceStepId: step.id,
+          tags: [scenario.title],
+          difficulty: initialState.difficulty,
+          stability: initialState.stability,
+          state: initialState.state,
+          lapses: initialState.lapses,
+          reps: initialState.reps,
+          dueDate: initialState.dueDate,
+          priorityBoost: isBoosted,
+        });
+        created++;
+      }
+    }
+
+    // Boost existing cards whose source step was missed in this attempt
+    const cardsToBoost = existingCards
+      .filter(c => c.sourceStepId && missedStepIds.has(c.sourceStepId) && !c.priorityBoost)
+      .map(c => c.id);
+    if (cardsToBoost.length > 0) {
+      await storage.setCardPriorityBoost(cardsToBoost, true);
+    }
+
+    res.json({
+      created,
+      boosted: cardsToBoost.length,
+      deckId: deck.id,
+      totalCardsInDeck: existingCards.length + created,
+    });
+  });
+
+  /**
+   * Get the user's review queue.
+   * Returns cards in priority order: boosted, new, then due-by-date.
+   */
+  app.get("/api/flashcards/queue", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const cards = await storage.getQueueForUser(userId, limit);
+    res.json({ cards, count: cards.length });
+  });
+
+  /**
+   * Submit a review rating for a card.
+   * Runs FSRS, persists new state, logs the review.
+   */
+  app.post("/api/flashcards/:id/review", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const cardId = req.params.id as string;
+
+    const schema = z.object({
+      rating: z.enum(["again", "hard", "good", "easy"]),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+
+    const card = await storage.getCard(cardId);
+    if (!card) return res.status(404).json({ message: "Card not found" });
+    if (card.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+
+    const result = gradeCard(card, parsed.data.rating);
+
+    // Update card state. Priority boost gets cleared once reviewed.
+    const updated = await storage.updateCardState(card.id, {
+      difficulty: result.newDifficulty,
+      stability: result.newStability,
+      state: result.newState,
+      lapses: result.newLapses,
+      reps: result.newReps,
+      dueDate: result.newDueDate,
+      lastReviewedAt: result.newLastReviewedAt,
+      priorityBoost: false,
+    });
+
+    // Log the review
+    await storage.createReview({
+      cardId: card.id,
+      userId,
+      rating: result.rating,
+      previousDifficulty: result.previousDifficulty,
+      previousStability: result.previousStability,
+      previousState: result.previousState,
+      newDifficulty: result.newDifficulty,
+      newStability: result.newStability,
+      newState: result.newState,
+      scheduledFor: result.newDueDate,
+    });
+
+    res.json({
+      card: updated,
+      nextDueDate: result.newDueDate,
+      newState: result.newState,
     });
   });
 

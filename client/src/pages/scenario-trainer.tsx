@@ -183,6 +183,12 @@ export default function ScenarioTrainerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attempts"] });
+      // Sync flashcards: create deck/cards if needed, boost missed-step cards.
+      // Fire-and-forget — failure here shouldn't block the results page.
+      if (attemptId) {
+        apiRequest("POST", "/api/flashcards/sync-from-attempt", { attemptId })
+          .catch((err) => console.warn("Flashcard sync failed:", err));
+      }
     },
   });
 

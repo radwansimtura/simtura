@@ -22,6 +22,7 @@ import ContactPage from "@/pages/contact";
 import LegalPage from "@/pages/legal";
 import OrganizationsPage from "@/pages/organizations";
 import OrganizationDashboardPage from "@/pages/organization-dashboard";
+import ReviewPage from "@/pages/review";
 
 function EMSPage() {
   return (
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/legal" component={LegalPage} />
       <Route path="/organizations" component={OrganizationsPage} />
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
+      <Route path="/review" component={ReviewPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -8,12 +8,18 @@ import {
   type InsertAttempt,
   type Organization,
   type OrganizationCode,
+  type FlashcardDeck,
+  type Flashcard,
+  type FlashcardReview,
   users,
   scenarios,
   scenarioSteps,
   attempts,
   organizations,
   organizationCodes,
+  flashcardDecks,
+  flashcards,
+  flashcardReviews,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, asc, desc, and, gte, isNull, isNotNull, sql } from "drizzle-orm";
@@ -56,6 +62,56 @@ export interface IStorage {
   getAttempt(id: string): Promise<Attempt | undefined>;
   countUserAttemptsSince(userId: string, since: Date): Promise<number>;
   getUserAttempts(userId: string, limit?: number): Promise<Attempt[]>;
+
+  // Flashcard decks
+  getDeckByScenarioAndUser(scenarioId: string, userId: string): Promise<FlashcardDeck | undefined>;
+  createDeck(data: { userId: string; scenarioId: string; attemptId?: string | null; title: string }): Promise<FlashcardDeck>;
+
+  // Flashcards
+  getCard(id: string): Promise<Flashcard | undefined>;
+  getCardsByDeck(deckId: string): Promise<Flashcard[]>;
+  getCardsByUserAndScenario(userId: string, scenarioId: string): Promise<Flashcard[]>;
+  getQueueForUser(userId: string, limit?: number): Promise<Flashcard[]>;
+  createCard(data: {
+    deckId: string;
+    userId: string;
+    front: string;
+    back: string;
+    sourceStepId?: string | null;
+    tags?: string[];
+    difficulty: number;
+    stability: number;
+    state: string;
+    lapses: number;
+    reps: number;
+    dueDate: Date;
+    priorityBoost?: boolean;
+  }): Promise<Flashcard>;
+  updateCardState(id: string, data: {
+    difficulty: number;
+    stability: number;
+    state: string;
+    lapses: number;
+    reps: number;
+    dueDate: Date;
+    lastReviewedAt: Date;
+    priorityBoost?: boolean;
+  }): Promise<Flashcard | undefined>;
+  setCardPriorityBoost(cardIds: string[], boost: boolean): Promise<void>;
+
+  // Flashcard reviews
+  createReview(data: {
+    cardId: string;
+    userId: string;
+    rating: number;
+    previousDifficulty: number;
+    previousStability: number;
+    previousState: string;
+    newDifficulty: number;
+    newStability: number;
+    newState: string;
+    scheduledFor: Date;
+  }): Promise<FlashcardReview>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -315,6 +371,178 @@ export class DatabaseStorage implements IStorage {
       .where(eq(attempts.userId, userId))
       .orderBy(desc(attempts.startedAt))
       .limit(limit);
+  }
+
+  // ---------------------------------------------------------------
+  // Flashcard decks
+  // ---------------------------------------------------------------
+
+  async getDeckByScenarioAndUser(scenarioId: string, userId: string): Promise<FlashcardDeck | undefined> {
+    const [deck] = await db
+      .select()
+      .from(flashcardDecks)
+      .where(and(eq(flashcardDecks.scenarioId, scenarioId), eq(flashcardDecks.userId, userId)))
+      .limit(1);
+    return deck;
+  }
+
+  async createDeck(data: { userId: string; scenarioId: string; attemptId?: string | null; title: string }): Promise<FlashcardDeck> {
+    const [created] = await db.insert(flashcardDecks).values({
+      userId: data.userId,
+      scenarioId: data.scenarioId,
+      attemptId: data.attemptId ?? null,
+      title: data.title,
+    }).returning();
+    return created;
+  }
+
+  // ---------------------------------------------------------------
+  // Flashcards
+  // ---------------------------------------------------------------
+
+  async getCard(id: string): Promise<Flashcard | undefined> {
+    const [card] = await db.select().from(flashcards).where(eq(flashcards.id, id));
+    return card;
+  }
+
+  async getCardsByDeck(deckId: string): Promise<Flashcard[]> {
+    return db.select().from(flashcards).where(eq(flashcards.deckId, deckId));
+  }
+
+  async getCardsByUserAndScenario(userId: string, scenarioId: string): Promise<Flashcard[]> {
+    // Join through deck
+    const deck = await this.getDeckByScenarioAndUser(scenarioId, userId);
+    if (!deck) return [];
+    return this.getCardsByDeck(deck.id);
+  }
+
+  /**
+   * Returns cards for the user's review queue:
+   *   - All cards with priorityBoost=true (missed steps), then
+   *   - All cards in 'new' state (never reviewed), then
+   *   - All cards due now (dueDate <= now)
+   * Limit caps total returned.
+   */
+  async getQueueForUser(userId: string, limit = 50): Promise<Flashcard[]> {
+    const now = new Date();
+    const rows = await db
+      .select()
+      .from(flashcards)
+      .where(
+        and(
+          eq(flashcards.userId, userId),
+          sql`(${flashcards.priorityBoost} = true OR ${flashcards.state} = 'new' OR ${flashcards.dueDate} <= ${now})`
+        )
+      )
+      .orderBy(
+        desc(flashcards.priorityBoost),
+        sql`CASE WHEN ${flashcards.state} = 'new' THEN 0 ELSE 1 END`,
+        asc(flashcards.dueDate)
+      )
+      .limit(limit);
+    return rows;
+  }
+
+  async createCard(data: {
+    deckId: string;
+    userId: string;
+    front: string;
+    back: string;
+    sourceStepId?: string | null;
+    tags?: string[];
+    difficulty: number;
+    stability: number;
+    state: string;
+    lapses: number;
+    reps: number;
+    dueDate: Date;
+    priorityBoost?: boolean;
+  }): Promise<Flashcard> {
+    const [created] = await db.insert(flashcards).values({
+      deckId: data.deckId,
+      userId: data.userId,
+      front: data.front,
+      back: data.back,
+      sourceStepId: data.sourceStepId ?? null,
+      tags: data.tags ?? [],
+      difficulty: data.difficulty,
+      stability: data.stability,
+      state: data.state,
+      lapses: data.lapses,
+      reps: data.reps,
+      dueDate: data.dueDate,
+      priorityBoost: data.priorityBoost ?? false,
+    }).returning();
+    return created;
+  }
+
+  async updateCardState(id: string, data: {
+    difficulty: number;
+    stability: number;
+    state: string;
+    lapses: number;
+    reps: number;
+    dueDate: Date;
+    lastReviewedAt: Date;
+    priorityBoost?: boolean;
+  }): Promise<Flashcard | undefined> {
+    const updateData: Record<string, unknown> = {
+      difficulty: data.difficulty,
+      stability: data.stability,
+      state: data.state,
+      lapses: data.lapses,
+      reps: data.reps,
+      dueDate: data.dueDate,
+      lastReviewedAt: data.lastReviewedAt,
+    };
+    if (data.priorityBoost !== undefined) {
+      updateData.priorityBoost = data.priorityBoost;
+    }
+    const [updated] = await db
+      .update(flashcards)
+      .set(updateData)
+      .where(eq(flashcards.id, id))
+      .returning();
+    return updated;
+  }
+
+  async setCardPriorityBoost(cardIds: string[], boost: boolean): Promise<void> {
+    if (cardIds.length === 0) return;
+    await db
+      .update(flashcards)
+      .set({ priorityBoost: boost })
+      .where(sql`${flashcards.id} = ANY(${cardIds})`);
+  }
+
+  // ---------------------------------------------------------------
+  // Flashcard reviews
+  // ---------------------------------------------------------------
+
+  async createReview(data: {
+    cardId: string;
+    userId: string;
+    rating: number;
+    previousDifficulty: number;
+    previousStability: number;
+    previousState: string;
+    newDifficulty: number;
+    newStability: number;
+    newState: string;
+    scheduledFor: Date;
+  }): Promise<FlashcardReview> {
+    const [created] = await db.insert(flashcardReviews).values({
+      cardId: data.cardId,
+      userId: data.userId,
+      rating: data.rating,
+      previousDifficulty: data.previousDifficulty,
+      previousStability: data.previousStability,
+      previousState: data.previousState,
+      newDifficulty: data.newDifficulty,
+      newStability: data.newStability,
+      newState: data.newState,
+      scheduledFor: data.scheduledFor,
+    }).returning();
+    return created;
   }
 }
 

@@ -118,9 +118,13 @@ export const flashcards = pgTable("flashcards", {
   back: text("back").notNull(),
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
   sourceStepId: varchar("source_step_id"),
-  easeFactor: real("ease_factor").notNull().default(2.5),
-  interval: integer("interval").notNull().default(0),
-  repetitions: integer("repetitions").notNull().default(0),
+  // FSRS state fields
+  difficulty: real("difficulty").notNull().default(0),
+  stability: real("stability").notNull().default(0),
+  state: text("state").notNull().default("new"), // new | learning | review | relearning
+  lapses: integer("lapses").notNull().default(0),
+  reps: integer("reps").notNull().default(0),
+  priorityBoost: boolean("priority_boost").notNull().default(false),
   dueDate: timestamp("due_date").notNull().defaultNow(),
   lastReviewedAt: timestamp("last_reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -130,11 +134,18 @@ export const flashcardReviews = pgTable("flashcard_reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   cardId: varchar("card_id").notNull(),
   userId: varchar("user_id").notNull(),
-  quality: integer("quality").notNull(),
-  previousInterval: integer("previous_interval").notNull(),
-  newInterval: integer("new_interval").notNull(),
-  previousEaseFactor: real("previous_ease_factor").notNull(),
-  newEaseFactor: real("new_ease_factor").notNull(),
+  // FSRS rating: 1=Again, 2=Hard, 3=Good, 4=Easy
+  rating: integer("rating").notNull(),
+  // State before this review
+  previousDifficulty: real("previous_difficulty").notNull(),
+  previousStability: real("previous_stability").notNull(),
+  previousState: text("previous_state").notNull(),
+  // State after this review
+  newDifficulty: real("new_difficulty").notNull(),
+  newStability: real("new_stability").notNull(),
+  newState: text("new_state").notNull(),
+  // FSRS scheduling
+  scheduledFor: timestamp("scheduled_for").notNull(),
   reviewedAt: timestamp("reviewed_at").notNull().defaultNow(),
 });
 

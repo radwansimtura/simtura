@@ -12,6 +12,7 @@ import { SecurityQuestionCard } from "@/components/security-question-card";
 import {
   ArrowLeft,
   ArrowRight,
+  Brain,
   Crown,
   LogOut,
   Target,
@@ -319,6 +320,31 @@ export default function ProfilePage() {
           className="mt-6"
         >
           <SecurityQuestionCard />
+        </motion.div>
+
+        {/* Review queue */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.29 }}
+          className="mt-12"
+        >
+          <Link href="/review">
+            <div className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/10 to-blue-500/5 hover:from-blue-500/15 hover:to-blue-500/10 hover:border-white/20 px-6 py-5 cursor-pointer transition-all">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Brain className="h-5 w-5 text-blue-300" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-white">Review flashcards</h3>
+                  <p className="text-xs text-white/50 mt-0.5">
+                    Spaced repetition built from your missed steps
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </div>
+          </Link>
         </motion.div>
 
         {/* Recent attempts */}
