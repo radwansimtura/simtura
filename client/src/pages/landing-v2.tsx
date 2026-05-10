@@ -32,22 +32,27 @@ const MONTAGE: Clip[] = [
 
 const CUT_MS = 5200;
 
-const TESTIMONIALS = [
+interface Testimonial {
+  quote: string;
+  boldPhrase?: string;
+  name: string;
+  role: string;
+}
+
+const TESTIMONIALS: Testimonial[] = [
   {
-    quote:
-      "It's the closest I've felt to the real call without being on one. The pause-and-decide flow rewires how you think under pressure.",
+    quote: "It's the closest I've felt to the real call without being on one. The pause-and-decide flow rewires how you think under pressure.",
     name: "Maya Chen",
     role: "Paramedic · Year 3",
   },
   {
-    quote:
-      "We piloted Simtura with our nursing cohort for stroke recognition. Pass rates on the unit competency jumped noticeably the first month.",
+    quote: "We piloted Simtura with our nursing cohort for stroke recognition. Pass rates on the unit competency jumped noticeably the first month.",
+    boldPhrase: "Pass rates on the unit competency jumped noticeably",
     name: "Dr. Lisa Bowman",
     role: "RN, MSN · Clinical Educator",
   },
   {
-    quote:
-      "Finally a sim platform that doesn't feel like a quiz. The first-person video makes you commit before you can second-guess yourself.",
+    quote: "Finally a sim platform that doesn't feel like a quiz. The first-person video makes you commit before you can second-guess yourself.",
     name: "Marcus Reyes",
     role: "EMT-B · Houston FD",
   },
@@ -71,7 +76,19 @@ const HOW_IT_WORKS = [
   },
 ];
 
-const PRICING = [
+interface PricingTier {
+  name: string;
+  price: string;
+  period: string;
+  blurb: string;
+  features: string[];
+  cta: string;
+  href: string;
+  highlight: boolean;
+  trust?: string;
+}
+
+const PRICING: PricingTier[] = [
   {
     name: "Free",
     price: "$0",
@@ -112,33 +129,42 @@ const PRICING = [
       "Single-code redemption",
       "Cohort dashboard",
     ],
-    cta: "For organizations",
-    href: "/organizations",
+    cta: "Request a quote",
+    href: "/contact?ref=programs",
     highlight: false,
+    trust: "Custom quotes available — contact sales",
   },
 ];
 
+// Reordered: most conversion-critical first
 const FAQ = [
+  {
+    q: "Can I try a scenario before paying?",
+    a: "Yes — one scenario per day is always free, no credit card required. Upgrade to Pro for unlimited access.",
+  },
   {
     q: "Do these scenarios count toward clinical hours?",
     a: "Simtura is a decision-making trainer, not a clinical hours substitute. Many programs use it as adjunct prep before live sim lab and field internships. Check with your program coordinator about credit.",
-  },
-  {
-    q: "Who writes and reviews the content?",
-    a: "Every scenario is built and reviewed by NREMT-certified paramedics and practicing RNs, then mapped to the relevant board exam objectives (NREMT for EMS, NCLEX for nursing).",
-  },
-  {
-    q: "Can I try a scenario before paying?",
-    a: "Yes. The Free tier gives you one full scenario per day, forever — no credit card needed. You can also browse the full catalog without signing up.",
   },
   {
     q: "How does organization licensing work?",
     a: "You buy seats in bulk, get a code per seat, and distribute them to your students or crew. Everyone redeems independently and you see redemption status in one dashboard.",
   },
   {
+    q: "Who writes and reviews the content?",
+    a: "Every scenario is built and reviewed by NREMT-certified paramedics and practicing RNs, then mapped to the relevant board exam objectives (NREMT for EMS, NCLEX for nursing).",
+  },
+  {
     q: "Does this work on my phone?",
     a: "Yes — fully responsive. That said, the video is the whole experience, so most users prefer a tablet or laptop for the immersion.",
   },
+];
+
+const DISCIPLINES = [
+  { label: "EMS", href: "/ems" },
+  { label: "Nursing", href: "/nursing" },
+  { label: "Fire", href: "/fire" },
+  { label: "Police", href: "/police" },
 ];
 
 export default function LandingPageV2() {
@@ -162,14 +188,29 @@ export default function LandingPageV2() {
       <StructuredData schema={softwareApplicationSchema} id="schema-software" />
       <StructuredData schema={faqSchema} id="schema-faq" />
       <StructuredData schema={websiteSchema} id="schema-website" />
+
       {/* Top nav */}
       <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
             <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
-              <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
+              {/* Disciplines dropdown */}
+              <div className="relative group">
+                <button className="flex items-center gap-1 hover:text-white transition-colors text-white/70 text-sm">
+                  Disciplines
+                  <svg className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 mt-2 w-44 rounded-xl border border-white/10 bg-black/90 backdrop-blur-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 shadow-xl z-50">
+                  {DISCIPLINES.map(({ label, href }) => (
+                    <Link key={href} href={href} className="block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
               <a href="#pricing" className="hover:text-white transition-colors" data-testid="link-nav-pricing">Pricing</a>
               <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
             </div>
@@ -209,7 +250,6 @@ export default function LandingPageV2() {
 
       {/* HERO */}
       <section className="relative h-screen w-full overflow-hidden">
-        {/* Crossfading clips */}
         <div className="absolute inset-0 z-0 bg-black">
           <AnimatePresence>
             <motion.video
@@ -226,13 +266,13 @@ export default function LandingPageV2() {
               data-testid="video-hero-bg"
             />
           </AnimatePresence>
-          {/* Soft overlay for text legibility */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/85" />
         </div>
 
         {/* Hero content */}
-        <div className="relative z-10 h-full flex flex-col justify-center px-6 sm:px-12 lg:px-20 max-w-7xl mx-auto w-full">
-          <div className="max-w-2xl">
+        <div className="relative z-10 h-full flex items-center px-6 sm:px-12 lg:px-20 max-w-7xl mx-auto w-full">
+
+          <div className="max-w-xl">
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -285,10 +325,11 @@ export default function LandingPageV2() {
               </Link>
             </motion.div>
           </div>
+
         </div>
 
         {/* Cut indicator dots */}
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
           {MONTAGE.map((_, i) => (
             <div
               key={i}
@@ -298,16 +339,6 @@ export default function LandingPageV2() {
             />
           ))}
         </div>
-
-        <button
-          onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 text-white/50 hover:text-white transition-colors"
-          data-testid="button-scroll-down"
-          aria-label="Scroll to how it works"
-        >
-          <span className="text-[11px] uppercase tracking-[0.25em]">Explore</span>
-          <ChevronDown className="h-4 w-4 animate-bounce" />
-        </button>
       </section>
 
       {/* HOW IT WORKS */}
@@ -342,17 +373,15 @@ export default function LandingPageV2() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <Link href="/scenarios">
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-11 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-6"
-              data-testid="button-howitworks-cta"
-            >
-              Browse the scenario library
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+        <div className="mt-12 text-center flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link href="/signup">
+            <button className="inline-flex items-center justify-center gap-2 text-sm font-medium h-11 rounded-full bg-white text-black hover:bg-white/90 px-7 transition-colors">
+              Try a scenario free
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+          <Link href="/scenarios" className="text-sm text-white/60 hover:text-white transition-colors underline underline-offset-4">
+            View scenario library →
           </Link>
         </div>
       </section>
@@ -364,6 +393,10 @@ export default function LandingPageV2() {
           <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">
             Trusted by educators<br className="hidden sm:inline" /> and frontline crews.
           </h2>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-white/60">
+            <svg className="w-4 h-4 text-green-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+            Used by EMS programs, nursing schools, and fire academies nationwide
+          </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
@@ -379,7 +412,15 @@ export default function LandingPageV2() {
             >
               <Quote className="h-6 w-6 text-white/20 mb-4" />
               <blockquote className="text-white/85 text-[15px] leading-relaxed flex-1">
-                "{t.quote}"
+                {t.boldPhrase ? (
+                  <>
+                    "{t.quote.split(t.boldPhrase)[0]}
+                    <strong className="text-white">{t.boldPhrase}</strong>
+                    {t.quote.split(t.boldPhrase)[1]}"
+                  </>
+                ) : (
+                  `"${t.quote}"`
+                )}
               </blockquote>
               <figcaption className="mt-6 pt-5 border-t border-white/10">
                 <div className="text-sm font-semibold text-white">{t.name}</div>
@@ -426,10 +467,15 @@ export default function LandingPageV2() {
                 <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
                 <p className="text-sm text-white/60 mt-1">{tier.blurb}</p>
               </div>
-              <div className="mb-6 flex items-baseline gap-1">
+              <div className="mb-1 flex items-baseline gap-1">
                 <span className="text-4xl font-bold text-white">{tier.price}</span>
                 <span className="text-sm text-white/50">{tier.period}</span>
               </div>
+              {tier.trust ? (
+                <p className="text-xs text-white/40 mb-5">{tier.trust}</p>
+              ) : (
+                <div className="mb-5" />
+              )}
               <ul className="space-y-2.5 mb-8 flex-1">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-white/75">
@@ -466,7 +512,7 @@ export default function LandingPageV2() {
 
         <div className="divide-y divide-white/10 border-y border-white/10">
           {FAQ.map((item, i) => (
-            <FaqRow key={item.q} item={item} index={i} />
+            <FaqRow key={item.q} item={item} index={i} defaultOpen={i === 0} />
           ))}
         </div>
 
@@ -494,14 +540,14 @@ export default function LandingPageV2() {
             Free forever — one scenario a day. Upgrade anytime for unlimited access.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/scenarios">
+            <Link href={user ? "/ems" : "/signup"}>
               <Button
                 size="lg"
                 className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
                 data-testid="button-cta-final-primary"
               >
                 <PlayCircle className="mr-2 h-4 w-4" />
-                Try a sample free
+                Try a scenario free
               </Button>
             </Link>
             <Link href={user ? "/ems" : "/signup"}>
@@ -524,8 +570,16 @@ export default function LandingPageV2() {
   );
 }
 
-function FaqRow({ item, index }: { item: { q: string; a: string }; index: number }) {
-  const [open, setOpen] = useState(false);
+function FaqRow({
+  item,
+  index,
+  defaultOpen = false,
+}: {
+  item: { q: string; a: string };
+  index: number;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="py-5">
       <button

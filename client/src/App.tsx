@@ -25,6 +25,7 @@ import OrganizationDashboardPage from "@/pages/organization-dashboard";
 import ReviewPage from "@/pages/review";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import CookieBanner from "@/components/cookie-banner";
+import ComingSoonPage from "@/pages/coming-soon";
 
 function EMSPage() {
   return (
@@ -36,6 +37,26 @@ function EMSPage() {
       heroVideo="/videos/ems-hero-paramedic-iv.mp4"
       accentColor="blue"
       certLevels={["EMR", "EMT", "AEMT", "Paramedic"]}
+    />
+  );
+}
+
+function FirePage() {
+  return (
+    <ComingSoonPage
+      discipline="Fire"
+      accentColor="orange"
+      subtitle="Fire suppression, rescue operations, and hazmat scenarios for firefighters and fire medics. We're building it now."
+    />
+  );
+}
+
+function PolicePage() {
+  return (
+    <ComingSoonPage
+      discipline="Police"
+      accentColor="violet"
+      subtitle="Use-of-force decisions, crisis intervention, and de-escalation scenarios for law enforcement. We're building it now."
     />
   );
 }
@@ -60,6 +81,8 @@ function Router() {
       <Route path="/" component={LandingRouter} />
       <Route path="/ems" component={EMSPage} />
       <Route path="/nursing" component={NursingPage} />
+      <Route path="/fire" component={FirePage} />
+      <Route path="/police" component={PolicePage} />
       <Route path="/scenarios" component={EMSPage} />
       <Route path="/scenario/:id" component={ScenarioTrainerPage} />
       <Route path="/signin" component={SignInPage} />
