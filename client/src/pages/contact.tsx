@@ -79,7 +79,7 @@ export default function ContactPage() {
             <ContactItem
               icon={<Mail className="h-4 w-4" />}
               label="Email"
-              value="hello@simtura.ai"
+              value="radwan@simtura.ai"
             />
             <ContactItem
               icon={<MessagesSquare className="h-4 w-4" />}

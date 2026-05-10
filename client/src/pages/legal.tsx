@@ -35,7 +35,7 @@ const SECTIONS = [
   },
   {
     title: "Contact",
-    body: "Questions about privacy, your data, or these terms? Reach us at hello@simtura.ai or via the contact page.",
+    body: "Questions about privacy, your data, or these terms? Reach us at radwan@simtura.ai or via the contact page.",
   },
 ];
 

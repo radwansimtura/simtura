@@ -6,7 +6,7 @@ export const organizationSchema = {
   "logo": "https://simtura.ai/favicon.png",
   "contactPoint": {
     "@type": "ContactPoint",
-    "email": "hello@simtura.ai",
+    "email": "radwan@simtura.ai",
     "contactType": "customer support",
   },
   "sameAs": [],

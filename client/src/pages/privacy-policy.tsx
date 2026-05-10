@@ -7,7 +7,7 @@ import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_17768888780
 const SECTIONS = [
   {
     title: "Who We Are",
-    body: "Simtura.ai is operated by Simtura.ai Incorporated, a company providing clinical training simulations for EMS and nursing students. If you have any questions about this policy, contact us at hello@simtura.ai.",
+    body: "Simtura.ai is operated by Simtura.ai Incorporated, a company providing clinical training simulations for EMS and nursing students. If you have any questions about this policy, contact us at radwan@simtura.ai.",
   },
   {
     title: "What Data We Collect",
@@ -31,11 +31,11 @@ const SECTIONS = [
   },
   {
     title: "Your Rights",
-    body: "Depending on your location, you may have rights under GDPR, CCPA, or other laws, including: the right to access your data, correct inaccuracies, request deletion (\"right to be forgotten\"), object to processing, and data portability. To exercise any of these rights, email hello@simtura.ai with the subject line \"Privacy Request.\"",
+    body: "Depending on your location, you may have rights under GDPR, CCPA, or other laws, including: the right to access your data, correct inaccuracies, request deletion (\"right to be forgotten\"), object to processing, and data portability. To exercise any of these rights, email radwan@simtura.ai with the subject line \"Privacy Request.\"",
   },
   {
     title: "Children's Privacy",
-    body: "Simtura.ai is not directed at children under 13. If you believe a child has created an account, contact us at hello@simtura.ai and we will delete it promptly.",
+    body: "Simtura.ai is not directed at children under 13. If you believe a child has created an account, contact us at radwan@simtura.ai and we will delete it promptly.",
   },
   {
     title: "Changes to This Policy",
@@ -43,7 +43,7 @@ const SECTIONS = [
   },
   {
     title: "Contact",
-    body: "Privacy questions: hello@simtura.ai.",
+    body: "Privacy questions: radwan@simtura.ai.",
   },
 ];
 
