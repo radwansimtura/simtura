@@ -27,6 +27,7 @@ export default function SignUpPage() {
   const [securityQuestion, setSecurityQuestion] = useState<string>(SECURITY_QUESTIONS[0]);
   const [securityAnswer, setSecurityAnswer] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,11 +193,33 @@ export default function SignUpPage() {
               </p>
             </div>
 
+            <div className="flex items-start gap-3 pt-1">
+              <input
+                id="terms"
+                type="checkbox"
+                required
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-white cursor-pointer"
+                data-testid="checkbox-terms"
+              />
+              <label htmlFor="terms" className="text-xs text-white/60 leading-relaxed cursor-pointer">
+                I agree to the{" "}
+                <Link href="/legal" className="text-white underline underline-offset-2 hover:text-white/80">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-white underline underline-offset-2 hover:text-white/80">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+
             <Button
               type="submit"
               size="lg"
-              disabled={loading}
-              className="w-full h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium"
+              disabled={loading || !agreedToTerms}
+              className="w-full h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium disabled:opacity-40"
               data-testid="button-signup"
             >
               {loading ? "Creating account..." : "Create account"}

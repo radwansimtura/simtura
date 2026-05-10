@@ -18,6 +18,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
+import StructuredData from "@/components/structured-data";
+import { organizationSchema, softwareApplicationSchema, faqSchema, websiteSchema } from "@/structured-data/schemas";
 
 type Clip = { src: string; discipline: string };
 
@@ -156,6 +158,10 @@ export default function LandingPageV2() {
 
   return (
     <div className="bg-black text-white relative">
+      <StructuredData schema={organizationSchema} id="schema-organization" />
+      <StructuredData schema={softwareApplicationSchema} id="schema-software" />
+      <StructuredData schema={faqSchema} id="schema-faq" />
+      <StructuredData schema={websiteSchema} id="schema-website" />
       {/* Top nav */}
       <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">

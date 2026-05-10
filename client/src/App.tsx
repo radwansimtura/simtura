@@ -23,6 +23,8 @@ import LegalPage from "@/pages/legal";
 import OrganizationsPage from "@/pages/organizations";
 import OrganizationDashboardPage from "@/pages/organization-dashboard";
 import ReviewPage from "@/pages/review";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import CookieBanner from "@/components/cookie-banner";
 
 function EMSPage() {
   return (
@@ -69,6 +71,7 @@ function Router() {
       <Route path="/organizations" component={OrganizationsPage} />
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
       <Route path="/review" component={ReviewPage} />
+      <Route path="/privacy" component={PrivacyPolicyPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -82,6 +85,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <CookieBanner />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>

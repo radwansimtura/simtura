@@ -23,7 +23,7 @@ const SECTIONS = [
   },
   {
     title: "Cookies",
-    body: "We use a single first-party session cookie to keep you signed in. We do not use third-party advertising or tracking cookies.",
+    body: "We use a single first-party session cookie to keep you signed in. We do not use third-party advertising or tracking cookies. You can withdraw cookie consent at any time by clearing your browser's localStorage for simtura.ai or using your browser's built-in cookie controls — this will not delete your account.",
   },
   {
     title: "Subscriptions",

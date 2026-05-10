@@ -34,6 +34,9 @@ export function SiteFooter() {
           <Link href="/legal" className="hover:text-white transition-colors" data-testid="link-footer-legal">
             Legal
           </Link>
+          <Link href="/privacy" className="hover:text-white transition-colors" data-testid="link-footer-privacy">
+            Privacy Policy
+          </Link>
           <Link href="/signin" className="hover:text-white transition-colors" data-testid="link-footer-signin">
             Sign in
           </Link>
