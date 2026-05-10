@@ -897,7 +897,7 @@ export default function ScenarioTrainerPage() {
                 <h2 className="text-base font-bold text-white mb-1" data-testid="text-step-prompt">
                   {currentQuestion.prompt}
                 </h2>
-                {currentQuestion.isCritical && (
+                {currentQuestion.isCritical && scenario?.gradingMode === "nremt_medical" && (
                   <Badge variant="destructive" className="mt-1 text-xs">
                     <AlertTriangle className="mr-1 h-3 w-3" /> Critical Decision
                   </Badge>
@@ -1097,13 +1097,13 @@ export default function ScenarioTrainerPage() {
                   )}
                   {usesAI && gradeResult && !passedOpen && gradeResult.tip && scenario?.gradingMode !== "nremt_medical" && (
                     <div
-                      className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-md"
+                      className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-4 backdrop-blur-md"
                       data-testid="coaching-tip-panel"
                     >
                       <div className="flex items-start gap-2">
-                        <Lightbulb className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                        <Lightbulb className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                         <div>
-                          <div className="text-[10px] uppercase tracking-wider text-amber-400/80 font-medium mb-1">
+                          <div className="text-[10px] uppercase tracking-wider text-purple-400/80 font-medium mb-1">
                             Coaching tip
                           </div>
                           <p className="text-xs text-white/70 leading-relaxed">{gradeResult.tip}</p>
@@ -1111,7 +1111,7 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   )}
-                  {!(scenario?.gradingMode === "nremt_medical" && !headlineCorrect && !criticalFailureState.show) && (
+                  {!(!headlineCorrect && !criticalFailureState.show) && (
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
                     headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
