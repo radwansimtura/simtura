@@ -7,7 +7,7 @@ import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_17768888780
 const SECTIONS = [
   {
     title: "Who We Are",
-    body: "Simtura.ai is operated by [PLACEHOLDER: Company Legal Name], a company providing clinical training simulations for EMS and nursing students. If you have any questions about this policy, contact us at hello@simtura.ai.",
+    body: "Simtura.ai is operated by Simtura.ai Incorporated, a company providing clinical training simulations for EMS and nursing students. If you have any questions about this policy, contact us at hello@simtura.ai.",
   },
   {
     title: "What Data We Collect",
@@ -43,7 +43,7 @@ const SECTIONS = [
   },
   {
     title: "Contact",
-    body: "Privacy questions: hello@simtura.ai. Mailing address: [PLACEHOLDER: Insert company address].",
+    body: "Privacy questions: hello@simtura.ai.",
   },
 ];
 
