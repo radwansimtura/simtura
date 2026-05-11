@@ -138,9 +138,16 @@ export default function OrganizationDashboardPage() {
               <img src={simturaLogo} alt="Simtura" className="h-9" />
             </div>
           </Link>
-          <Link href="/organizations" className="text-sm text-white/70 hover:text-white">
-            New organization
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href={`/org-dashboard/${id}`}>
+              <Button size="sm" className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5 text-sm">
+                Open Dashboard
+              </Button>
+            </Link>
+            <Link href="/organizations" className="text-sm text-white/70 hover:text-white">
+              New organization
+            </Link>
+          </div>
         </div>
       </nav>
 
