@@ -48,6 +48,8 @@ export interface IStorage {
   getOrganizationCodeByCode(code: string): Promise<OrganizationCode | undefined>;
   redeemOrganizationCode(code: string, userId: string, email: string): Promise<OrganizationCode | undefined>;
   countRedeemedCodes(organizationId: string): Promise<number>;
+  getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date }[]>;
+  getAttemptsForUsers(userIds: string[]): Promise<(Attempt & { scenarioTitle: string })[]>;
 
   getAllScenarios(): Promise<Scenario[]>;
   getScenario(id: string): Promise<Scenario | undefined>;
@@ -303,6 +305,50 @@ export class DatabaseStorage implements IStorage {
       .from(organizationCodes)
       .where(and(eq(organizationCodes.organizationId, organizationId), isNotNull(organizationCodes.redeemedByUserId)));
     return rows.length;
+  }
+
+  async getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date }[]> {
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        redeemedAt: organizationCodes.redeemedAt,
+      })
+      .from(organizationCodes)
+      .innerJoin(users, eq(organizationCodes.redeemedByUserId, users.id))
+      .where(and(
+        eq(organizationCodes.organizationId, organizationId),
+        isNotNull(organizationCodes.redeemedByUserId),
+      ));
+    return rows.map(r => ({ ...r, redeemedAt: r.redeemedAt! }));
+  }
+
+  async getAttemptsForUsers(userIds: string[]): Promise<(Attempt & { scenarioTitle: string })[]> {
+    if (userIds.length === 0) return [];
+    const rows = await db
+      .select({
+        id: attempts.id,
+        userId: attempts.userId,
+        scenarioId: attempts.scenarioId,
+        scenarioTitle: scenarios.title,
+        startedAt: attempts.startedAt,
+        completedAt: attempts.completedAt,
+        score: attempts.score,
+        totalSteps: attempts.totalSteps,
+        correctSteps: attempts.correctSteps,
+        responses: attempts.responses,
+        criticalFailure: attempts.criticalFailure,
+        criticalCriterionViolated: attempts.criticalCriterionViolated,
+        endedEarly: attempts.endedEarly,
+      })
+      .from(attempts)
+      .innerJoin(scenarios, eq(attempts.scenarioId, scenarios.id))
+      .where(
+        sql`${attempts.userId} = ANY(ARRAY[${sql.join(userIds.map(id => sql`${id}`), sql`, `)}]::text[])`
+      )
+      .orderBy(desc(attempts.startedAt));
+    return rows;
   }
 
   async getAllScenarios(): Promise<Scenario[]> {

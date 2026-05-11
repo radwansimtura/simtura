@@ -203,7 +203,7 @@ export default function OrgDashboardPage() {
     },
   });
 
-  const { data: codes = [], isLoading: codesLoading } = useQuery<PublicOrganizationCode[]>({
+  const { data: codes = [] } = useQuery<PublicOrganizationCode[]>({
     queryKey: ["/api/organizations", id, "codes"],
     queryFn: async () => {
       const res = await fetch(`/api/organizations/${id}/codes`, { credentials: "include" });
@@ -213,8 +213,62 @@ export default function OrgDashboardPage() {
     enabled: org?.status === "active",
   });
 
-  const redeemedCount = codes.filter((c) => !!c.redeemedAt).length;
-  const students = useMemo(() => generateStudents(id ?? "x", redeemedCount || 16, codes), [id, redeemedCount]);
+  const { data: rawStudents = [] } = useQuery<{ id: string; name: string; email: string; redeemedAt: string }[]>({
+    queryKey: ["/api/organizations", id, "students"],
+    queryFn: async () => {
+      const res = await fetch(`/api/organizations/${id}/students`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: org?.status === "active",
+  });
+
+  const { data: rawAttempts = [] } = useQuery<{ id: string; userId: string; scenarioTitle: string; score: number | null; completedAt: string | null; startedAt: string }[]>({
+    queryKey: ["/api/organizations", id, "performance"],
+    queryFn: async () => {
+      const res = await fetch(`/api/organizations/${id}/performance`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: org?.status === "active",
+  });
+
+  const redeemedCount = rawStudents.length;
+
+  // Build real student objects from API data, fall back to mock if no real students yet
+  const students = useMemo<Student[]>(() => {
+    if (rawStudents.length === 0) return generateStudents(id ?? "x", 16, codes);
+    return rawStudents.map((s) => {
+      const userAttempts = rawAttempts.filter(a => a.userId === s.id && a.completedAt);
+      const scores = userAttempts.map(a => a.score ?? 0).filter(sc => sc > 0);
+      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const lastAttempt = userAttempts[0];
+      const lastActiveMs = lastAttempt ? Date.now() - new Date(lastAttempt.startedAt).getTime() : Infinity;
+      const daysAgo = Math.floor(lastActiveMs / 86400000);
+      const lastActive = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : lastAttempt ? `${daysAgo} days ago` : "Never";
+      const status: Student["status"] =
+        !lastAttempt ? "inactive"
+        : daysAgo > 5 && avgScore < 70 ? "at-risk"
+        : daysAgo > 7 ? "inactive"
+        : userAttempts.length >= 10 ? "completed"
+        : "active";
+      return {
+        id: s.id,
+        name: s.name || s.email.split("@")[0],
+        cohort: "Spring Cohort 2026",
+        scenariosCompleted: userAttempts.length,
+        avgScore,
+        lastActive,
+        status,
+        history: userAttempts.slice(0, 15).map(a => ({
+          date: new Date(a.startedAt).toLocaleDateString(),
+          scenario: a.scenarioTitle,
+          score: a.score ?? 0,
+        })),
+      };
+    });
+  }, [rawStudents, rawAttempts, id, codes]);
+
   const cohorts = useMemo(() => generateCohorts(id ?? "x"), [id]);
   const tier = org ? (
     org.seats >= 100 ? "Institution" : org.seats >= 25 ? "Department" : "Single Cohort"
@@ -305,7 +359,7 @@ export default function OrgDashboardPage() {
               transition={{ duration: 0.2 }}
             >
               {section === "overview" && (
-                <OverviewSection org={org} students={students} orgLoading={orgLoading} redeemedCount={redeemedCount} codes={codes} orgId={id ?? ""} />
+                <OverviewSection org={org} students={students} orgLoading={orgLoading} redeemedCount={redeemedCount} codes={codes} orgId={id ?? ""} rawAttempts={rawAttempts} />
               )}
               {section === "cohorts" && <CohortsSection cohorts={cohorts} />}
               {section === "students" && <StudentsSection students={students} />}
@@ -322,13 +376,14 @@ export default function OrgDashboardPage() {
 
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
-function OverviewSection({ org, students, orgLoading, redeemedCount, codes, orgId }: {
+function OverviewSection({ org, students, orgLoading, redeemedCount, codes, orgId, rawAttempts }: {
   org?: PublicOrganization;
   students: Student[];
   orgLoading: boolean;
   redeemedCount: number;
   codes: PublicOrganizationCode[];
   orgId: string;
+  rawAttempts: { id: string; userId: string; scenarioTitle: string; score: number | null; completedAt: string | null; startedAt: string }[];
 }) {
   const avgScore = Math.round(students.reduce((s, st) => s + st.avgScore, 0) / Math.max(students.length, 1));
   const totalScenarios = students.reduce((s, st) => s + st.scenariosCompleted, 0);
@@ -349,7 +404,16 @@ function OverviewSection({ org, students, orgLoading, redeemedCount, codes, orgI
   ].filter(d => d.value > 0);
 
   const atRisk = students.filter(s => s.status === "at-risk" || s.status === "inactive");
-  const activity = generateActivityFeed(orgId);
+  const activity = rawAttempts.length > 0
+    ? rawAttempts.slice(0, 8).map(a => {
+        const student = students.find(s => s.id === a.userId);
+        const name = student?.name ?? "A student";
+        const msAgo = Date.now() - new Date(a.startedAt).getTime();
+        const minsAgo = Math.floor(msAgo / 60000);
+        const time = minsAgo < 60 ? `${minsAgo}m ago` : minsAgo < 1440 ? `${Math.floor(minsAgo / 60)}h ago` : `${Math.floor(minsAgo / 1440)}d ago`;
+        return { name, action: a.completedAt ? "completed" : "started", scenario: a.scenarioTitle, score: a.score, time };
+      })
+    : generateActivityFeed(orgId);
 
   const courseEnd = org?.createdAt
     ? new Date(new Date(org.createdAt).getTime() + (org.courseMonths ?? 4) * 30 * 86400000)

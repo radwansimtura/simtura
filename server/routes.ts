@@ -766,6 +766,30 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     res.json(codes.map(toPublicCode));
   });
 
+  // Students who have redeemed codes for this org
+  app.get("/api/organizations/:id/students", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    const students = await storage.getOrgStudents(org.id);
+    res.json(students);
+  });
+
+  // Attempts for all students in this org (joined with scenario title)
+  app.get("/api/organizations/:id/performance", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    const students = await storage.getOrgStudents(org.id);
+    const userIds = students.map(s => s.id);
+    const attempts = await storage.getAttemptsForUsers(userIds);
+    res.json(attempts);
+  });
+
   // List orgs owned by the current user
   app.get("/api/organizations/mine/list", requireAuth, async (req, res) => {
     const orgs = await storage.getOrganizationsForOwner(req.session.userId!);
