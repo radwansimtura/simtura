@@ -261,12 +261,12 @@ export interface PricingTier {
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    minSeats: 100,
+    minSeats: 50,
     maxSeats: null,
     pricePerSeatCents: 1600,
-    label: "Institution (100+)",
+    label: "Institution (50+)",
     name: "Institution",
-    seatRange: "100+ seats",
+    seatRange: "50+ seats",
     description: "Multiple programs running simultaneously across an organization.",
     bestFor: "Full paramedic academies, large nursing schools, hospital systems training across departments.",
     features: [
@@ -282,12 +282,12 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
   },
   {
-    minSeats: 25,
-    maxSeats: 99,
+    minSeats: 10,
+    maxSeats: 49,
     pricePerSeatCents: 1700,
-    label: "Department (25–99)",
+    label: "Department (10–49)",
     name: "Department",
-    seatRange: "25–99 seats",
+    seatRange: "10–49 seats",
     description: "Multiple cohorts throughout the year within one department or agency.",
     bestFor: "Nursing departments running multiple cohorts, EMS agencies training multiple shift crews.",
     features: [
@@ -302,11 +302,11 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     minSeats: 5,
-    maxSeats: 24,
+    maxSeats: 9,
     pricePerSeatCents: 1800,
-    label: "Single Cohort (5–24)",
+    label: "Single Cohort (5–9)",
     name: "Single Cohort",
-    seatRange: "5–24 seats",
+    seatRange: "5–9 seats",
     description: "One instructor, one class, one course cycle.",
     bestFor: "Community college EMT courses, hospital onboarding single nurse cohorts, single certification prep classes.",
     features: [

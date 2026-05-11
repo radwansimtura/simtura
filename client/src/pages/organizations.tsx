@@ -85,8 +85,6 @@ export default function OrganizationsPage() {
   const ppsc = useMemo(() => pricePerSeatCents(seats), [seats]);
   const monthlyTotalCents = ppsc * seats;
   const totalCents = monthlyTotalCents * courseMonths;
-  const fullPriceCents = 2500 * seats * courseMonths;
-  const savedCents = fullPriceCents - totalCents;
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -513,12 +511,7 @@ export default function OrganizationsPage() {
                   <span className="text-white/60">× {courseMonths} month{courseMonths === 1 ? "" : "s"}</span>
                   <span className="tabular-nums">{formatMoney(totalCents)}</span>
                 </div>
-                {savedCents > 0 && (
-                  <div className="flex justify-between text-sm text-emerald-300">
-                    <span>Volume discount</span>
-                    <span className="tabular-nums">−{formatMoney(savedCents)}</span>
-                  </div>
-                )}
+
                 <div className="flex justify-between items-baseline pt-3 border-t border-white/10">
                   <span className="text-white/60 text-sm">Total upfront</span>
                   <span
