@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -96,6 +96,7 @@ export default function ScenarioTrainerPage() {
   const [mode, setMode] = useState<TrainerMode>("multiple-choice");
   const [traineeAnswer, setTraineeAnswer] = useState("");
   const [submittedAnswer, setSubmittedAnswer] = useState<string>("");
+  const [flashcardSync, setFlashcardSync] = useState<{ created: number; boosted: number; totalCardsInDeck: number } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
   const [isGrading, setIsGrading] = useState(false);
@@ -185,9 +186,19 @@ export default function ScenarioTrainerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attempts"] });
       // Sync flashcards: create deck/cards if needed, boost missed-step cards.
-      // Fire-and-forget — failure here shouldn't block the results page.
+      // Capture response for the results page summary card.
       if (attemptId) {
         apiRequest("POST", "/api/flashcards/sync-from-attempt", { attemptId })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && typeof data === "object") {
+              setFlashcardSync({
+                created: typeof data.created === "number" ? data.created : 0,
+                boosted: typeof data.boosted === "number" ? data.boosted : 0,
+                totalCardsInDeck: typeof data.totalCardsInDeck === "number" ? data.totalCardsInDeck : 0,
+              });
+            }
+          })
           .catch((err) => console.warn("Flashcard sync failed:", err));
       }
     },
@@ -570,6 +581,31 @@ export default function ScenarioTrainerPage() {
                 <div className="text-xs text-white/50 mt-1">Incorrect</div>
               </div>
             </div>
+
+            {flashcardSync && (flashcardSync.created > 0 || flashcardSync.totalCardsInDeck > 0) && (
+              <Link href="/learn">
+                <div className="group flex items-center justify-between gap-4 rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-blue-500/5 hover:from-blue-500/20 hover:to-blue-500/10 hover:border-blue-500/50 px-5 py-4 cursor-pointer transition-all mb-6">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="h-5 w-5 text-blue-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-white">
+                        {flashcardSync.created > 0
+                          ? `${flashcardSync.created} card${flashcardSync.created === 1 ? "" : "s"} added to your review queue`
+                          : `${flashcardSync.totalCardsInDeck} cards in your review queue`}
+                      </h3>
+                      <p className="text-xs text-white/60 mt-0.5">
+                        {flashcardSync.boosted > 0
+                          ? `${flashcardSync.boosted} from steps you missed are prioritized at the top.`
+                          : "Spaced repetition keeps what you've learned from fading."}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-white/40 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all shrink-0" />
+                </div>
+              </Link>
+            )}
 
             <div className="space-y-2 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
               <h3 className="font-semibold text-white/80 mb-3 sticky top-0 bg-black/80 backdrop-blur-sm py-2">Question-by-Question Review</h3>

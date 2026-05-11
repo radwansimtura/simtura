@@ -114,6 +114,13 @@ export default function DisciplineScenariosPage({
                 Nursing
               </Link>
               <Link
+                href="/learn"
+                className="transition-colors hover:text-white"
+                data-testid="link-nav-learn"
+              >
+                Learn
+              </Link>
+              <Link
                 href="/organizations"
                 className="transition-colors hover:text-white"
                 data-testid="link-nav-organizations"

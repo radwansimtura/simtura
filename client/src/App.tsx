@@ -22,7 +22,7 @@ import ContactPage from "@/pages/contact";
 import LegalPage from "@/pages/legal";
 import OrganizationsPage from "@/pages/organizations";
 import OrganizationDashboardPage from "@/pages/organization-dashboard";
-import ReviewPage from "@/pages/review";
+import LearnPage from "@/pages/learn";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
@@ -93,7 +93,7 @@ function Router() {
       <Route path="/legal" component={LegalPage} />
       <Route path="/organizations" component={OrganizationsPage} />
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
-      <Route path="/review" component={ReviewPage} />
+      <Route path="/learn" component={LearnPage} />
       <Route path="/privacy" component={PrivacyPolicyPage} />
       <Route component={NotFound} />
     </Switch>
