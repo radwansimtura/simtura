@@ -95,6 +95,7 @@ export default function ScenarioTrainerPage() {
   const [videoFading, setVideoFading] = useState(false);
   const [mode, setMode] = useState<TrainerMode>("multiple-choice");
   const [traineeAnswer, setTraineeAnswer] = useState("");
+  const [submittedAnswer, setSubmittedAnswer] = useState<string>("");
   const [isListening, setIsListening] = useState(false);
   const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
   const [isGrading, setIsGrading] = useState(false);
@@ -353,6 +354,7 @@ export default function ScenarioTrainerPage() {
 
     const trimmed = traineeAnswer.trim();
     if (!trimmed) return;
+    setSubmittedAnswer(trimmed);
     stopListening();
     setIsGrading(true);
     setGradeError(null);
@@ -429,6 +431,7 @@ export default function ScenarioTrainerPage() {
       setSelectedAction(null);
       setShowHint(false);
       setTraineeAnswer("");
+      setSubmittedAnswer("");
       setGradeResult(null);
       setGradeError(null);
       setElaborationText("");
@@ -459,6 +462,7 @@ export default function ScenarioTrainerPage() {
       setSelectedAction(null);
       setShowHint(false);
       setTraineeAnswer("");
+      setSubmittedAnswer("");
       setGradeResult(null);
       setGradeError(null);
       setElaborationText("");
@@ -1051,6 +1055,19 @@ export default function ScenarioTrainerPage() {
                   className="space-y-2"
                   data-testid="feedback-panel"
                 >
+                  {submittedAnswer && (
+                    <div
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-md"
+                      data-testid="submitted-answer-panel"
+                    >
+                      <div className="text-[10px] uppercase tracking-wider text-blue-400/80 font-medium mb-1.5">
+                        Your answer
+                      </div>
+                      <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
+                        {submittedAnswer}
+                      </p>
+                    </div>
+                  )}
                   {usesAI && gradeResult && (
                     <div className={`rounded-lg border p-4 backdrop-blur-md ${
                       passedOpen ? "border-green-500/30 bg-green-500/10" : "border-yellow-500/30 bg-yellow-500/10"
