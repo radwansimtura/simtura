@@ -211,6 +211,7 @@ export default function LandingPageV2() {
                   ))}
                 </div>
               </div>
+              <Link href="/learn" className="hover:text-white transition-colors" data-testid="link-nav-learn">Learn</Link>
               <a href="#pricing" className="hover:text-white transition-colors" data-testid="link-nav-pricing">Pricing</a>
               <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
             </div>
