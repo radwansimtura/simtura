@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
-  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,9 +42,9 @@ import { SiteFooter } from "@/components/site-footer";
 
 const VALUE_PROPS = [
   {
-    icon: <Users className="h-5 w-5" />,
-    title: "One purchase. Many seats.",
-    body: "Buy a block of Pro licenses for your whole cohort or shift in a single transaction.",
+    icon: <GraduationCap className="h-5 w-5" />,
+    title: "Built around how your program runs.",
+    body: "Whether you run one class a semester or multiple cohorts year-round, pricing matches your actual structure.",
   },
   {
     icon: <KeyRound className="h-5 w-5" />,
@@ -58,9 +57,9 @@ const VALUE_PROPS = [
     body: "See exactly which codes have been claimed and by whom from a private dashboard.",
   },
   {
-    icon: <GraduationCap className="h-5 w-5" />,
-    title: "Built for educators.",
-    body: "Designed with EMS instructors and nursing program directors who need to verify training.",
+    icon: <CalendarClock className="h-5 w-5" />,
+    title: "Pay for your course, not the calendar.",
+    body: "Access ends when your course does. A 6-week EMT class pays for 6 weeks — not an annual subscription.",
   },
 ];
 
@@ -189,11 +188,11 @@ export default function OrganizationsPage() {
             For Organizations
           </div>
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-6 leading-[1.05]">
-            Train your whole<br />team at once.
+            Built around how<br />your program runs.
           </h1>
           <p className="text-lg sm:text-xl text-white/60 max-w-2xl leading-relaxed mb-10">
-            Buy Pro licenses in bulk for your students, residents, or shift crews.
-            Each seat gets a unique code. Track who's redeemed from one dashboard.
+            Cohort-based licensing for EMS programs, nursing schools, and healthcare agencies.
+            Pay per seat, per cohort — not per year.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -276,17 +275,19 @@ export default function OrganizationsPage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-white/50 mb-2">
                   {t.name}
                 </p>
-                <p className="text-sm text-white/60 mb-4">{t.seatRange}</p>
-                <div className="flex items-baseline gap-1 mb-3">
+                <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-4xl font-bold">${(t.pricePerSeatCents / 100).toFixed(0)}</span>
                   <span className="text-sm text-white/50">/seat/month</span>
                 </div>
-                <p className="text-sm text-white/60 mb-5 leading-relaxed">{t.description}</p>
+                <p className="text-sm text-white/70 mb-2 leading-relaxed">{t.description}</p>
+                <p className="text-xs text-white/40 mb-5 leading-relaxed italic">{t.bestFor}</p>
                 <ul className="text-sm text-white/70 space-y-2 mt-auto">
-                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Unlimited scenarios</li>
-                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Individual student codes</li>
-                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Redemption dashboard</li>
-                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" /> Access ends with course</li>
+                  {t.features.map((f, fi) => (
+                    <li key={fi} className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
                 </ul>
               </div>
             );

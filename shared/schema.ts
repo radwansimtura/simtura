@@ -240,37 +240,67 @@ export interface PricingTier {
   name: string;
   seatRange: string;
   description: string;
+  bestFor: string;
+  features: string[];
   popular?: boolean;
 }
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    minSeats: 50,
+    minSeats: 100,
     maxSeats: null,
-    pricePerSeatCents: 2100,
-    label: "Program (50+)",
-    name: "Program",
-    seatRange: "50+ seats",
-    description: "For full degree programs and large academies running multiple cohorts.",
+    pricePerSeatCents: 1600,
+    label: "Institution (100+)",
+    name: "Institution",
+    seatRange: "100+ seats",
+    description: "Multiple programs running simultaneously across an organization.",
+    bestFor: "Full paramedic academies, large nursing schools, hospital systems training across departments.",
+    features: [
+      "Unlimited scenarios",
+      "Individual student codes",
+      "Redemption dashboard",
+      "Access ends with course",
+      "Priority support",
+      "Cohort comparison analytics",
+      "Dedicated account manager",
+      "Custom onboarding",
+      "API access",
+    ],
   },
   {
-    minSeats: 10,
-    maxSeats: 49,
-    pricePerSeatCents: 2300,
-    label: "Team (10–49)",
-    name: "Team",
-    seatRange: "10–49 seats",
-    description: "For mid-sized cohorts, departments, and shift crews.",
+    minSeats: 25,
+    maxSeats: 99,
+    pricePerSeatCents: 1700,
+    label: "Department (25–99)",
+    name: "Department",
+    seatRange: "25–99 seats",
+    description: "Multiple cohorts throughout the year within one department or agency.",
+    bestFor: "Nursing departments running multiple cohorts, EMS agencies training multiple shift crews.",
+    features: [
+      "Unlimited scenarios",
+      "Individual student codes",
+      "Redemption dashboard",
+      "Access ends with course",
+      "Priority support",
+      "Cohort comparison analytics",
+    ],
     popular: true,
   },
   {
     minSeats: 5,
-    maxSeats: 9,
-    pricePerSeatCents: 2500,
-    label: "Starter (5–9)",
-    name: "Starter",
-    seatRange: "5–9 seats",
-    description: "For small classes, study groups, and pilot programs.",
+    maxSeats: 24,
+    pricePerSeatCents: 1800,
+    label: "Single Cohort (5–24)",
+    name: "Single Cohort",
+    seatRange: "5–24 seats",
+    description: "One instructor, one class, one course cycle.",
+    bestFor: "Community college EMT courses, hospital onboarding single nurse cohorts, single certification prep classes.",
+    features: [
+      "Unlimited scenarios",
+      "Individual student codes",
+      "Redemption dashboard",
+      "Access ends with course",
+    ],
   },
 ];
 

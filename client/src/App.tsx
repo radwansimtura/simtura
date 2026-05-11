@@ -27,6 +27,7 @@ import PrivacyPolicyPage from "@/pages/privacy-policy";
 import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
 import WelcomeBackPage from "@/pages/welcome-back";
+import OrgDashboardPage from "@/pages/org-dashboard";
 
 function EMSPage() {
   return (
@@ -94,6 +95,7 @@ function Router() {
       <Route path="/legal" component={LegalPage} />
       <Route path="/organizations" component={OrganizationsPage} />
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
+      <Route path="/org-dashboard/:id" component={OrgDashboardPage} />
       <Route path="/welcome-back" component={WelcomeBackPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/privacy" component={PrivacyPolicyPage} />
