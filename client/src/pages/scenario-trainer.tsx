@@ -16,6 +16,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Heart,
+  Info,
   Lightbulb,
   Wind,
   Stethoscope,
@@ -692,6 +693,15 @@ export default function ScenarioTrainerPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10" />
         </>
       )}
+
+      <div className="absolute bottom-4 right-4 z-30 group">
+        <div className="relative flex items-center justify-center">
+          <Info className="h-3.5 w-3.5 text-white/20 group-hover:text-white/50 transition-colors cursor-default" />
+          <div className="absolute bottom-6 right-0 w-56 rounded-xl bg-black/80 backdrop-blur border border-white/10 px-3 py-2.5 text-[11px] text-white/60 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            These videos are AI-generated. You may occasionally notice visual glitches — like objects appearing or disappearing. They don't affect the learning content.
+          </div>
+        </div>
+      </div>
 
       <div className="absolute top-0 left-0 right-0 z-30">
         <div className="flex items-center justify-between px-4 py-3">
