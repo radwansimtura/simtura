@@ -90,7 +90,7 @@ export default function ScenarioTrainerPage() {
   const [responses, setResponses] = useState<StepResponse[]>([]);
   const [stepStartTime, setStepStartTime] = useState(Date.now());
   const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [videoFading, setVideoFading] = useState(false);
   const [mode, setMode] = useState<TrainerMode>("multiple-choice");

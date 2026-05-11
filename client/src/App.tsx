@@ -26,6 +26,7 @@ import ReviewPage from "@/pages/review";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
+import WelcomeBackPage from "@/pages/welcome-back";
 
 function EMSPage() {
   return (
@@ -93,6 +94,7 @@ function Router() {
       <Route path="/legal" component={LegalPage} />
       <Route path="/organizations" component={OrganizationsPage} />
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
+      <Route path="/welcome-back" component={WelcomeBackPage} />
       <Route path="/review" component={ReviewPage} />
       <Route path="/privacy" component={PrivacyPolicyPage} />
       <Route component={NotFound} />

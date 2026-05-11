@@ -22,11 +22,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      toast({ title: "Welcome back." });
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get("next");
-      const safeNext = next && /^\/[A-Za-z0-9/_\-:.]*$/.test(next) ? next : "/profile";
-      setLocation(safeNext);
+      setLocation("/welcome-back");
     } catch (err: any) {
       toast({
         title: "Sign in failed",
