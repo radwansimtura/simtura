@@ -766,6 +766,44 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     res.json(codes.map(toPublicCode));
   });
 
+  // Cohorts for an org
+  app.get("/api/organizations/:id/cohorts", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    const result = await storage.getCohorts(org.id);
+    res.json(result);
+  });
+
+  app.post("/api/organizations/:id/cohorts", async (req, res) => {
+    const org = await storage.getOrganization(req.params.id);
+    if (!org) return res.status(404).json({ message: "Organization not found" });
+    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    const { name, discipline, startDate, endDate, seatCount } = req.body;
+    if (!name || !startDate || !endDate) {
+      return res.status(400).json({ message: "name, startDate, and endDate are required" });
+    }
+    const cohort = await storage.createCohort({
+      organizationId: org.id,
+      name,
+      discipline: discipline ?? "EMS",
+      startDate,
+      endDate,
+    });
+    // Assign unredeemed codes to this cohort if seatCount specified
+    if (seatCount && seatCount > 0) {
+      const allCodes = await storage.getOrganizationCodes(org.id);
+      const unassigned = allCodes.filter(c => !c.cohortId && !c.redeemedByUserId);
+      const toAssign = unassigned.slice(0, seatCount).map(c => c.id);
+      if (toAssign.length > 0) await storage.assignCodesToCohort(cohort.id, toAssign);
+    }
+    res.json(cohort);
+  });
+
   // Students who have redeemed codes for this org
   app.get("/api/organizations/:id/students", async (req, res) => {
     const org = await storage.getOrganization(req.params.id);

@@ -42,12 +42,26 @@ export const organizations = pgTable("organizations", {
 export const organizationCodes = pgTable("organization_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").notNull(),
+  cohortId: varchar("cohort_id"),
   code: text("code").notNull().unique(),
   redeemedByUserId: varchar("redeemed_by_user_id"),
   redeemedByEmail: text("redeemed_by_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   redeemedAt: timestamp("redeemed_at"),
 });
+
+export const cohorts = pgTable("cohorts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  name: text("name").notNull(),
+  discipline: text("discipline").notNull().default("EMS"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type Cohort = typeof cohorts.$inferSelect;
+export type InsertCohort = typeof cohorts.$inferInsert;
 
 export const scenarios = pgTable("scenarios", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

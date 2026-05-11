@@ -213,7 +213,7 @@ export default function OrgDashboardPage() {
     enabled: org?.status === "active",
   });
 
-  const { data: rawStudents = [] } = useQuery<{ id: string; name: string; email: string; redeemedAt: string }[]>({
+  const { data: rawStudents = [] } = useQuery<{ id: string; name: string; email: string; redeemedAt: string; cohortId: string | null }[]>({
     queryKey: ["/api/organizations", id, "students"],
     queryFn: async () => {
       const res = await fetch(`/api/organizations/${id}/students`, { credentials: "include" });
@@ -269,7 +269,40 @@ export default function OrgDashboardPage() {
     });
   }, [rawStudents, rawAttempts, id, codes]);
 
-  const cohorts = useMemo(() => generateCohorts(id ?? "x"), [id]);
+  const { data: realCohorts = [], refetch: refetchCohorts } = useQuery<{ id: string; name: string; discipline: string; startDate: string; endDate: string; createdAt: string }[]>({
+    queryKey: ["/api/organizations", id, "cohorts"],
+    queryFn: async () => {
+      const res = await fetch(`/api/organizations/${id}/cohorts`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: org?.status === "active",
+  });
+
+  const cohorts: Cohort[] = realCohorts.length > 0
+    ? realCohorts.map(c => {
+        const now = Date.now();
+        const start = new Date(c.startDate).getTime();
+        const end = new Date(c.endDate).getTime();
+        const status: Cohort["status"] = now < start ? "Upcoming" : now > end ? "Completed" : "Active";
+        const orgStudents = rawStudents.filter(s => s.cohortId === c.id);
+        return {
+          id: c.id,
+          name: c.name,
+          discipline: c.discipline,
+          startDate: new Date(c.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          endDate: new Date(c.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          seats: org?.seats ?? 0,
+          enrolled: orgStudents.length,
+          avgScore: orgStudents.length > 0 ? Math.round(orgStudents.reduce((sum, s) => {
+            const st = students.find(st => st.id === s.id);
+            return sum + (st?.avgScore ?? 0);
+          }, 0) / orgStudents.length) : 0,
+          completionRate: orgStudents.length > 0 ? Math.round(orgStudents.filter(s => students.find(st => st.id === s.id)?.status === "completed").length / orgStudents.length * 100) : 0,
+          status,
+        };
+      })
+    : generateCohorts(id ?? "x");
   const tier = org ? (
     org.seats >= 100 ? "Institution" : org.seats >= 25 ? "Department" : "Single Cohort"
   ) : "—";
@@ -361,7 +394,7 @@ export default function OrgDashboardPage() {
               {section === "overview" && (
                 <OverviewSection org={org} students={students} orgLoading={orgLoading} redeemedCount={redeemedCount} codes={codes} orgId={id ?? ""} rawAttempts={rawAttempts} />
               )}
-              {section === "cohorts" && <CohortsSection cohorts={cohorts} />}
+              {section === "cohorts" && <CohortsSection cohorts={cohorts} orgId={id ?? ""} onCreated={refetchCohorts} />}
               {section === "students" && <StudentsSection students={students} />}
               {section === "performance" && <PerformanceSection orgId={id ?? ""} />}
               {section === "reports" && <ReportsSection org={org} />}
@@ -562,9 +595,36 @@ function OverviewSection({ org, students, orgLoading, redeemedCount, codes, orgI
 
 // ─── Cohorts ──────────────────────────────────────────────────────────────────
 
-function CohortsSection({ cohorts }: { cohorts: Cohort[] }) {
+function CohortsSection({ cohorts, orgId, onCreated }: { cohorts: Cohort[]; orgId: string; onCreated: () => void }) {
+  const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", discipline: "EMS", startDate: "", endDate: "", seats: "20" });
+
+  const handleCreate = async () => {
+    if (!form.name || !form.startDate || !form.endDate) {
+      toast({ title: "Missing fields", description: "Name, start date, and end date are required.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/organizations/${orgId}/cohorts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: form.name, discipline: form.discipline, startDate: form.startDate, endDate: form.endDate, seatCount: Number(form.seats) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? "Failed");
+      toast({ title: "Cohort created", description: `${form.name} is ready.` });
+      setShowCreate(false);
+      setForm({ name: "", discipline: "EMS", startDate: "", endDate: "", seats: "20" });
+      onCreated();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const statusColors: Record<string, string> = {
     Active: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
@@ -660,8 +720,8 @@ function CohortsSection({ cohorts }: { cohorts: Cohort[] }) {
               <Label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Seat count</Label>
               <Input type="number" value={form.seats} onChange={e => setForm({ ...form, seats: e.target.value })} className="bg-white/[0.04] border-white/10 text-white" />
             </div>
-            <Button className="w-full h-10 rounded-full bg-white text-black hover:bg-white/90 font-medium" onClick={() => setShowCreate(false)}>
-              <Sparkles className="mr-2 h-3.5 w-3.5" /> Create & Generate Codes
+            <Button className="w-full h-10 rounded-full bg-white text-black hover:bg-white/90 font-medium" onClick={handleCreate} disabled={saving}>
+              <Sparkles className="mr-2 h-3.5 w-3.5" /> {saving ? "Creating…" : "Create & Assign Codes"}
             </Button>
           </div>
         </DialogContent>

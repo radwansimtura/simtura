@@ -8,6 +8,8 @@ import {
   type InsertAttempt,
   type Organization,
   type OrganizationCode,
+  type Cohort,
+  type InsertCohort,
   type FlashcardDeck,
   type Flashcard,
   type FlashcardReview,
@@ -17,6 +19,7 @@ import {
   attempts,
   organizations,
   organizationCodes,
+  cohorts,
   flashcardDecks,
   flashcards,
   flashcardReviews,
@@ -48,8 +51,11 @@ export interface IStorage {
   getOrganizationCodeByCode(code: string): Promise<OrganizationCode | undefined>;
   redeemOrganizationCode(code: string, userId: string, email: string): Promise<OrganizationCode | undefined>;
   countRedeemedCodes(organizationId: string): Promise<number>;
-  getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date }[]>;
+  getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date; cohortId: string | null }[]>;
   getAttemptsForUsers(userIds: string[]): Promise<(Attempt & { scenarioTitle: string })[]>;
+  getCohorts(organizationId: string): Promise<import("@shared/schema").Cohort[]>;
+  createCohort(data: import("@shared/schema").InsertCohort): Promise<import("@shared/schema").Cohort>;
+  assignCodesToCohort(cohortId: string, codeIds: string[]): Promise<void>;
 
   getAllScenarios(): Promise<Scenario[]>;
   getScenario(id: string): Promise<Scenario | undefined>;
@@ -307,13 +313,14 @@ export class DatabaseStorage implements IStorage {
     return rows.length;
   }
 
-  async getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date }[]> {
+  async getOrgStudents(organizationId: string): Promise<{ id: string; name: string; email: string; redeemedAt: Date; cohortId: string | null }[]> {
     const rows = await db
       .select({
         id: users.id,
         name: users.name,
         email: users.email,
         redeemedAt: organizationCodes.redeemedAt,
+        cohortId: organizationCodes.cohortId,
       })
       .from(organizationCodes)
       .innerJoin(users, eq(organizationCodes.redeemedByUserId, users.id))
@@ -321,7 +328,7 @@ export class DatabaseStorage implements IStorage {
         eq(organizationCodes.organizationId, organizationId),
         isNotNull(organizationCodes.redeemedByUserId),
       ));
-    return rows.map(r => ({ ...r, redeemedAt: r.redeemedAt! }));
+    return rows.map(r => ({ ...r, redeemedAt: r.redeemedAt!, cohortId: r.cohortId ?? null }));
   }
 
   async getAttemptsForUsers(userIds: string[]): Promise<(Attempt & { scenarioTitle: string })[]> {
@@ -349,6 +356,27 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(attempts.startedAt));
     return rows;
+  }
+
+  async getCohorts(organizationId: string): Promise<Cohort[]> {
+    return db
+      .select()
+      .from(cohorts)
+      .where(eq(cohorts.organizationId, organizationId))
+      .orderBy(asc(cohorts.createdAt));
+  }
+
+  async createCohort(data: InsertCohort): Promise<Cohort> {
+    const [created] = await db.insert(cohorts).values(data).returning();
+    return created;
+  }
+
+  async assignCodesToCohort(cohortId: string, codeIds: string[]): Promise<void> {
+    if (codeIds.length === 0) return;
+    await db
+      .update(organizationCodes)
+      .set({ cohortId })
+      .where(sql`${organizationCodes.id} = ANY(ARRAY[${sql.join(codeIds.map(id => sql`${id}`), sql`, `)}]::text[])`);
   }
 
   async getAllScenarios(): Promise<Scenario[]> {
