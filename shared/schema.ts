@@ -84,6 +84,9 @@ export const scenarioSteps = pgTable("scenario_steps", {
   criticalCriterion: text("critical_criterion"),
   whyItMatters: text("why_it_matters"),
   nremtSkillSheetItem: text("nremt_skill_sheet_item"),
+  // Distractors for quiz/drill mode (3 plausible wrong answers, AI-generated, cached)
+  // For multi-question steps, distractors live inside each question object in questions[] JSONB instead.
+  distractors: text("distractors").array(),
 });
 
 export const attempts = pgTable("attempts", {
@@ -313,12 +316,44 @@ export interface PublicOrganizationCode {
   redeemedAt: string | null;
 }
 
+// Quiz / Drill mode: timed practice testing sessions outside of scenario simulation.
+// Each session has a fixed length (5/10/20), pulls questions adaptively from the user's
+// missed-steps pool first then broadens. No mid-session feedback; all results shown at end.
+export const quizSessions = pgTable("quiz_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  length: integer("length").notNull(), // 5, 10, or 20
+  score: integer("score"), // null until session completed
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const quizSessionResponses = pgTable("quiz_session_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  // Question identity: stepId + questionIndex (0 for legacy single-question steps).
+  stepId: varchar("step_id").notNull(),
+  questionIndex: integer("question_index").notNull().default(0),
+  // The 4 choices shown to the user, in the order they were shown (one is correct).
+  choices: text("choices").array().notNull(),
+  // The user's chosen answer text (matches one of choices).
+  chosenAnswer: text("chosen_answer"),
+  // The correct answer text (matches one of choices).
+  correctAnswer: text("correct_answer").notNull(),
+  // Did the user get it right?
+  isCorrect: boolean("is_correct"),
+  // Position in the session (0-indexed).
+  displayOrder: integer("display_order").notNull(),
+});
+
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true });
 export const insertFlashcardDeckSchema = createInsertSchema(flashcardDecks).omit({ id: true });
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true });
 export const insertFlashcardReviewSchema = createInsertSchema(flashcardReviews).omit({ id: true });
+export const insertQuizSessionSchema = createInsertSchema(quizSessions).omit({ id: true });
+export const insertQuizSessionResponseSchema = createInsertSchema(quizSessionResponses).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type Scenario = typeof scenarios.$inferSelect;
@@ -333,6 +368,10 @@ export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type FlashcardReview = typeof flashcardReviews.$inferSelect;
 export type InsertFlashcardReview = z.infer<typeof insertFlashcardReviewSchema>;
+export type QuizSession = typeof quizSessions.$inferSelect;
+export type InsertQuizSession = z.infer<typeof insertQuizSessionSchema>;
+export type QuizSessionResponse = typeof quizSessionResponses.$inferSelect;
+export type InsertQuizSessionResponse = z.infer<typeof insertQuizSessionResponseSchema>;
 
 export interface VitalSigns {
   hr?: number;

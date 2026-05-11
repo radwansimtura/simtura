@@ -13,7 +13,13 @@ import {
   pricePerSeatCents,
   type PublicOrganization,
   type PublicOrganizationCode,
+  type ScenarioStep,
+  quizSessions,
+  quizSessionResponses,
+  flashcards,
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getUncachableStripeClient } from "./stripeClient";
 
@@ -1006,6 +1012,408 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       nextDueDate: result.newDueDate,
       newState: result.newState,
     });
+  });
+
+  // ---------------------------------------------------------------
+  // Quiz / Drill mode (practice testing — Dunlosky HIGH utility)
+  // ---------------------------------------------------------------
+
+  /**
+   * Helper: Build the pool of candidate questions for a user's quiz session.
+   * Adaptive: missed-questions first, broaden if not enough.
+   * Returns array of { stepId, questionIndex, prompt, correctAnswer, distractors }.
+   */
+  type QuizPoolItem = {
+    stepId: string;
+    questionIndex: number;
+    prompt: string;
+    correctAnswer: string;
+    distractors: string[];
+    sourceTier: 1 | 2 | 3; // 1=missed, 2=attempted, 3=all-published
+  };
+
+  async function buildQuizQuestionPool(userId: string): Promise<QuizPoolItem[]> {
+    const seen = new Set<string>(); // dedupe key: stepId:questionIndex
+    const pool: QuizPoolItem[] = [];
+
+    // Pull all published scenarios for tier-3 broadening
+    const allScenarios = await storage.getAllScenarios();
+    const publishedScenarios = allScenarios.filter(
+      (s) => s.discipline !== "EMS" || PUBLISHED_EMS_TITLES.includes(s.title)
+    );
+
+    // Cache step lookups across passes
+    const stepsByScenario = new Map<string, ScenarioStep[]>();
+    async function getSteps(scenarioId: string): Promise<ScenarioStep[]> {
+      const cached = stepsByScenario.get(scenarioId);
+      if (cached) return cached;
+      const steps = await storage.getScenarioSteps(scenarioId);
+      stepsByScenario.set(scenarioId, steps);
+      return steps;
+    }
+
+    function addStep(step: ScenarioStep, sourceTier: 1 | 2 | 3, onlyMissedIndices?: Set<number>) {
+      const questions = Array.isArray(step.questions) ? (step.questions as any[]) : [];
+      if (questions.length > 0) {
+        questions.forEach((q, idx) => {
+          if (onlyMissedIndices && !onlyMissedIndices.has(idx)) return;
+          const key = `${step.id}:${idx}`;
+          if (seen.has(key)) return;
+          const qPrompt = typeof q.prompt === "string" ? q.prompt.trim() : "";
+          const qActions = Array.isArray(q.correctActions) ? q.correctActions.map(String) : [];
+          const qDistractors = Array.isArray(q.distractors) ? q.distractors.map(String) : [];
+          if (!qPrompt || qActions.length === 0 || qDistractors.length !== 3) return;
+          seen.add(key);
+          pool.push({
+            stepId: step.id,
+            questionIndex: idx,
+            prompt: qPrompt,
+            correctAnswer: qActions[0],
+            distractors: qDistractors,
+            sourceTier,
+          });
+        });
+      } else {
+        const key = `${step.id}:0`;
+        if (seen.has(key)) return;
+        const sPrompt = typeof step.prompt === "string" ? step.prompt.trim() : "";
+        const sActions = step.correctActions ?? [];
+        const sDistractors = step.distractors ?? [];
+        if (!sPrompt || sActions.length === 0 || sDistractors.length !== 3) return;
+        seen.add(key);
+        pool.push({
+          stepId: step.id,
+          questionIndex: 0,
+          prompt: sPrompt,
+          correctAnswer: sActions[0],
+          distractors: sDistractors,
+          sourceTier,
+        });
+      }
+    }
+
+    // TIER 1: Missed questions from user's attempt history
+    const userAttempts = await storage.getUserAttempts(userId, 100);
+    const missedByStepId = new Map<string, Set<number>>(); // stepId -> set of missed question indices
+    for (const attempt of userAttempts) {
+      const responses = (attempt.responses ?? []) as Array<{
+        stepId: string;
+        questionIndex?: number;
+        isCorrect?: boolean;
+        score?: number;
+      }>;
+      for (const r of responses) {
+        const isWrong = r.isCorrect === false || (typeof r.score === "number" && r.score < 70);
+        if (!isWrong) continue;
+        const idx = typeof r.questionIndex === "number" ? r.questionIndex : 0;
+        if (!missedByStepId.has(r.stepId)) missedByStepId.set(r.stepId, new Set());
+        missedByStepId.get(r.stepId)!.add(idx);
+      }
+    }
+    const missedEntries = Array.from(missedByStepId.entries());
+    for (const [stepId, missedIndices] of missedEntries) {
+      const step = await storage.getScenarioStep(stepId);
+      if (!step) continue;
+      addStep(step, 1, missedIndices);
+    }
+
+    // TIER 2: All questions from scenarios the user has attempted
+    const attemptedScenarioIds = Array.from(new Set(userAttempts.map((a) => a.scenarioId)));
+    for (const scenarioId of attemptedScenarioIds) {
+      const steps = await getSteps(scenarioId);
+      for (const step of steps) addStep(step, 2);
+    }
+
+    // TIER 3: All published scenarios (broadest fallback)
+    for (const scenario of publishedScenarios) {
+      const steps = await getSteps(scenario.id);
+      for (const step of steps) addStep(step, 3);
+    }
+
+    return pool;
+  }
+
+  function shuffleArray<T>(arr: T[]): T[] {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  /**
+   * POST /api/quiz/start
+   * Body: { length: 5 | 10 | 20 }
+   * Returns: { sessionId, questions: [{ id, stepId, questionIndex, prompt, choices }] }
+   */
+  app.post("/api/quiz/start", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const schema = z.object({
+      length: z.union([z.literal(5), z.literal(10), z.literal(20)]),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+    const { length } = parsed.data;
+
+    const pool = await buildQuizQuestionPool(userId);
+    if (pool.length === 0) {
+      return res.status(404).json({
+        message: "No questions available. Complete a scenario first or wait until distractors are generated.",
+      });
+    }
+
+    // Sort by tier (1 first, then 2, then 3), shuffle within each tier, then take N
+    const tiered = [
+      shuffleArray(pool.filter((p) => p.sourceTier === 1)),
+      shuffleArray(pool.filter((p) => p.sourceTier === 2)),
+      shuffleArray(pool.filter((p) => p.sourceTier === 3)),
+    ].flat();
+    const selected = tiered.slice(0, length);
+
+    // Create the session row
+    const [session] = await db.insert(quizSessions).values({
+      userId,
+      length,
+    }).returning();
+
+    // Build response: shuffle choices for each question (correct + 3 distractors)
+    const questions = selected.map((q) => {
+      const choices = shuffleArray([q.correctAnswer, ...q.distractors]);
+      return {
+        stepId: q.stepId,
+        questionIndex: q.questionIndex,
+        prompt: q.prompt,
+        choices,
+      };
+    });
+
+    res.json({
+      sessionId: session.id,
+      questions,
+      total: questions.length,
+    });
+  });
+
+  /**
+   * POST /api/quiz/submit
+   * Body: { sessionId, responses: [{ stepId, questionIndex, chosenAnswer }] }
+   * Returns: { score, total, breakdown: [...] }
+   */
+  app.post("/api/quiz/submit", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const schema = z.object({
+      sessionId: z.string().min(1),
+      responses: z.array(z.object({
+        stepId: z.string(),
+        questionIndex: z.number().int().min(0),
+        chosenAnswer: z.string(),
+      })),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+    const { sessionId, responses } = parsed.data;
+
+    // Validate session
+    const [session] = await db.select().from(quizSessions).where(eq(quizSessions.id, sessionId));
+    if (!session) return res.status(404).json({ message: "Quiz session not found" });
+    if (session.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    if (session.completedAt) return res.status(400).json({ message: "Session already submitted" });
+
+    // Look up the correct answer + distractors for each response (rebuild choices for storage)
+    let correctCount = 0;
+    const breakdown: Array<{
+      stepId: string;
+      questionIndex: number;
+      prompt: string;
+      choices: string[];
+      chosenAnswer: string;
+      correctAnswer: string;
+      isCorrect: boolean;
+      whyItMatters: string | null;
+    }> = [];
+    const responseRows: any[] = [];
+
+    for (let i = 0; i < responses.length; i++) {
+      const r = responses[i];
+      const step = await storage.getScenarioStep(r.stepId);
+      if (!step) continue;
+
+      let prompt = "";
+      let correctAnswer = "";
+      let distractors: string[] = [];
+      const questions = Array.isArray(step.questions) ? (step.questions as any[]) : [];
+      if (questions.length > 0) {
+        const q = questions[r.questionIndex];
+        if (!q) continue;
+        prompt = typeof q.prompt === "string" ? q.prompt : "";
+        correctAnswer = Array.isArray(q.correctActions) && q.correctActions.length > 0 ? String(q.correctActions[0]) : "";
+        distractors = Array.isArray(q.distractors) ? q.distractors.map(String) : [];
+      } else {
+        prompt = step.prompt;
+        correctAnswer = (step.correctActions ?? [])[0] || "";
+        distractors = step.distractors ?? [];
+      }
+      if (!correctAnswer || distractors.length !== 3) continue;
+
+      const choices = [correctAnswer, ...distractors];
+      const isCorrect = r.chosenAnswer.trim() === correctAnswer.trim();
+      if (isCorrect) correctCount++;
+
+      breakdown.push({
+        stepId: r.stepId,
+        questionIndex: r.questionIndex,
+        prompt,
+        choices,
+        chosenAnswer: r.chosenAnswer,
+        correctAnswer,
+        isCorrect,
+        whyItMatters: step.whyItMatters ?? null,
+      });
+
+      responseRows.push({
+        sessionId,
+        stepId: r.stepId,
+        questionIndex: r.questionIndex,
+        choices,
+        chosenAnswer: r.chosenAnswer,
+        correctAnswer,
+        isCorrect,
+        displayOrder: i,
+      });
+    }
+
+    if (responseRows.length > 0) {
+      await db.insert(quizSessionResponses).values(responseRows);
+    }
+
+    const total = breakdown.length;
+    const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+    await db.update(quizSessions)
+      .set({ score, completedAt: new Date() })
+      .where(eq(quizSessions.id, sessionId));
+
+    res.json({
+      sessionId,
+      score,
+      correctCount,
+      total,
+      breakdown,
+    });
+  });
+
+  /**
+   * POST /api/quiz/:sessionId/boost-fsrs
+   * Marks the flashcards corresponding to missed quiz questions with priorityBoost = true.
+   * Lazily creates flashcards for missed questions that don't have one yet.
+   * Returns: { boosted: number, created: number }
+   */
+  app.post("/api/quiz/:sessionId/boost-fsrs", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const sessionId = req.params.sessionId as string;
+
+    // Validate session
+    const [session] = await db.select().from(quizSessions).where(eq(quizSessions.id, sessionId));
+    if (!session) return res.status(404).json({ message: "Quiz session not found" });
+    if (session.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    if (!session.completedAt) return res.status(400).json({ message: "Session not submitted yet" });
+
+    // Pull all wrong-answer responses
+    const wrongResponses = await db.select().from(quizSessionResponses)
+      .where(and(
+        eq(quizSessionResponses.sessionId, sessionId),
+        eq(quizSessionResponses.isCorrect, false),
+      ));
+    if (wrongResponses.length === 0) {
+      return res.json({ boosted: 0, created: 0 });
+    }
+
+    // For each wrong response, find or create the corresponding flashcard
+    let boosted = 0;
+    let created = 0;
+    const cardIdsToBoost: string[] = [];
+
+    for (const r of wrongResponses) {
+      // Find existing card by user + sourceStepId
+      const existingCards = await db.select().from(flashcards)
+        .where(and(
+          eq(flashcards.userId, userId),
+          eq(flashcards.sourceStepId, r.stepId),
+        ));
+
+      if (existingCards.length > 0) {
+        // Boost all existing cards from this step. (Single-q steps → 1 card. Multi-q steps → multiple cards;
+        // we boost all since we don't currently track per-question card mapping. Reasonable v1 behavior.)
+        cardIdsToBoost.push(...existingCards.map((c) => c.id));
+      } else {
+        // No card exists yet. Lazily create one for this question.
+        const step = await storage.getScenarioStep(r.stepId);
+        if (!step) continue;
+
+        // Find or create deck for this scenario
+        let deck = await storage.getDeckByScenarioAndUser(step.scenarioId, userId);
+        if (!deck) {
+          const scenario = await storage.getScenario(step.scenarioId);
+          deck = await storage.createDeck({
+            userId,
+            scenarioId: step.scenarioId,
+            attemptId: null,
+            title: scenario?.title || "Quiz-generated deck",
+          });
+        }
+
+        // Build card content from the question
+        const questions = Array.isArray(step.questions) ? (step.questions as any[]) : [];
+        let front = "";
+        let back = "";
+        if (questions.length > 0 && questions[r.questionIndex]) {
+          const q = questions[r.questionIndex];
+          front = typeof q.prompt === "string" ? q.prompt : "";
+          const qActions = Array.isArray(q.correctActions) ? q.correctActions.map(String) : [];
+          const why = step.whyItMatters ?? "";
+          back = why ? `${qActions.join("; ")}\n\nWhy it matters: ${why}` : qActions.join("; ");
+        } else {
+          front = step.prompt;
+          const why = step.whyItMatters ?? "";
+          back = why ? `${(step.correctActions ?? []).join("; ")}\n\nWhy it matters: ${why}` : (step.correctActions ?? []).join("; ");
+        }
+        if (!front || !back) continue;
+
+        const initial = newCardState();
+        const scenario = await storage.getScenario(step.scenarioId);
+        const newCard = await storage.createCard({
+          deckId: deck.id,
+          userId,
+          front,
+          back,
+          sourceStepId: step.id,
+          tags: scenario ? [scenario.title] : [],
+          difficulty: initial.difficulty,
+          stability: initial.stability,
+          state: initial.state,
+          lapses: initial.lapses,
+          reps: initial.reps,
+          dueDate: initial.dueDate,
+          priorityBoost: true, // boost on creation
+        });
+        cardIdsToBoost.push(newCard.id);
+        created++;
+      }
+    }
+
+    // Boost all collected cards in one shot
+    if (cardIdsToBoost.length > 0) {
+      // Use storage helper if available, else direct update
+      await storage.setCardPriorityBoost(cardIdsToBoost, true);
+      boosted = cardIdsToBoost.length - created; // created were already boosted on insert
+    }
+
+    res.json({ boosted: boosted + created, created });
   });
 
   return httpServer;
