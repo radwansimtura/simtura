@@ -156,6 +156,10 @@ export function registerAuthRoutes(app: Express) {
       const securityAnswerHash = parsed.data.securityAnswer
         ? await hashPassword(normalizeAnswer(parsed.data.securityAnswer))
         : null;
+      // Emails granted lifetime pro access by Simtura
+      const PRO_GIFT_EMAILS = ['juju@phnproductions.com'];
+      const giftPro = PRO_GIFT_EMAILS.includes(email);
+
       const user = await storage.createUserFull({
         email,
         passwordHash,
@@ -163,6 +167,10 @@ export function registerAuthRoutes(app: Express) {
         securityQuestion: parsed.data.securityQuestion ?? null,
         securityAnswerHash,
       });
+
+      if (giftPro) {
+        await storage.setUserTier(user.id, 'pro');
+      }
       console.log(`[auth] user created: ${user.id} — saving session`);
       req.session.userId = user.id;
       req.session.save((err) => {
