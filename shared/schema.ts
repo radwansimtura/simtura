@@ -375,9 +375,13 @@ export const quizSessions = pgTable("quiz_sessions", {
 export const quizSessionResponses = pgTable("quiz_session_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
-  // Question identity: stepId + questionIndex (0 for legacy single-question steps).
-  stepId: varchar("step_id").notNull(),
-  questionIndex: integer("question_index").notNull().default(0),
+  // Scenario-quiz path (Day 5, dormant): stepId + questionIndex identify the question.
+  // Nullable because NREMT-quiz responses use nremtQuestionId instead.
+  stepId: varchar("step_id"),
+  questionIndex: integer("question_index"),
+  // NREMT-quiz path (Day 6+): references nremt_questions.id.
+  // Nullable because scenario-quiz responses use stepId instead.
+  nremtQuestionId: varchar("nremt_question_id"),
   // The 4 choices shown to the user, in the order they were shown (one is correct).
   choices: text("choices").array().notNull(),
   // The user's chosen answer text (matches one of choices).
@@ -390,6 +394,35 @@ export const quizSessionResponses = pgTable("quiz_session_responses", {
   displayOrder: integer("display_order").notNull(),
 });
 
+// NREMT mini-test mode: standalone question bank decoupled from scenarios.
+// Mirrors the NREMT EMT examination blueprint (5 categories). AI-authored,
+// grounded in standard EMS references (AAOS, Limmer, Brady, AHA).
+// Questions filtered by status='approved' before serving to users.
+export const nremtQuestions = pgTable("nremt_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // One of: Airway, Cardiology, Trauma, Medical, Operations
+  category: text("category").notNull(),
+  // Free-form sub-area for finer-grained tagging (e.g. "ACS", "Pediatric Airway"). Optional.
+  subCategory: text("sub_category"),
+  // 1 (entry) through 5 (advanced). Used for difficulty-adaptive sampling.
+  difficulty: integer("difficulty").notNull(),
+  questionText: text("question_text").notNull(),
+  // JSONB array of exactly 4 strings.
+  options: jsonb("options").notNull(),
+  // 0..3 — index into options[] of the correct choice.
+  correctIndex: integer("correct_index").notNull(),
+  // Shown to the user after they answer.
+  explanation: text("explanation").notNull(),
+  // E.g. "AAOS 12e Ch.14" or "AHA 2020 ACLS". Free-form.
+  sourceReference: text("source_reference"),
+  // draft | approved | retired. Only 'approved' is served to live sessions.
+  status: text("status").notNull().default("draft"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true });
@@ -398,6 +431,7 @@ export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: t
 export const insertFlashcardReviewSchema = createInsertSchema(flashcardReviews).omit({ id: true });
 export const insertQuizSessionSchema = createInsertSchema(quizSessions).omit({ id: true });
 export const insertQuizSessionResponseSchema = createInsertSchema(quizSessionResponses).omit({ id: true });
+export const insertNremtQuestionSchema = createInsertSchema(nremtQuestions).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type User = typeof users.$inferSelect;
 export type Scenario = typeof scenarios.$inferSelect;
@@ -416,6 +450,8 @@ export type QuizSession = typeof quizSessions.$inferSelect;
 export type InsertQuizSession = z.infer<typeof insertQuizSessionSchema>;
 export type QuizSessionResponse = typeof quizSessionResponses.$inferSelect;
 export type InsertQuizSessionResponse = z.infer<typeof insertQuizSessionResponseSchema>;
+export type NremtQuestion = typeof nremtQuestions.$inferSelect;
+export type InsertNremtQuestion = z.infer<typeof insertNremtQuestionSchema>;
 
 export interface VitalSigns {
   hr?: number;
