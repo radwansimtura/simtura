@@ -29,7 +29,7 @@ import {
   shuffleOptions,
   questionForClient,
 } from "./nremtQuiz";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getUncachableStripeClient } from "./stripeClient";
 
@@ -1577,6 +1577,116 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       questionIndex: nextIndex,
       total: SESSION_LENGTH,
       question: questionForClient(nextShuffled),
+    });
+  });
+
+
+  /**
+   * GET /api/quiz/:sessionId/state (Day 6+, NREMT mode)
+   * Session resume support. Returns:
+   *   - { status: "active", questionIndex, total, question }  — pending question
+   *   - { status: "complete", ...results payload }            — same shape as /results
+   *   - 404                                                   — not found or wrong user
+   */
+  app.get("/api/quiz/:sessionId/state", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const sessionId = req.params.sessionId as string;
+
+    const [session] = await db.select().from(quizSessions).where(eq(quizSessions.id, sessionId));
+    if (!session) return res.status(404).json({ message: "Session not found" });
+    if (session.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    if (session.quizMode !== "nremt") return res.status(400).json({ message: "Wrong quiz mode" });
+
+    // If session is complete, return the same payload shape as /results so the
+    // client can render the results screen directly without a second call.
+    if (session.completedAt) {
+      const rows = await db
+        .select({
+          questionId: quizSessionResponses.nremtQuestionId,
+          displayOrder: quizSessionResponses.displayOrder,
+          chosenAnswer: quizSessionResponses.chosenAnswer,
+          correctAnswer: quizSessionResponses.correctAnswer,
+          choices: quizSessionResponses.choices,
+          isCorrect: quizSessionResponses.isCorrect,
+          category: nremtQuestions.category,
+          subCategory: nremtQuestions.subCategory,
+          difficulty: nremtQuestions.difficulty,
+          questionText: nremtQuestions.questionText,
+          explanation: nremtQuestions.explanation,
+        })
+        .from(quizSessionResponses)
+        .innerJoin(
+          nremtQuestions,
+          eq(quizSessionResponses.nremtQuestionId, nremtQuestions.id),
+        )
+        .where(eq(quizSessionResponses.sessionId, sessionId))
+        .orderBy(asc(quizSessionResponses.displayOrder));
+
+      const byCategory: Record<string, { correct: number; total: number }> = {};
+      for (const r of rows) {
+        if (!byCategory[r.category]) byCategory[r.category] = { correct: 0, total: 0 };
+        byCategory[r.category].total++;
+        if (r.isCorrect) byCategory[r.category].correct++;
+      }
+      const breakdownByCategory = Object.entries(byCategory).map(([category, v]) => ({
+        category,
+        correct: v.correct,
+        total: v.total,
+        percent: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+      }));
+      const missed = rows
+        .filter((r) => r.isCorrect === false)
+        .map((r) => ({
+          questionText: r.questionText,
+          choices: r.choices,
+          chosenAnswer: r.chosenAnswer,
+          correctAnswer: r.correctAnswer,
+          explanation: r.explanation,
+          category: r.category,
+          subCategory: r.subCategory,
+          difficulty: r.difficulty,
+        }));
+
+      return res.json({
+        status: "complete",
+        sessionId,
+        score: session.score,
+        correctCount: rows.filter((r) => r.isCorrect === true).length,
+        total: rows.length,
+        breakdownByCategory,
+        missed,
+      });
+    }
+
+    // Active session: find the placeholder row (most recent unanswered) and return its question.
+    const [placeholder] = await db.select().from(quizSessionResponses)
+      .where(and(
+        eq(quizSessionResponses.sessionId, sessionId),
+        sql`${quizSessionResponses.chosenAnswer} IS NULL`,
+      ))
+      .orderBy(sql`${quizSessionResponses.displayOrder} DESC`)
+      .limit(1);
+    if (!placeholder || !placeholder.nremtQuestionId) {
+      return res.status(500).json({ message: "Active session has no pending question" });
+    }
+    const [question] = await db.select().from(nremtQuestions)
+      .where(eq(nremtQuestions.id, placeholder.nremtQuestionId));
+    if (!question) return res.status(500).json({ message: "Question not found" });
+
+    // Return the question using the shuffled options the user already saw,
+    // NOT the canonical bank order. Critical for resume integrity.
+    res.json({
+      status: "active",
+      questionIndex: placeholder.displayOrder,
+      total: SESSION_LENGTH,
+      question: {
+        id: question.id,
+        category: question.category,
+        subCategory: question.subCategory,
+        difficulty: question.difficulty,
+        questionText: question.questionText,
+        options: placeholder.choices,
+      },
     });
   });
 
