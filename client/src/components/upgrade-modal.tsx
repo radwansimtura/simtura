@@ -26,6 +26,12 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
 
   const handleUpgrade = async () => {
     setLoading(true);
+    // Track purchase intent in Simtura Command analytics
+    fetch('https://simtura-leadgen.onrender.com/track/purchase-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'upgrade-modal', plan: 'premium' }),
+    }).catch(() => {});
     try {
       // Redirects the browser to Stripe Checkout. On success the user lands
       // back on /profile?upgraded=1 and the webhook flips them to Pro.
