@@ -1,0 +1,270 @@
+
+  /**
+   * POST /api/quiz/start (Day 6+, NREMT mode)
+   * No body required (length is fixed at 25).
+   * Returns: { sessionId, questionIndex, total, question }
+   * where question is { id, category, subCategory, difficulty, questionText, options }.
+   */
+  app.post("/api/quiz/start", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+
+    // Compute per-category starting difficulty from the user's history.
+    const categoryDifficulty = await computeStartingDifficulties(userId);
+    // Build the interleaved category sequence (25 slots).
+    const categorySequence = buildCategorySequence();
+    const blueprintJson: Record<string, number> = {};
+    for (const cat of categorySequence) {
+      blueprintJson[cat] = (blueprintJson[cat] ?? 0) + 1;
+    }
+
+    // Pick the first question.
+    const firstCategory = categorySequence[0];
+    const firstDifficulty = categoryDifficulty[firstCategory] ?? 3;
+    const { question } = await pickNextQuestion(firstCategory, firstDifficulty, []);
+    const shuffled = shuffleOptions(question);
+
+    // Create the session row with all state needed to resume / serve subsequent questions.
+    const [session] = await db.insert(quizSessions).values({
+      userId,
+      quizMode: "nremt",
+      length: SESSION_LENGTH,
+      blueprintJson,
+      currentIndex: 0,
+      categoryDifficulty,
+      servedQuestionIds: [question.id],
+    }).returning();
+
+    // Write the placeholder response row (server is source of truth on what user saw).
+    await db.insert(quizSessionResponses).values({
+      sessionId: session.id,
+      stepId: null,
+      questionIndex: null,
+      nremtQuestionId: question.id,
+      choices: shuffled.options,
+      chosenAnswer: null,
+      correctAnswer: shuffled.options[shuffled.correctIndex],
+      isCorrect: null,
+      displayOrder: 0,
+    });
+
+    res.json({
+      sessionId: session.id,
+      questionIndex: 0,
+      total: SESSION_LENGTH,
+      question: questionForClient(shuffled),
+    });
+  });
+
+  /**
+   * POST /api/quiz/submit (Day 6+, NREMT mode)
+   * Body: { sessionId, questionId, choiceIndex }
+   * Returns:
+   *   - { done: false, questionIndex, total, question }   — if more questions remain
+   *   - { done: true, sessionId, score, ... }              — if this was the 25th question
+   */
+  app.post("/api/quiz/submit", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const schema = z.object({
+      sessionId: z.string().min(1),
+      questionId: z.string().min(1),
+      choiceIndex: z.number().int().min(0).max(3),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+    }
+    const { sessionId, questionId, choiceIndex } = parsed.data;
+
+    // Validate session.
+    const [session] = await db.select().from(quizSessions).where(eq(quizSessions.id, sessionId));
+    if (!session) return res.status(404).json({ message: "Quiz session not found" });
+    if (session.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    if (session.quizMode !== "nremt") return res.status(400).json({ message: "Wrong quiz mode" });
+    if (session.completedAt) return res.status(400).json({ message: "Session already complete" });
+
+    // Find the placeholder response row for this question.
+    const [placeholder] = await db.select().from(quizSessionResponses)
+      .where(and(
+        eq(quizSessionResponses.sessionId, sessionId),
+        eq(quizSessionResponses.nremtQuestionId, questionId),
+      ));
+    if (!placeholder) return res.status(400).json({ message: "Question not part of this session" });
+    if (placeholder.chosenAnswer !== null) {
+      return res.status(400).json({ message: "Question already answered" });
+    }
+
+    // Score the answer.
+    const choices = placeholder.choices as string[];
+    if (choiceIndex >= choices.length) {
+      return res.status(400).json({ message: "choiceIndex out of range" });
+    }
+    const chosenAnswer = choices[choiceIndex];
+    const isCorrect = chosenAnswer === placeholder.correctAnswer;
+
+    // Update the placeholder with the user's choice.
+    await db.update(quizSessionResponses)
+      .set({ chosenAnswer, isCorrect })
+      .where(eq(quizSessionResponses.id, placeholder.id));
+
+    // Advance current_index. If this was the last question, mark the session complete.
+    const nextIndex = session.currentIndex + 1;
+    if (nextIndex >= SESSION_LENGTH) {
+      // Compute final score and complete the session.
+      const allResponses = await db.select().from(quizSessionResponses)
+        .where(eq(quizSessionResponses.sessionId, sessionId));
+      const correctCount = allResponses.filter((r) => r.isCorrect === true).length;
+      const total = allResponses.length;
+      const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+      await db.update(quizSessions)
+        .set({ currentIndex: nextIndex, score, completedAt: new Date() })
+        .where(eq(quizSessions.id, sessionId));
+
+      return res.json({
+        done: true,
+        sessionId,
+        score,
+        correctCount,
+        total,
+      });
+    }
+
+    // Rebuild the category sequence deterministically and find the next category.
+    const categorySequence = buildCategorySequence();
+    const nextCategory = categorySequence[nextIndex];
+
+    // Look up the difficulty of the question we just served (to know which category to adapt).
+    const [justServedQuestion] = await db.select().from(nremtQuestions)
+      .where(eq(nremtQuestions.id, questionId));
+    if (!justServedQuestion) {
+      return res.status(500).json({ message: "Just-served question vanished from bank" });
+    }
+
+    // Adapt the difficulty of the category the user just answered.
+    const justServedCategory = justServedQuestion.category;
+    const currentCategoryDifficulty = (session.categoryDifficulty as Record<string, number>) ?? {};
+    const newDifficultyForServedCategory = adaptDifficulty(
+      currentCategoryDifficulty[justServedCategory] ?? 3,
+      isCorrect,
+    );
+    const updatedCategoryDifficulty = {
+      ...currentCategoryDifficulty,
+      [justServedCategory]: newDifficultyForServedCategory,
+    };
+
+    // Target difficulty for the NEXT question is its category's current value.
+    const targetDifficulty = updatedCategoryDifficulty[nextCategory] ?? 3;
+
+    // Pick the next question (excluding already-served).
+    const { question: nextQuestion } = await pickNextQuestion(
+      nextCategory,
+      targetDifficulty,
+      session.servedQuestionIds,
+    );
+    const nextShuffled = shuffleOptions(nextQuestion);
+
+    // Write the placeholder for the next question.
+    await db.insert(quizSessionResponses).values({
+      sessionId,
+      stepId: null,
+      questionIndex: null,
+      nremtQuestionId: nextQuestion.id,
+      choices: nextShuffled.options,
+      chosenAnswer: null,
+      correctAnswer: nextShuffled.options[nextShuffled.correctIndex],
+      isCorrect: null,
+      displayOrder: nextIndex,
+    });
+
+    // Update the session state.
+    await db.update(quizSessions)
+      .set({
+        currentIndex: nextIndex,
+        categoryDifficulty: updatedCategoryDifficulty,
+        servedQuestionIds: [...session.servedQuestionIds, nextQuestion.id],
+      })
+      .where(eq(quizSessions.id, sessionId));
+
+    res.json({
+      done: false,
+      questionIndex: nextIndex,
+      total: SESSION_LENGTH,
+      question: questionForClient(nextShuffled),
+    });
+  });
+
+  /**
+   * GET /api/quiz/:sessionId/results (Day 6+, NREMT mode)
+   * Idempotent fetch of completed-session results. For refresh / share / direct link.
+   * Returns the same shape as the done-true response of /submit, plus per-category breakdown.
+   */
+  app.get("/api/quiz/:sessionId/results", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const sessionId = req.params.sessionId as string;
+
+    const [session] = await db.select().from(quizSessions).where(eq(quizSessions.id, sessionId));
+    if (!session) return res.status(404).json({ message: "Session not found" });
+    if (session.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+    if (session.quizMode !== "nremt") return res.status(400).json({ message: "Wrong quiz mode" });
+    if (!session.completedAt) return res.status(400).json({ message: "Session not yet complete" });
+
+    const rows = await db
+      .select({
+        responseId: quizSessionResponses.id,
+        questionId: quizSessionResponses.nremtQuestionId,
+        displayOrder: quizSessionResponses.displayOrder,
+        chosenAnswer: quizSessionResponses.chosenAnswer,
+        correctAnswer: quizSessionResponses.correctAnswer,
+        choices: quizSessionResponses.choices,
+        isCorrect: quizSessionResponses.isCorrect,
+        category: nremtQuestions.category,
+        subCategory: nremtQuestions.subCategory,
+        difficulty: nremtQuestions.difficulty,
+        questionText: nremtQuestions.questionText,
+        explanation: nremtQuestions.explanation,
+      })
+      .from(quizSessionResponses)
+      .innerJoin(
+        nremtQuestions,
+        eq(quizSessionResponses.nremtQuestionId, nremtQuestions.id),
+      )
+      .where(eq(quizSessionResponses.sessionId, sessionId))
+      .orderBy(asc(quizSessionResponses.displayOrder));
+
+    // Per-category breakdown.
+    const byCategory: Record<string, { correct: number; total: number }> = {};
+    for (const r of rows) {
+      if (!byCategory[r.category]) byCategory[r.category] = { correct: 0, total: 0 };
+      byCategory[r.category].total++;
+      if (r.isCorrect) byCategory[r.category].correct++;
+    }
+    const breakdownByCategory = Object.entries(byCategory).map(([category, v]) => ({
+      category,
+      correct: v.correct,
+      total: v.total,
+      percent: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+    }));
+
+    const missed = rows
+      .filter((r) => r.isCorrect === false)
+      .map((r) => ({
+        questionText: r.questionText,
+        choices: r.choices,
+        chosenAnswer: r.chosenAnswer,
+        correctAnswer: r.correctAnswer,
+        explanation: r.explanation,
+        category: r.category,
+        subCategory: r.subCategory,
+        difficulty: r.difficulty,
+      }));
+
+    res.json({
+      sessionId,
+      score: session.score,
+      correctCount: rows.filter((r) => r.isCorrect === true).length,
+      total: rows.length,
+      breakdownByCategory,
+      missed,
+    });
+  });
+

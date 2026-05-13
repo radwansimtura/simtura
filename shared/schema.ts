@@ -366,8 +366,19 @@ export interface PublicOrganizationCode {
 export const quizSessions = pgTable("quiz_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
-  length: integer("length").notNull(), // 5, 10, or 20
+  // 'scenario' (Day 5, dormant) or 'nremt' (Day 6+).
+  quizMode: text("quiz_mode").notNull().default("nremt"),
+  length: integer("length").notNull(), // scenario: 5/10/20. nremt: 25.
   score: integer("score"), // null until session completed
+  // NREMT-mode state — null for scenario sessions.
+  // Per-category target counts for this session: { Airway: 5, Cardiology: 6, ... }.
+  blueprintJson: jsonb("blueprint_json"),
+  // How many questions have been served (0-25). Increments on each /submit.
+  currentIndex: integer("current_index").notNull().default(0),
+  // Per-category current difficulty (1-5), adjusted after each answer in that category.
+  categoryDifficulty: jsonb("category_difficulty"),
+  // Question IDs already served, in order. Prevents repeats within a session.
+  servedQuestionIds: text("served_question_ids").array().notNull().default(sql`'{}'::text[]`),
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
