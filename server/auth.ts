@@ -157,7 +157,7 @@ export function registerAuthRoutes(app: Express) {
         ? await hashPassword(normalizeAnswer(parsed.data.securityAnswer))
         : null;
       // Emails granted lifetime pro access by Simtura
-      const PRO_GIFT_EMAILS = ['juju@phnproductions.com'];
+      const PRO_GIFT_EMAILS = ['juju@phnproductions.com', 'maxminasyan@gmail.com'];
       const giftPro = PRO_GIFT_EMAILS.includes(email);
 
       const user = await storage.createUserFull({
