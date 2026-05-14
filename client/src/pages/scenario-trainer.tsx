@@ -696,10 +696,11 @@ export default function ScenarioTrainerPage() {
     <div ref={containerRef} className="relative h-screen w-full overflow-hidden bg-black flex flex-col sm:block" data-testid="video-trainer-container">
       <video
         ref={videoRef}
-        className={`object-cover transition-opacity duration-500 sm:absolute sm:inset-0 sm:w-full sm:h-full ${
-          showVideoPlaying ? "flex-1 w-full" : "shrink-0 h-[35vh] w-full"
-        } ${videoFading ? "opacity-0" : "opacity-100"
-        }`}
+        className={`transition-opacity duration-500 sm:object-cover sm:absolute sm:inset-0 sm:w-full sm:h-full ${
+          showVideoPlaying
+            ? "flex-1 w-full object-contain bg-black"
+            : "shrink-0 h-[35vh] w-full object-cover"
+        } ${videoFading ? "opacity-0" : "opacity-100"}`}
         muted={isMuted}
         playsInline
         data-testid="video-background"
