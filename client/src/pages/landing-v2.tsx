@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   ChevronDown,
   PlayCircle,
-  Eye,
-  Brain,
-  Gauge,
   Quote,
   Check,
   User,
@@ -58,23 +55,37 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-const HOW_IT_WORKS = [
+const WHY_IT_WORKS = [
   {
-    icon: <Eye className="h-5 w-5" />,
-    title: "Watch the call unfold.",
-    body: "Step into a first-person scene — dispatch tones, scene size-up, patient contact. Real video, not a slideshow.",
+    num: "01",
+    title: "Pressure.",
+    body: "Passive review sticks in calm settings. Simtura encodes under realistic stakes — so recall fires when it counts.",
   },
   {
-    icon: <Brain className="h-5 w-5" />,
-    title: "Decide under pressure.",
-    body: "The video pauses at every critical decision point. You commit to an answer — no peeking, no second-guessing.",
+    num: "02",
+    title: "Immersion.",
+    body: "First-person video and live dispatch are the exact conditions the brain needs to encode procedural memory that holds in the field.",
   },
   {
-    icon: <Gauge className="h-5 w-5" />,
-    title: "Get instant feedback.",
-    body: "NREMT-aligned grading explains why each call mattered, what the protocol says, and what would have happened next.",
+    num: "03",
+    title: "Precision.",
+    body: "Grading in seconds reinforces the right decision before the memory sets. That's trained instinct — not just retained information.",
   },
 ];
+
+const DEMO_ROUND = {
+  scene: "Primary Assessment — Sports Injury",
+  context: "22F soccer player. Elbow strike to left ribs. RR 32, SpO₂ 88%, diminished left breath sounds.",
+  question: "Breathing is rapid and shallow with an SpO₂ of 88%. What do you apply and at what flow rate?",
+  answer: "Non-rebreather mask at 15 LPM. SpO₂ of 88% requires maximum BLS oxygen delivery.",
+  score: 96,
+  feedback: [
+    { type: "good" as const, text: "NRB at 15 LPM correct — highest O₂ concentration at the BLS level." },
+    { type: "good" as const, text: "Identifying inadequate breathing, not just low SpO₂: critical distinction." },
+    { type: "note" as const, text: "Nasal cannula is insufficient here — SpO₂ 88% demands a non-rebreather." },
+  ],
+  vitals: { hr: "124", spo2: "88", bp: "96/62" },
+};
 
 interface PricingTier {
   name: string;
@@ -343,43 +354,34 @@ export default function LandingPageV2() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
-        <div className="text-center mb-14 sm:mb-20">
-          <p className="text-[11px] uppercase tracking-[0.4em] text-white/50 mb-4">How it works</p>
-          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">
-            Three steps. Zero hand-holding.
-          </h2>
-        </div>
+      <ScenarioDemo />
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {HOW_IT_WORKS.map((step, i) => (
+      {/* WHY IT WORKS */}
+      <section id="how-it-works" className="relative z-10 scroll-mt-24 px-6 sm:px-10 py-24 sm:py-32 max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="text-[11px] uppercase tracking-[0.4em] text-white/50 mb-4">Why it works</p>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">Evidence-based training.</h2>
+        </div>
+        <div className="grid md:grid-cols-3 border-t border-white/[0.07]">
+          {WHY_IT_WORKS.map((item, i) => (
             <motion.div
-              key={step.title}
+              key={item.num}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.55, delay: i * 0.1 }}
-              className="relative rounded-2xl border border-white/10 bg-white/[0.025] p-7"
-              data-testid={`step-${i + 1}`}
+              className={`pt-9 ${i < WHY_IT_WORKS.length - 1 ? "md:pr-10 md:border-r border-white/[0.07]" : ""} ${i > 0 ? "md:pl-10" : ""}`}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white">
-                  {step.icon}
-                </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-white/50">Step {i + 1}</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2 text-white">{step.title}</h3>
-              <p className="text-white/65 text-sm leading-relaxed">{step.body}</p>
+              <div className="text-[11px] font-bold tracking-[0.18em] text-white/[0.18] mb-5 tabular-nums">{item.num}</div>
+              <h3 className="text-[19px] font-semibold text-white leading-[1.3] tracking-[-0.01em] mb-3">{item.title}</h3>
+              <p className="text-[15px] text-white/50 leading-[1.7]">{item.body}</p>
             </motion.div>
           ))}
         </div>
-
-        <div className="mt-12 text-center flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-14 text-center flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link href="/signup">
             <button className="inline-flex items-center justify-center gap-2 text-sm font-medium h-11 rounded-full bg-white text-black hover:bg-white/90 px-7 transition-colors">
-              Try a scenario free
-              <ArrowRight className="w-4 h-4" />
+              Try a scenario free <ArrowRight className="w-4 h-4" />
             </button>
           </Link>
           <Link href="/scenarios" className="text-sm text-white/60 hover:text-white transition-colors underline underline-offset-4">
@@ -613,6 +615,271 @@ export default function LandingPageV2() {
 
       <SiteFooter />
     </div>
+  );
+}
+
+function ScenarioDemo() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const inputTextRef = useRef<HTMLDivElement>(null);
+  const progressFillRef = useRef<HTMLDivElement>(null);
+  const charCountRef = useRef<HTMLSpanElement>(null);
+
+  const typingAbortRef = useRef(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const rafRef = useRef<number | undefined>(undefined);
+  const videoEndHandlerRef = useRef<(() => void) | null>(null);
+
+  const [frozen, setFrozen] = useState(false);
+  const [livePaused, setLivePaused] = useState(false);
+  const [phase, setPhase] = useState<"question" | "grading" | "result">("question");
+  const [inputTyping, setInputTyping] = useState(false);
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [scoreDisplay, setScoreDisplay] = useState(0);
+  const [scoreBarPct, setScoreBarPct] = useState(0);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const fill = progressFillRef.current;
+    if (!video || !fill) return;
+    let raf: number;
+    const tick = () => {
+      if (video.duration) fill.style.width = `${(video.currentTime / video.duration) * 100}%`;
+      raf = requestAnimationFrame(tick);
+    };
+    const onPlay = () => { raf = requestAnimationFrame(tick); };
+    const onStop = () => cancelAnimationFrame(raf);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onStop);
+    video.addEventListener("ended", onStop);
+    return () => {
+      cancelAnimationFrame(raf);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onStop);
+      video.removeEventListener("ended", onStop);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { startRound(); observer.disconnect(); }
+    }, { threshold: 0.3 });
+    observer.observe(root);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function clearAll() {
+    typingAbortRef.current = true;
+    clearTimeout(typingTimerRef.current);
+    clearTimeout(phaseTimerRef.current);
+    if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current);
+    const video = videoRef.current;
+    if (video && videoEndHandlerRef.current) {
+      video.removeEventListener("ended", videoEndHandlerRef.current);
+      videoEndHandlerRef.current = null;
+    }
+  }
+
+  function countUp(target: number, duration: number) {
+    const start = performance.now();
+    const frame = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setScoreDisplay(Math.round(eased * target));
+      if (p < 1) rafRef.current = requestAnimationFrame(frame);
+    };
+    rafRef.current = requestAnimationFrame(frame);
+  }
+
+  function typeText(text: string, onDone: () => void) {
+    typingAbortRef.current = false;
+    if (inputTextRef.current) inputTextRef.current.innerHTML = '<span class="demo-cursor"></span>';
+    if (charCountRef.current) charCountRef.current.textContent = "0 / 500";
+    let i = 0;
+    const tick = () => {
+      if (typingAbortRef.current) return;
+      if (i < text.length) {
+        if (inputTextRef.current) inputTextRef.current.innerHTML = text.slice(0, ++i) + '<span class="demo-cursor"></span>';
+        if (charCountRef.current) charCountRef.current.textContent = `${i} / 500`;
+        typingTimerRef.current = setTimeout(tick, 28 + Math.random() * 22);
+      } else {
+        if (inputTextRef.current) inputTextRef.current.textContent = text;
+        if (charCountRef.current) charCountRef.current.textContent = `${text.length} / 500`;
+        onDone();
+      }
+    };
+    tick();
+  }
+
+  function startRound() {
+    const video = videoRef.current;
+    if (!video) return;
+    clearAll();
+    setFrozen(false);
+    setLivePaused(false);
+    setPhase("question");
+    setInputTyping(false);
+    setShowSubmit(false);
+    setScoreDisplay(0);
+    setScoreBarPct(0);
+    if (inputTextRef.current) inputTextRef.current.innerHTML = '<span class="demo-cursor"></span>';
+    if (charCountRef.current) charCountRef.current.textContent = "0 / 500";
+    if (progressFillRef.current) { progressFillRef.current.style.transition = "none"; progressFillRef.current.style.width = "0%"; }
+    video.currentTime = 0;
+    video.play().catch(() => {});
+    const onEnded = () => {
+      videoEndHandlerRef.current = null;
+      setFrozen(true);
+      setLivePaused(true);
+      setInputTyping(true);
+      typeText(DEMO_ROUND.answer, () => {
+        setShowSubmit(true);
+        phaseTimerRef.current = setTimeout(() => {
+          setPhase("grading");
+          phaseTimerRef.current = setTimeout(() => {
+            setPhase("result");
+            countUp(DEMO_ROUND.score, 900);
+            setTimeout(() => setScoreBarPct(DEMO_ROUND.score), 80);
+            phaseTimerRef.current = setTimeout(() => startRound(), 5000);
+          }, 1100);
+        }, 900);
+      });
+    };
+    videoEndHandlerRef.current = onEnded;
+    video.addEventListener("ended", onEnded, { once: true });
+  }
+
+  return (
+    <section ref={rootRef} className="relative z-10 bg-black px-6 sm:px-10 py-[72px]">
+      <style>{`
+        .demo-cursor{display:inline-block;width:2px;height:14px;background:rgba(255,255,255,.7);vertical-align:middle;margin-left:1px;animation:demoBlink .55s step-end infinite}
+        @keyframes demoBlink{0%,100%{opacity:1}50%{opacity:0}}
+        .demo-live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:demoPulse 1.8s ease infinite;flex-shrink:0;display:inline-block}
+        .demo-live-dot.paused{background:rgba(255,255,255,.3);animation:none}
+        @keyframes demoPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{opacity:.7;box-shadow:0 0 0 4px rgba(34,197,94,0)}}
+        @keyframes demoSpin{to{transform:rotate(360deg)}}
+        .demo-spinner{animation:demoSpin .7s linear infinite}
+      `}</style>
+      <div className="max-w-[1120px] mx-auto w-full">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight">Assess. Decide. Learn.</h2>
+        </div>
+        <div className="flex flex-col rounded-[24px] overflow-hidden" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,.08), 0 40px 100px rgba(0,0,0,.6)" }}>
+          {/* VIDEO */}
+          <div className="relative overflow-hidden bg-black" style={{ height: "340px" }}>
+            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" src="/videos/s1-step5-breathing.mp4" muted playsInline />
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,.7) 0%, rgba(0,0,0,.08) 50%, transparent 100%)" }} />
+            <div className="absolute inset-0 z-10 flex flex-col">
+              <div className="absolute top-[18px] left-5 flex items-center gap-[7px] text-[11px] font-semibold tracking-[0.06em]" style={{ color: "rgba(255,255,255,.45)" }}>
+                <span className={`demo-live-dot${livePaused ? " paused" : ""}`} />
+                {DEMO_ROUND.scene}
+              </div>
+              <div className="absolute inset-0 flex items-start justify-end pointer-events-none" style={{ background: "rgba(0,0,0,.4)", opacity: frozen ? 1 : 0, transition: "opacity .5s ease", padding: "22px 26px 18px 18px" }}>
+                <div className="flex items-center gap-1.5 rounded-full text-[11px] font-semibold tracking-[0.04em] px-3 py-1.5" style={{ background: "rgba(255,255,255,.12)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.8)" }}>
+                  <span style={{ fontSize: "9px" }}>⏸</span> Paused
+                </div>
+              </div>
+              <div className="flex-1" />
+              <div className="flex items-end justify-between" style={{ padding: "18px 28px 20px 24px", background: "linear-gradient(to top, rgba(0,0,0,.65) 0%, transparent 100%)" }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,.4)" }}>Step</span>
+                  <div className="flex gap-[3px] items-center">
+                    {[0,1,2,3,4,5,6].map(i => (
+                      <div key={i} style={{ width: i===2?"20px":"14px", height:"3px", borderRadius:"2px", background: i<2?"rgba(255,255,255,.5)":i===2?"#3b82f6":"rgba(255,255,255,.15)" }} />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-[18px] items-center">
+                  {[{val:DEMO_ROUND.vitals.hr,label:"HR",alert:true},{val:DEMO_ROUND.vitals.spo2,label:"SpO₂",alert:true},{val:DEMO_ROUND.vitals.bp,label:"BP",alert:false}].map(v => (
+                    <div key={v.label} className="text-right">
+                      <div className="text-[17px] font-bold leading-none tabular-nums" style={{ color: v.alert?"#f97316":"rgba(255,255,255,.9)" }}>{v.val}</div>
+                      <div className="text-[9px] font-semibold uppercase tracking-[0.1em] mt-[3px]" style={{ color: "rgba(255,255,255,.3)" }}>{v.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* INTERACTION PANEL */}
+          <div className="relative" style={{ borderTop: "1px solid rgba(255,255,255,.07)", background: "#070707", minHeight: "220px" }}>
+            {/* Question */}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ padding: "28px 48px", opacity: phase==="question"?1:0, transform: phase==="question"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="question"?"auto":"none" }}>
+              <div className="grid grid-cols-2 gap-14 w-full">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(255,255,255,.28)" }}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-[10px] h-[10px] opacity-50"><circle cx="8" cy="5" r="2.5"/><path strokeLinecap="round" d="M3 14c0-2.76 2.24-5 5-5s5 2.24 5 5"/></svg>
+                    Patient Presentation
+                  </div>
+                  <p className="text-[13px] leading-[1.7] mb-5" style={{ color: "rgba(255,255,255,.4)" }}>{DEMO_ROUND.context}</p>
+                  <p className="text-[16px] font-semibold leading-[1.55] tracking-[-0.01em]" style={{ color: "rgba(255,255,255,.95)" }}>{DEMO_ROUND.question}</p>
+                </div>
+                <div className="flex flex-col">
+                  <div className="rounded-[10px] mb-3" style={{ background: "rgba(255,255,255,.04)", border: inputTyping?"1px solid rgba(255,255,255,.25)":"1px solid rgba(255,255,255,.12)", padding: "12px 14px", minHeight: "88px", transition: "border-color .3s" }}>
+                    <div ref={inputTextRef} className="text-[13.5px] leading-[1.65]" style={{ color: "rgba(255,255,255,.8)" }}><span className="demo-cursor" /></div>
+                  </div>
+                  <div className="flex items-center justify-between mb-[10px]">
+                    <button className="flex items-center gap-1.5 text-[12.5px] font-medium rounded-lg" style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", padding: "6px 12px", color: "rgba(255,255,255,.6)" }}>
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3"><path strokeLinecap="round" d="M8 2a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V4a2 2 0 0 1 2-2z"/><path strokeLinecap="round" d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4"/></svg>
+                      Speak
+                    </button>
+                    <span ref={charCountRef} className="text-[11.5px]" style={{ color: "rgba(255,255,255,.25)" }}>0 / 500</span>
+                  </div>
+                  <button className="w-full flex items-center justify-center rounded-lg text-[13.5px] font-semibold text-white mb-2" style={{ background: "#3b82f6", height: "40px", border: "none", opacity: showSubmit?1:0, transform: showSubmit?"translateY(0)":"translateY(4px)", transition: "opacity .3s, transform .3s", cursor: "default" }}>
+                    Submit for AI Grading
+                  </button>
+                  <button className="w-full flex items-center justify-center gap-1.5 text-[13px] font-medium py-1" style={{ background: "none", border: "none", color: "rgba(255,255,255,.35)", cursor: "default" }}>
+                    💡 Hint
+                  </button>
+                </div>
+              </div>
+            </div>
+            {/* Grading */}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ opacity: phase==="grading"?1:0, transform: phase==="grading"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: "none" }}>
+              <div className="flex flex-col items-center">
+                <div className="demo-spinner w-[26px] h-[26px] rounded-full mb-3.5" style={{ border: "2px solid rgba(255,255,255,.07)", borderTopColor: "#3b82f6" }} />
+                <div className="text-[13px] tracking-[0.04em]" style={{ color: "rgba(255,255,255,.35)" }}>Grading your response…</div>
+              </div>
+            </div>
+            {/* Result */}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ padding: "28px 48px", opacity: phase==="result"?1:0, transform: phase==="result"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="result"?"auto":"none" }}>
+              <div className="w-full" style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "48px", alignItems: "start" }}>
+                <div className="flex flex-col">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-2" style={{ color: "rgba(255,255,255,.35)" }}>Score</div>
+                  <div className="flex items-baseline gap-1.5 mb-2.5">
+                    <span className="text-[56px] font-extrabold leading-none tabular-nums" style={{ letterSpacing: "-.04em" }}>{scoreDisplay}</span>
+                    <span className="text-[18px]" style={{ color: "rgba(255,255,255,.25)" }}>/ 100</span>
+                  </div>
+                  <div className="h-[3px] rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,.07)" }}>
+                    <div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, #3b82f6, #22c55e)", width: `${scoreBarPct}%`, transition: "width 1s cubic-bezier(.4,0,.2,1)" }} />
+                  </div>
+                  <button onClick={startRound} className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.04em]" style={{ color: "rgba(255,255,255,.4)", background: "none", border: "none" }}>
+                    Next decision point
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {DEMO_ROUND.feedback.map((f, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-[13px] leading-[1.6]" style={{ color: f.type==="good"?"rgba(134,239,172,.8)":"rgba(253,224,71,.7)" }}>
+                      <span className="text-[11px] mt-0.5 shrink-0">{f.type==="good"?"✓":"→"}</span>
+                      <span>{f.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="mt-4 h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.05)" }}>
+          <div ref={progressFillRef} className="h-full rounded-full" style={{ background: "rgba(59,130,246,.45)", width: "0%" }} />
+        </div>
+      </div>
+    </section>
   );
 }
 
