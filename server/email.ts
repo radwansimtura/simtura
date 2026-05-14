@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = "Simtura <noreply@simtura.ai>";
-const ADMIN_EMAIL = "team@simtura.ai";
+const ADMIN_EMAIL = "radwan@simtura.ai";
 
 async function send(payload: Parameters<Resend["emails"]["send"]>[0]): Promise<void> {
   if (!resend) {

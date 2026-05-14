@@ -527,7 +527,7 @@ export default function OrganizationsPage() {
                 <Mail className="h-4 w-4 shrink-0 mt-0.5 text-white/40" />
                 Need 1,000+ seats or a custom term? Email{" "}
                 <a href="/contact" className="text-white underline">
-                  sales@simtura.ai
+                  radwan@simtura.ai
                 </a>
                 .
               </div>

@@ -84,7 +84,7 @@ export default function ContactPage() {
             <ContactItem
               icon={<MessagesSquare className="h-4 w-4" />}
               label="Partnerships"
-              value="programs@simtura.ai"
+              value="radwan@simtura.ai"
             />
             <ContactItem
               icon={<MapPin className="h-4 w-4" />}
