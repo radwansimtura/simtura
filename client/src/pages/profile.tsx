@@ -19,7 +19,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import simturaLogo from "@/assets/simtura-logo.png";
 
 interface RecentAttempt {
   id: string;

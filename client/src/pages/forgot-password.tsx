@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import simturaLogo from "@/assets/simtura-logo.png";
 
 type Step = "email" | "answer" | "done";
 

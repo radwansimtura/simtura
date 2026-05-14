@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
-import simturaLogo from "@assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+import simturaLogo from "@/assets/simtura-logo.png";
 
 interface ComingSoonPageProps {
   discipline: string;
