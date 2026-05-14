@@ -227,3 +227,42 @@ try {
   console.error("[db-push] STEP 4 FAILURE: drizzle-kit push failed — see output above for details.");
   process.exit(1);
 }
+
+// ── STEP 5: Backfill published scenarios and existing user onboarding ─────────
+console.log("[db-push] STEP 5: Backfilling published scenarios and onboarded_at for existing users...");
+const client2 = new pg.Client({ connectionString: dbUrl });
+try {
+  await client2.connect();
+
+  // Mark currently-visible scenarios as published
+  await client2.query(`
+    UPDATE scenarios SET published = true
+    WHERE discipline != 'EMS';
+  `);
+  await client2.query(`
+    UPDATE scenarios SET published = true
+    WHERE title IN (
+      'Sports Injury - Primary Assessment',
+      'Sports Injury - Primary Assessment (Copy)',
+      'Scenario 1A — Chest Pain / Heart Problems (NREMT Practice)',
+      'Respiratory Failure - Elderly Patient',
+      'Severe Hemorrhage - Thigh Laceration',
+      'Combative Overdose - Suspected Opioid Reversal',
+      'Pediatric Asthma Attack - Acute Exacerbation',
+      'Multi-Patient MVC - Driver #1 (Post-Triage)',
+      'Elderly Fall - Possible Head Injury (Anticoagulated)',
+      'Tension Pneumothorax - Industrial Chest Trauma'
+    );
+  `);
+
+  // Mark existing users as onboarded so they skip the onboarding page
+  await client2.query(`
+    UPDATE users SET onboarded_at = created_at WHERE onboarded_at IS NULL;
+  `);
+
+  console.log("[db-push] STEP 5 SUCCESS: Backfill complete.");
+} catch (err) {
+  console.log("[db-push] STEP 5 NOTE (non-fatal): Backfill encountered an issue:", err.message);
+} finally {
+  await client2.end().catch(() => {});
+}

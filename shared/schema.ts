@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   proSince: timestamp("pro_since"),
+  onboardedAt: timestamp("onboarded_at"),
   organizationId: varchar("organization_id"),
   premiumSource: text("premium_source"),
   stripeCustomerId: text("stripe_customer_id"),
@@ -77,6 +78,7 @@ export const scenarios = pgTable("scenarios", {
   tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
   departureVideoUrl: text("departure_video_url"),
   gradingMode: text("grading_mode").notNull().default("flexible"),
+  published: boolean("published").notNull().default(false),
 });
 
 export const scenarioSteps = pgTable("scenario_steps", {
@@ -213,6 +215,7 @@ export interface PublicUser {
   isAdmin: boolean;
   createdAt: string;
   proSince: string | null;
+  onboardedAt: string | null;
   organizationId: string | null;
   premiumSource: string | null;
   hasSecurityQuestion: boolean;

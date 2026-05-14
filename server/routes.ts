@@ -5,7 +5,9 @@ import { gradeCard, newCardState } from "./flashcards";
 import { seedDatabase } from "./seed";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import rateLimit from "express-rate-limit";
 import { requireAuth } from "./auth";
+import { sendUpgradeNudgeEmail, sendContactEmail } from "./email";
 import {
   contactSchema,
   createOrganizationSchema,
@@ -75,7 +77,15 @@ function toPublicCode(c: any): PublicOrganizationCode {
 
 const FREE_DAILY_LIMIT = 1;
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 15000 });
+
+const aiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please slow down." },
+});
 
 function getNremtMedicalPrompt(): string {
   return `You are a strict but supportive EMS training evaluator grading a trainee against the NREMT E202 Patient Assessment/Management — Medical skill sheet.
@@ -251,9 +261,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
-  const PUBLISHED_EMS_TITLES = ["Sports Injury - Primary Assessment", "Sports Injury - Primary Assessment (Copy)", "Scenario 1A — Chest Pain / Heart Problems (NREMT Practice)", "Respiratory Failure - Elderly Patient", "Severe Hemorrhage - Thigh Laceration", "Combative Overdose - Suspected Opioid Reversal", "Pediatric Asthma Attack - Acute Exacerbation", "Multi-Patient MVC - Driver #1 (Post-Triage)", "Elderly Fall - Possible Head Injury (Anticoagulated)", "Tension Pneumothorax - Industrial Chest Trauma"];
 
-  app.post("/api/grade-answer", async (req, res) => {
+  app.post("/api/grade-answer", aiRateLimit, async (req, res) => {
     const parsed = gradeAnswerSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request", errors: parsed.error.format() });
@@ -354,7 +363,7 @@ Grade the trainee's answer against the correct answer. Be generous with scoring 
     }
   });
 
-  app.post("/api/evaluate", async (req, res) => {
+  app.post("/api/evaluate", aiRateLimit, async (req, res) => {
     const parsed = evaluateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request", errors: parsed.error.format() });
@@ -438,7 +447,7 @@ Evaluate the trainee's response.`;
     }
   });
 
-  app.post("/api/grade-elaboration", async (req, res) => {
+  app.post("/api/grade-elaboration", aiRateLimit, async (req, res) => {
     const parsed = gradeElaborationSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid request", errors: parsed.error.format() });
@@ -516,17 +525,13 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
   });
 
   app.get("/api/scenarios", async (req, res) => {
-    const scenarios = await storage.getAllScenarios();
+    const allScenarios = await storage.getAllScenarios();
+    const published = allScenarios.filter(s => s.published);
     const discipline = req.query.discipline as string | undefined;
     if (discipline) {
-      let filtered = scenarios.filter(s => s.discipline === discipline);
-      if (discipline === "EMS") {
-        filtered = filtered.filter(s => PUBLISHED_EMS_TITLES.includes(s.title));
-      }
-      return res.json(filtered);
+      return res.json(published.filter(s => s.discipline === discipline));
     }
-    const visible = scenarios.filter(s => s.discipline !== "EMS" || PUBLISHED_EMS_TITLES.includes(s.title));
-    res.json(visible);
+    res.json(published);
   });
 
   app.get("/api/scenarios/:id", async (req, res) => {
@@ -566,6 +571,7 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       startOfDay.setHours(0, 0, 0, 0);
       const todayCount = await storage.countUserAttemptsSince(userId, startOfDay);
       if (todayCount >= FREE_DAILY_LIMIT) {
+        sendUpgradeNudgeEmail(user.email, user.name).catch(() => {});
         return res.status(429).json({
           message: "You've used today's free scenario. Upgrade for unlimited access.",
           code: "free_limit_reached",
@@ -630,17 +636,29 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     });
   });
 
+  app.post("/api/me/onboard", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const user = await storage.markOnboarded(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ ok: true });
+  });
+
+  app.patch("/api/admin/scenarios/:id/publish", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const user = await storage.getUser(userId);
+    if (!user?.isAdmin) return res.status(403).json({ message: "Forbidden" });
+    const { published } = z.object({ published: z.boolean() }).parse(req.body);
+    const scenario = await storage.setScenarioPublished(req.params.id as string, published);
+    if (!scenario) return res.status(404).json({ message: "Scenario not found" });
+    res.json(scenario);
+  });
+
   app.post("/api/contact", async (req, res) => {
     const parsed = contactSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
     }
-    // Log for now — production would email or persist
-    console.log("[contact]", {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      length: parsed.data.message.length,
-    });
+    sendContactEmail(parsed.data.name, parsed.data.email, parsed.data.message).catch(() => {});
     res.json({ ok: true });
   });
 
@@ -1110,9 +1128,7 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
 
     // Pull all published scenarios for tier-3 broadening
     const allScenarios = await storage.getAllScenarios();
-    const publishedScenarios = allScenarios.filter(
-      (s) => s.discipline !== "EMS" || PUBLISHED_EMS_TITLES.includes(s.title)
-    );
+    const publishedScenarios = allScenarios.filter((s) => s.published);
 
     // Cache step lookups across passes
     const stepsByScenario = new Map<string, ScenarioStep[]>();

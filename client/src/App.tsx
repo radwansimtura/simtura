@@ -28,6 +28,7 @@ import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
 import WelcomeBackPage from "@/pages/welcome-back";
 import OrgDashboardPage from "@/pages/org-dashboard";
+import OnboardingPage from "@/pages/onboarding";
 
 function EMSPage() {
   return (
@@ -97,6 +98,7 @@ function Router() {
       <Route path="/organizations/:id" component={OrganizationDashboardPage} />
       <Route path="/org-dashboard/:id" component={OrgDashboardPage} />
       <Route path="/welcome-back" component={WelcomeBackPage} />
+      <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/privacy" component={PrivacyPolicyPage} />
       <Route component={NotFound} />

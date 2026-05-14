@@ -13,6 +13,7 @@ import {
   resetPasswordSchema,
   type PublicUser,
 } from "@shared/schema";
+import { sendWelcomeEmail } from "./email";
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -49,6 +50,7 @@ function toPublic(u: {
   isAdmin: boolean;
   createdAt: Date;
   proSince: Date | null;
+  onboardedAt?: Date | null;
   organizationId: string | null;
   premiumSource: string | null;
   securityQuestion?: string | null;
@@ -62,6 +64,7 @@ function toPublic(u: {
     isAdmin: u.isAdmin === true,
     createdAt: u.createdAt.toISOString(),
     proSince: u.proSince ? u.proSince.toISOString() : null,
+    onboardedAt: u.onboardedAt ? u.onboardedAt.toISOString() : null,
     organizationId: u.organizationId ?? null,
     premiumSource: u.premiumSource ?? null,
     hasSecurityQuestion: !!(u.securityQuestion && u.securityAnswerHash),
@@ -171,6 +174,7 @@ export function registerAuthRoutes(app: Express) {
       if (giftPro) {
         await storage.setUserTier(user.id, 'pro');
       }
+      sendWelcomeEmail(email, parsed.data.name.trim()).catch(() => {});
       console.log(`[auth] user created: ${user.id} — saving session`);
       req.session.userId = user.id;
       req.session.save((err) => {

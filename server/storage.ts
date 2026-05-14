@@ -60,6 +60,8 @@ export interface IStorage {
   getAllScenarios(): Promise<Scenario[]>;
   getScenario(id: string): Promise<Scenario | undefined>;
   createScenario(scenario: InsertScenario): Promise<Scenario>;
+  setScenarioPublished(id: string, published: boolean): Promise<Scenario | undefined>;
+  markOnboarded(userId: string): Promise<User | undefined>;
 
   getScenarioSteps(scenarioId: string): Promise<ScenarioStep[]>;
   getScenarioStep(id: string): Promise<ScenarioStep | undefined>;
@@ -391,6 +393,16 @@ export class DatabaseStorage implements IStorage {
   async createScenario(scenario: InsertScenario): Promise<Scenario> {
     const [created] = await db.insert(scenarios).values(scenario).returning();
     return created;
+  }
+
+  async setScenarioPublished(id: string, published: boolean): Promise<Scenario | undefined> {
+    const [updated] = await db.update(scenarios).set({ published }).where(eq(scenarios.id, id)).returning();
+    return updated;
+  }
+
+  async markOnboarded(userId: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ onboardedAt: new Date() }).where(eq(users.id, userId)).returning();
+    return user;
   }
 
   async getScenarioSteps(scenarioId: string): Promise<ScenarioStep[]> {

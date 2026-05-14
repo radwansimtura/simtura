@@ -51,7 +51,7 @@ export default function SignUpPage() {
     try {
       await signUp({ email, password, name, securityQuestion, securityAnswer });
       toast({ title: "Account created.", description: "You're all set." });
-      setLocation("/profile");
+      setLocation("/onboarding");
     } catch (err: any) {
       toast({
         title: "Sign up failed",
