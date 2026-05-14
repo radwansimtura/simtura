@@ -170,7 +170,8 @@ const DISCIPLINES = [
 export default function LandingPageV2() {
   const reduceMotion = useReducedMotion() ?? false;
   const [idx, setIdx] = useState(0);
-  const { user } = useAuth();
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const { user, upgrade } = useAuth();
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -442,10 +443,33 @@ export default function LandingPageV2() {
           <p className="text-white/60 text-lg max-w-xl mx-auto">
             Start free. Upgrade when you're ready. Cancel anytime.
           </p>
+
+          {/* Billing toggle */}
+          <div className="inline-flex items-center mt-8 rounded-full border border-white/10 bg-white/[0.04] p-1 gap-1">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${billing === "monthly" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBilling("annual")}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${billing === "annual" ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+            >
+              Annual
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${billing === "annual" ? "bg-green-500 text-white" : "bg-green-500/20 text-green-400"}`}>
+                2 months free
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
-          {PRICING.map((tier, i) => (
+          {PRICING.map((tier, i) => {
+            const isProAnnual = tier.highlight && billing === "annual";
+            const displayPrice = isProAnnual ? "$190" : tier.price;
+            const displayPeriod = isProAnnual ? "/ year" : tier.period;
+            return (
             <motion.div
               key={tier.name}
               initial={{ opacity: 0, y: 20 }}
@@ -469,14 +493,17 @@ export default function LandingPageV2() {
                 <p className="text-sm text-white/60 mt-1">{tier.blurb}</p>
               </div>
               <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-white">{tier.price}</span>
-                <span className="text-sm text-white/50">{tier.period}</span>
+                <span className="text-4xl font-bold text-white">{displayPrice}</span>
+                <span className="text-sm text-white/50">{displayPeriod}</span>
               </div>
-              {tier.trust ? (
+              {isProAnnual && (
+                <p className="text-xs text-green-400 mb-5">Save $38 vs monthly — 2 months free</p>
+              )}
+              {!isProAnnual && (tier.trust ? (
                 <p className="text-xs text-white/40 mb-5">{tier.trust}</p>
               ) : (
                 <div className="mb-5" />
-              )}
+              ))}
               <ul className="space-y-2.5 mb-8 flex-1">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-white/75">
@@ -485,20 +512,38 @@ export default function LandingPageV2() {
                   </li>
                 ))}
               </ul>
-              <Link href={tier.href}>
-                <Button
-                  className={`w-full h-11 rounded-full font-medium ${
-                    tier.highlight
-                      ? "bg-white text-black hover:bg-white/90"
-                      : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
-                  }`}
-                  data-testid={`button-pricing-${tier.name.toLowerCase()}`}
-                >
-                  {tier.cta}
-                </Button>
-              </Link>
+              {tier.highlight ? (
+                user ? (
+                  <Button
+                    onClick={() => upgrade(billing)}
+                    className="w-full h-11 rounded-full font-medium bg-white text-black hover:bg-white/90"
+                    data-testid="button-pricing-pro"
+                  >
+                    {tier.cta}
+                  </Button>
+                ) : (
+                  <Link href={tier.href}>
+                    <Button
+                      className="w-full h-11 rounded-full font-medium bg-white text-black hover:bg-white/90"
+                      data-testid="button-pricing-pro"
+                    >
+                      {tier.cta}
+                    </Button>
+                  </Link>
+                )
+              ) : (
+                <Link href={tier.href}>
+                  <Button
+                    className={`w-full h-11 rounded-full font-medium bg-white/10 text-white hover:bg-white/20 border border-white/20`}
+                    data-testid={`button-pricing-${tier.name.toLowerCase()}`}
+                  >
+                    {tier.cta}
+                  </Button>
+                </Link>
+              )}
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

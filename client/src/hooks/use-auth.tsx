@@ -9,7 +9,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<PublicUser>;
   signUp: (vars: { email: string; password: string; name: string; securityQuestion?: string; securityAnswer?: string }) => Promise<PublicUser>;
   signOut: () => Promise<void>;
-  upgrade: () => Promise<void>;
+  upgrade: (plan?: "monthly" | "annual") => Promise<void>;
   manageBilling: () => Promise<void>;
 }
 
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const upgradeMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/upgrade");
+    mutationFn: async (plan?: "monthly" | "annual") => {
+      const res = await apiRequest("POST", "/api/auth/upgrade", plan ? { plan } : undefined);
       const data = (await res.json()) as { checkoutUrl?: string };
       if (!data.checkoutUrl) throw new Error("Could not start checkout.");
       window.location.assign(data.checkoutUrl);
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn: (email, password) => signInMutation.mutateAsync({ email, password }),
     signUp: (vars) => signUpMutation.mutateAsync(vars),
     signOut: () => signOutMutation.mutateAsync(),
-    upgrade: () => upgradeMutation.mutateAsync(),
+    upgrade: (plan) => upgradeMutation.mutateAsync(plan),
     manageBilling: () => billingPortalMutation.mutateAsync(),
   };
 

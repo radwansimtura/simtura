@@ -259,6 +259,7 @@ export function registerAuthRoutes(app: Express) {
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
 
+      const annual = (req.body as any)?.plan === "annual";
       const origin = `${req.protocol}://${req.get("host")}`;
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -269,10 +270,10 @@ export function registerAuthRoutes(app: Express) {
             quantity: 1,
             price_data: {
               currency: "usd",
-              unit_amount: 1900,
-              recurring: { interval: "month" },
+              unit_amount: annual ? 19000 : 1900,
+              recurring: { interval: annual ? "year" : "month" },
               product_data: {
-                name: "Simtura Pro",
+                name: annual ? "Simtura Pro (Annual)" : "Simtura Pro",
                 description: "Unlimited scenarios, full EMS + Nursing libraries, priority access.",
               },
             },
