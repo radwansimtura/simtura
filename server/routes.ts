@@ -542,8 +542,8 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     res.json(scenario);
   });
 
-  app.get("/api/scenarios/:id/steps", async (req, res) => {
-    const steps = await storage.getScenarioSteps(req.params.id);
+  app.get("/api/scenarios/:id/steps", requireAuth, async (req, res) => {
+    const steps = await storage.getScenarioSteps(req.params.id as string);
     res.json(steps);
   });
 
@@ -905,10 +905,8 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       return res.status(409).json({ message: "Code was just redeemed by someone else." });
     }
     const updatedUser = await storage.setUserOrgPremium(user.id, existing.organizationId);
-    const org = await storage.getOrganization(existing.organizationId);
     res.json({
       ok: true,
-      organizationName: org?.name ?? null,
       user: updatedUser
         ? {
             id: updatedUser.id,

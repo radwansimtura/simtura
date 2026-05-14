@@ -117,7 +117,7 @@ export default function ProfilePage() {
     }
   };
 
-  const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery<Stats>({
     queryKey: ["/api/me/stats"],
     enabled: !!user,
   });
@@ -202,37 +202,56 @@ export default function ProfilePage() {
         </motion.div>
 
         {/* Stats grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-12"
-        >
-          <StatCard
-            icon={<Target className="h-4 w-4" />}
-            label="Scenarios run"
-            value={stats?.totalAttempts ?? 0}
-            loading={statsLoading}
-          />
-          <StatCard
-            icon={<TrendingUp className="h-4 w-4" />}
-            label="Avg score"
-            value={stats ? `${stats.avgScore}%` : "—"}
-            loading={statsLoading}
-          />
-          <StatCard
-            icon={<Trophy className="h-4 w-4" />}
-            label="Best score"
-            value={stats ? `${stats.bestScore}%` : "—"}
-            loading={statsLoading}
-          />
-          <StatCard
-            icon={<Zap className="h-4 w-4" />}
-            label="Passed (≥80%)"
-            value={stats?.passed ?? 0}
-            loading={statsLoading}
-          />
-        </motion.div>
+        {statsError ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mt-12 rounded-2xl border border-red-500/20 bg-red-500/5 p-5 flex items-center justify-between gap-4"
+          >
+            <p className="text-sm text-red-300">Couldn't load stats</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => refetchStats()}
+              className="border-red-500/30 text-red-300 hover:bg-red-500/10 shrink-0"
+            >
+              Retry
+            </Button>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-12"
+          >
+            <StatCard
+              icon={<Target className="h-4 w-4" />}
+              label="Scenarios run"
+              value={stats?.totalAttempts ?? 0}
+              loading={statsLoading}
+            />
+            <StatCard
+              icon={<TrendingUp className="h-4 w-4" />}
+              label="Avg score"
+              value={stats ? `${stats.avgScore}%` : "—"}
+              loading={statsLoading}
+            />
+            <StatCard
+              icon={<Trophy className="h-4 w-4" />}
+              label="Best score"
+              value={stats ? `${stats.bestScore}%` : "—"}
+              loading={statsLoading}
+            />
+            <StatCard
+              icon={<Zap className="h-4 w-4" />}
+              label="Passed (≥80%)"
+              value={stats?.passed ?? 0}
+              loading={statsLoading}
+            />
+          </motion.div>
+        )}
 
         {/* Daily limit / Pro card */}
         <motion.div
@@ -347,6 +366,18 @@ export default function ProfilePage() {
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-16 rounded-xl bg-white/[0.03] animate-pulse" />
               ))}
+            </div>
+          ) : statsError ? (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 flex items-center justify-between gap-4">
+              <p className="text-sm text-red-300">Couldn't load stats</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => refetchStats()}
+                className="border-red-500/30 text-red-300 hover:bg-red-500/10 shrink-0"
+              >
+                Retry
+              </Button>
             </div>
           ) : stats && stats.recent.length > 0 ? (
             <div className="space-y-2">

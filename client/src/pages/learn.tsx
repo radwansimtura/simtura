@@ -261,7 +261,7 @@ export default function LearnPage() {
         {/* Tabs */}
         <div className="border-b border-white/10 mb-8 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => tab.available !== false).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -277,11 +277,6 @@ export default function LearnPage() {
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
-                  {!tab.available && (
-                    <span className="text-[9px] uppercase tracking-wider bg-white/10 text-white/60 px-1.5 py-0.5 rounded">
-                      Soon
-                    </span>
-                  )}
                 </button>
               );
             })}

@@ -13,7 +13,7 @@ import {
   resetPasswordSchema,
   type PublicUser,
 } from "@shared/schema";
-import { sendWelcomeEmail } from "./email";
+import { sendWelcomeEmail, sendPasswordResetConfirmationEmail } from "./email";
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -150,7 +150,6 @@ export function registerAuthRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
       }
       const email = parsed.data.email.toLowerCase().trim();
-      console.log(`[auth] signup attempt: ${email}`);
       const existing = await storage.getUserByEmail(email);
       if (existing) {
         return res.status(409).json({ message: "An account with that email already exists." });
@@ -175,14 +174,12 @@ export function registerAuthRoutes(app: Express) {
         await storage.setUserTier(user.id, 'pro');
       }
       sendWelcomeEmail(email, parsed.data.name.trim()).catch(() => {});
-      console.log(`[auth] user created: ${user.id} — saving session`);
       req.session.userId = user.id;
       req.session.save((err) => {
         if (err) {
           console.error(`[auth] session.save failed on signup — message: ${err?.message} — stack: ${err?.stack} — full: ${JSON.stringify(err)}`);
           return res.status(500).json({ message: `Session error: ${err?.message ?? "unknown"}` });
         }
-        console.log(`[auth] signup complete, session saved for ${user.id}`);
         res.json(toPublic(user));
       });
     } catch (err: any) {
@@ -198,26 +195,20 @@ export function registerAuthRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid input" });
       }
       const email = parsed.data.email.toLowerCase().trim();
-      console.log(`[auth] signin attempt: ${email}`);
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        console.log(`[auth] signin failed — no user found for ${email}`);
         return res.status(401).json({ message: "Invalid email or password." });
       }
-      console.log(`[auth] user found: ${user.id} — verifying password (hash format: ${user.passwordHash?.includes(":") ? "scrypt salt:hash" : "UNKNOWN"})`);
       const ok = await verifyPassword(parsed.data.password, user.passwordHash);
       if (!ok) {
-        console.log(`[auth] signin failed — wrong password for ${email}`);
         return res.status(401).json({ message: "Invalid email or password." });
       }
-      console.log(`[auth] password ok — saving session for ${user.id}`);
       req.session.userId = user.id;
       req.session.save((err) => {
         if (err) {
           console.error(`[auth] session.save failed on signin — message: ${err?.message} — stack: ${err?.stack} — full: ${JSON.stringify(err)}`);
           return res.status(500).json({ message: `Session error: ${err?.message ?? "unknown"}` });
         }
-        console.log(`[auth] signin complete, session saved for ${user.id}`);
         res.json(toPublic(user));
       });
     } catch (err: any) {
@@ -357,11 +348,11 @@ export function registerAuthRoutes(app: Express) {
         `DELETE FROM user_sessions WHERE sess->>'userId' = $1`,
         [user.id],
       );
-      console.log(`[auth] password reset for ${user.id} — invalidated ${result.rowCount ?? 0} session(s)`);
     } catch (err: any) {
       console.error(`[auth] failed to invalidate sessions after reset for ${user.id}: ${err?.message}`);
     }
     res.json({ ok: true });
+    sendPasswordResetConfirmationEmail(user.email, user.name).catch(() => {});
   });
 
   // Open a Stripe Customer Portal session so the user can manage / cancel

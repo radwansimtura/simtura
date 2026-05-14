@@ -100,6 +100,14 @@ export default function ContactPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             onSubmit={(e) => {
               e.preventDefault();
+              if (!email.includes("@") || !email.includes(".")) {
+                toast({
+                  title: "Invalid email",
+                  description: "Please enter a valid email address.",
+                  variant: "destructive",
+                });
+                return;
+              }
               submit.mutate();
             }}
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-7 space-y-5"

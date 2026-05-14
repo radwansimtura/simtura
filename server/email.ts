@@ -73,6 +73,22 @@ export async function sendContactEmail(fromName: string, fromEmail: string, mess
   });
 }
 
+export async function sendPasswordResetConfirmationEmail(to: string, name: string): Promise<void> {
+  await send({
+    from: FROM,
+    to,
+    subject: "Your Simtura password has been changed",
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;padding:24px">
+        <h2 style="margin-bottom:8px">Password changed</h2>
+        <p>Hi ${name}, your Simtura password was just reset. If you did this, no action needed.</p>
+        <p>If you didn't request this change, contact us at radwan@simtura.ai immediately.</p>
+        <p style="margin-top:32px;color:#888;font-size:13px">— The Simtura Team</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendNotifyInterestEmail(discipline: string, email: string): Promise<void> {
   await send({
     from: FROM,
