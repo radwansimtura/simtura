@@ -895,11 +895,11 @@ export default function ScenarioTrainerPage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.4 }}
-            className="absolute inset-0 z-20 flex items-end sm:items-center"
+            className="absolute bottom-0 left-0 right-0 sm:inset-0 sm:top-0 z-20 sm:flex sm:items-center"
           >
-            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[60vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-xl sm:bg-transparent sm:backdrop-blur-none rounded-t-2xl sm:rounded-none pt-3 sm:pt-0">
+            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[62vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black/92 backdrop-blur-xl sm:bg-transparent sm:backdrop-blur-none rounded-t-2xl sm:rounded-none pt-3 sm:pt-0">
               {vitals && (
-                <div className="mb-3 grid grid-cols-3 gap-1.5" data-testid="vitals-panel">
+                <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-1.5" data-testid="vitals-panel">
                   {vitals.hr !== undefined && (
                     <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
                       <Heart className="h-3.5 w-3.5 text-red-400 shrink-0" />
