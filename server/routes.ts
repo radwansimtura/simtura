@@ -770,14 +770,18 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     res.json({ ...toPublicOrg(org, 0), checkoutUrl });
   });
 
-  // Get an organization (auth: anyone with the ID can view dashboard once,
-  // but we restrict mutations to owner). Returns 404 to non-owners if signed in
-  // as a different user.
+  // Get an organization. Only the owner (or an admin) may view it.
   app.get("/api/organizations/:id", async (req, res) => {
     const org = await storage.getOrganization(req.params.id);
     if (!org) return res.status(404).json({ message: "Organization not found" });
-    if (org.ownerUserId && req.session.userId && org.ownerUserId !== req.session.userId) {
-      return res.status(403).json({ message: "Not authorized for this organization" });
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    if (org.ownerUserId && org.ownerUserId !== req.session.userId) {
+      const viewer = await storage.getUser(req.session.userId);
+      if (!viewer?.isAdmin) {
+        return res.status(403).json({ message: "Not authorized for this organization" });
+      }
     }
     const redeemed = await storage.countRedeemedCodes(org.id);
     res.json(toPublicOrg(org, redeemed));

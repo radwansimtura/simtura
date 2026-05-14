@@ -37,6 +37,12 @@ export default function OrganizationDashboardPage() {
   const justPaid = typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("paid") === "1";
 
+  // Strip Stripe-injected session_id (and paid flag) from URL so it doesn't
+  // persist in browser history or server logs.
+  if (typeof window !== "undefined" && window.location.search) {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+
   const { data: org, isLoading: orgLoading, error: orgError } = useQuery<PublicOrganization>({
     queryKey: ["/api/organizations", id],
     queryFn: async () => {

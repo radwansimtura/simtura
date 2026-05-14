@@ -331,7 +331,12 @@ export default function ScenarioTrainerPage() {
       }
       if (transcript) setTraineeAnswer((prev) => (prev ? prev + " " : "") + transcript.trim());
     };
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      if (event?.error === "not-allowed") {
+        setGradeError("Microphone access was denied. Enable it in your browser settings to use voice input.");
+      }
+    };
     recognition.onend = () => setIsListening(false);
     recognitionRef.current = recognition;
     try {
@@ -379,12 +384,14 @@ export default function ScenarioTrainerPage() {
       const result: GradeResult = await res.json();
       setGradeResult(result);
       if (result.criticalFailure) {
-        await apiRequest("PATCH", `/api/attempts/${attemptId}`, {
-          criticalFailure: true,
-          criticalCriterionViolated: result.criticalCriterionViolated,
-          endedEarly: true,
-          completedAt: new Date().toISOString(),
-        });
+        if (attemptId) {
+          await apiRequest("PATCH", `/api/attempts/${attemptId}`, {
+            criticalFailure: true,
+            criticalCriterionViolated: result.criticalCriterionViolated,
+            endedEarly: true,
+            completedAt: new Date().toISOString(),
+          }).catch(() => {});
+        }
         setCriticalFailureState({
           show: true,
           criterion: result.criticalCriterionViolated,
@@ -1389,6 +1396,13 @@ export default function ScenarioTrainerPage() {
                   data-testid="button-restart-after-critical-failure"
                 >
                   Restart Scenario
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setLocation(backUrl)}
+                  className="w-full mt-2 text-white/50 hover:text-white/80"
+                >
+                  Back to Scenarios
                 </Button>
               </div>
             </motion.div>
