@@ -770,7 +770,7 @@ function ScenarioDemo() {
         </div>
         <div className="flex flex-col rounded-[24px] overflow-hidden" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,.08), 0 40px 100px rgba(0,0,0,.6)" }}>
           {/* VIDEO */}
-          <div className="relative overflow-hidden bg-black" style={{ height: "340px" }}>
+          <div className="relative overflow-hidden bg-black" style={{ height: "clamp(180px, 48vw, 340px)" }}>
             <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" src="/videos/s1-step5-breathing.mp4" muted playsInline />
             <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,.7) 0%, rgba(0,0,0,.08) 50%, transparent 100%)" }} />
             <div className="absolute inset-0 z-10 flex flex-col">
@@ -806,10 +806,10 @@ function ScenarioDemo() {
           </div>
 
           {/* INTERACTION PANEL */}
-          <div className="relative" style={{ borderTop: "1px solid rgba(255,255,255,.07)", background: "#070707", minHeight: "220px" }}>
+          <div className="relative min-h-[320px] sm:min-h-[220px]" style={{ borderTop: "1px solid rgba(255,255,255,.07)", background: "#070707" }}>
             {/* Question */}
-            <div className="absolute inset-0 flex items-center justify-center" style={{ padding: "28px 48px", opacity: phase==="question"?1:0, transform: phase==="question"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="question"?"auto":"none" }}>
-              <div className="grid grid-cols-2 gap-14 w-full">
+            <div className="absolute inset-0 flex items-start sm:items-center justify-center overflow-y-auto px-5 py-5 sm:px-12 sm:py-7" style={{ opacity: phase==="question"?1:0, transform: phase==="question"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="question"?"auto":"none" }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-14 w-full">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(255,255,255,.28)" }}>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-[10px] h-[10px] opacity-50"><circle cx="8" cy="5" r="2.5"/><path strokeLinecap="round" d="M3 14c0-2.76 2.24-5 5-5s5 2.24 5 5"/></svg>
@@ -846,8 +846,8 @@ function ScenarioDemo() {
               </div>
             </div>
             {/* Result */}
-            <div className="absolute inset-0 flex items-center justify-center" style={{ padding: "28px 48px", opacity: phase==="result"?1:0, transform: phase==="result"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="result"?"auto":"none" }}>
-              <div className="w-full" style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "48px", alignItems: "start" }}>
+            <div className="absolute inset-0 flex items-start sm:items-center justify-center overflow-y-auto px-5 py-5 sm:px-12 sm:py-7" style={{ opacity: phase==="result"?1:0, transform: phase==="result"?"translateY(0)":"translateY(8px)", transition: "opacity .4s ease, transform .4s ease", pointerEvents: phase==="result"?"auto":"none" }}>
+              <div className="w-full grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-5 sm:gap-12 items-start">
                 <div className="flex flex-col">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-2" style={{ color: "rgba(255,255,255,.35)" }}>Score</div>
                   <div className="flex items-baseline gap-1.5 mb-2.5">

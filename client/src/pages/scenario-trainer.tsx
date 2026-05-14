@@ -589,7 +589,7 @@ export default function ScenarioTrainerPage() {
               <p className="text-white/60">{scenario.title}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-8">
               <div className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 text-center">
                 <div className="text-3xl font-bold text-blue-400">{score}%</div>
                 <div className="text-xs text-white/50 mt-1">Overall Score</div>
@@ -797,9 +797,9 @@ export default function ScenarioTrainerPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-black/70"
+            className="absolute inset-0 z-20 flex items-start sm:items-center justify-center bg-black/70 overflow-y-auto"
           >
-            <div className="text-center max-w-lg px-4">
+            <div className="text-center max-w-lg px-4 pt-16 pb-6 sm:py-0">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
