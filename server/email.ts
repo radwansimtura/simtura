@@ -72,3 +72,16 @@ export async function sendContactEmail(fromName: string, fromEmail: string, mess
     `,
   });
 }
+
+export async function sendNotifyInterestEmail(discipline: string, email: string): Promise<void> {
+  await send({
+    from: FROM,
+    to: ADMIN_EMAIL,
+    subject: `Waitlist signup: ${discipline} — ${email}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+        <p><strong>${email}</strong> signed up to be notified when <strong>${discipline}</strong> launches on Simtura.</p>
+      </div>
+    `,
+  });
+}

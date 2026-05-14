@@ -7,7 +7,7 @@ import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import rateLimit from "express-rate-limit";
 import { requireAuth } from "./auth";
-import { sendUpgradeNudgeEmail, sendContactEmail } from "./email";
+import { sendUpgradeNudgeEmail, sendContactEmail, sendNotifyInterestEmail } from "./email";
 import {
   contactSchema,
   createOrganizationSchema,
@@ -659,6 +659,17 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       return res.status(400).json({ message: "Invalid input", errors: parsed.error.format() });
     }
     sendContactEmail(parsed.data.name, parsed.data.email, parsed.data.message).catch(() => {});
+    res.json({ ok: true });
+  });
+
+  app.post("/api/notify-interest", async (req, res) => {
+    const schema = z.object({
+      email: z.string().email(),
+      discipline: z.string().min(1),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid email" });
+    sendNotifyInterestEmail(parsed.data.discipline, parsed.data.email).catch(() => {});
     res.json({ ok: true });
   });
 
@@ -1529,6 +1540,8 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
 
       return res.json({
         done: true,
+        wasCorrect: isCorrect,
+        correctAnswer: placeholder.correctAnswer,
         sessionId,
         score,
         correctCount,
@@ -1594,6 +1607,8 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
 
     res.json({
       done: false,
+      wasCorrect: isCorrect,
+      correctAnswer: placeholder.correctAnswer,
       questionIndex: nextIndex,
       total: SESSION_LENGTH,
       question: questionForClient(nextShuffled),

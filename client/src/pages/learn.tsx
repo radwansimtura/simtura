@@ -54,7 +54,7 @@ const RATINGS: Array<{ value: Rating; label: string; color: string; hint: string
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Brain; available: boolean }> = [
   { id: "flashcards", label: "Flashcards", icon: Brain, available: true },
-  { id: "quiz", label: "Drill / Quiz", icon: ListChecks, available: false },
+  { id: "quiz", label: "Drill / Quiz", icon: ListChecks, available: true },
   { id: "concept-review", label: "Concept Review", icon: Lightbulb, available: false },
   { id: "stats", label: "Stats", icon: BarChart3, available: false },
 ];
@@ -74,6 +74,19 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
+
+  // Quiz state
+  type QuizPhase = "idle" | "loading" | "question" | "answered" | "done";
+  const [quizPhase, setQuizPhase] = useState<QuizPhase>("idle");
+  const [quizSessionId, setQuizSessionId] = useState<string | null>(null);
+  const [quizQuestion, setQuizQuestion] = useState<{ id: string; questionText: string; options: string[]; category: string } | null>(null);
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizTotal, setQuizTotal] = useState(25);
+  const [quizSelected, setQuizSelected] = useState<number | null>(null);
+  const [quizWasCorrect, setQuizWasCorrect] = useState<boolean | null>(null);
+  const [quizCorrectAnswer, setQuizCorrectAnswer] = useState<string | null>(null);
+  const [quizScore, setQuizScore] = useState<{ score: number; correctCount: number; total: number } | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
 
   // Redirect to signin if not authed
   useEffect(() => {
@@ -101,6 +114,60 @@ export default function LearnPage() {
   useEffect(() => {
     if (user && activeTab === "flashcards") loadQueue();
   }, [user, activeTab, loadQueue]);
+
+  const startQuiz = async () => {
+    setQuizPhase("loading");
+    setQuizError(null);
+    setQuizScore(null);
+    setQuizSelected(null);
+    try {
+      const res = await apiRequest("POST", "/api/quiz/start");
+      const data = await res.json();
+      setQuizSessionId(data.sessionId);
+      setQuizQuestion(data.question);
+      setQuizIndex(data.questionIndex);
+      setQuizTotal(data.total);
+      setQuizPhase("question");
+    } catch (err: any) {
+      setQuizError(err?.message || "Failed to start quiz.");
+      setQuizPhase("idle");
+    }
+  };
+
+  const submitQuizAnswer = async (choiceIndex: number) => {
+    if (!quizSessionId || !quizQuestion || quizPhase !== "question") return;
+    setQuizSelected(choiceIndex);
+    setQuizPhase("loading");
+    try {
+      const res = await apiRequest("POST", "/api/quiz/submit", {
+        sessionId: quizSessionId,
+        questionId: quizQuestion.id,
+        choiceIndex,
+      });
+      const data = await res.json();
+      setQuizWasCorrect(data.wasCorrect);
+      setQuizCorrectAnswer(data.correctAnswer);
+      if (data.done) {
+        setQuizScore({ score: data.score, correctCount: data.correctCount, total: data.total });
+        setQuizPhase("done");
+      } else {
+        setQuizPhase("answered");
+        // Auto-advance after 1.5s
+        setTimeout(() => {
+          setQuizQuestion(data.question);
+          setQuizIndex(data.questionIndex);
+          setQuizSelected(null);
+          setQuizWasCorrect(null);
+          setQuizCorrectAnswer(null);
+          setQuizPhase("question");
+        }, 1500);
+      }
+    } catch (err: any) {
+      setQuizError(err?.message || "Submission failed.");
+      setQuizPhase("question");
+      setQuizSelected(null);
+    }
+  };
 
   const currentCard = cards[currentIndex];
   const isQueueDone = !loading && cards.length > 0 && currentIndex >= cards.length;
@@ -385,8 +452,81 @@ export default function LearnPage() {
           </div>
         )}
 
+        {activeTab === "quiz" && (
+          <div className="space-y-4">
+            {quizPhase === "idle" && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center">
+                <ListChecks className="h-10 w-10 mx-auto text-white/40 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">NREMT Drill Mode</h3>
+                <p className="text-sm text-white/60 max-w-md mx-auto mb-6 leading-relaxed">
+                  25 adaptive multiple-choice questions drawn from the NREMT blueprint. Difficulty adjusts to your performance.
+                </p>
+                {quizError && <p className="text-red-400 text-sm mb-4">{quizError}</p>}
+                <Button onClick={startQuiz} className="rounded-full bg-white text-black hover:bg-white/90 px-8">
+                  Start Quiz
+                </Button>
+              </motion.div>
+            )}
+            {quizPhase === "loading" && (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {(quizPhase === "question" || quizPhase === "answered") && quizQuestion && (
+              <motion.div key={quizQuestion.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <span className="text-xs text-white/40 uppercase tracking-wider">{quizQuestion.category}</span>
+                  <span className="text-xs text-white/40">{quizIndex + 1} / {quizTotal}</span>
+                </div>
+                <p className="text-base font-medium text-white leading-relaxed mb-6">{quizQuestion.questionText}</p>
+                <div className="space-y-2">
+                  {quizQuestion.options.map((opt, i) => {
+                    const isSelected = quizSelected === i;
+                    const isCorrectOpt = quizPhase === "answered" && opt === quizCorrectAnswer;
+                    const isWrongSelected = quizPhase === "answered" && isSelected && !quizWasCorrect;
+                    return (
+                      <button
+                        key={i}
+                        disabled={quizPhase === "answered"}
+                        onClick={() => submitQuizAnswer(i)}
+                        className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${
+                          isCorrectOpt
+                            ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-300"
+                            : isWrongSelected
+                            ? "border-red-500/60 bg-red-500/10 text-red-300"
+                            : isSelected
+                            ? "border-blue-500/60 bg-blue-500/10 text-white"
+                            : "border-white/10 bg-white/[0.02] text-white/80 hover:border-white/20 hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                {quizPhase === "answered" && (
+                  <p className={`mt-4 text-sm font-medium ${quizWasCorrect ? "text-emerald-400" : "text-red-400"}`}>
+                    {quizWasCorrect ? "✓ Correct" : `✗ Correct answer: ${quizCorrectAnswer}`}
+                  </p>
+                )}
+              </motion.div>
+            )}
+            {quizPhase === "done" && quizScore && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center">
+                <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${quizScore.score >= 70 ? "bg-emerald-500/20 ring-2 ring-emerald-500/50" : "bg-amber-500/20 ring-2 ring-amber-500/50"}`}>
+                  <span className="text-3xl font-bold">{quizScore.score}%</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Quiz Complete</h3>
+                <p className="text-white/60 text-sm mb-6">{quizScore.correctCount} of {quizScore.total} correct</p>
+                <Button onClick={startQuiz} className="rounded-full bg-white text-black hover:bg-white/90 px-8">
+                  Try Again
+                </Button>
+              </motion.div>
+            )}
+          </div>
+        )}
         {/* Coming-soon placeholders */}
-        {activeTab !== "flashcards" && (
+        {activeTab !== "flashcards" && activeTab !== "quiz" && (
           <ComingSoonPanel tab={activeTab} />
         )}
       </main>

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import simturaLogo from "@/assets/simtura-logo.png";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ComingSoonPageProps {
   discipline: string;
@@ -27,6 +29,20 @@ const glowClasses: Record<string, string> = {
 export default function ComingSoonPage({ discipline, accentColor, subtitle }: ComingSoonPageProps) {
   const accent = accentClasses[accentColor];
   const glow = glowClasses[accentColor];
+
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyState, setNotifyState] = useState<"idle" | "loading" | "done">("idle");
+
+  const handleNotify = async () => {
+    if (!notifyEmail || !notifyEmail.includes("@")) return;
+    setNotifyState("loading");
+    try {
+      await apiRequest("POST", "/api/notify-interest", { email: notifyEmail, discipline });
+      setNotifyState("done");
+    } catch {
+      setNotifyState("idle");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -63,6 +79,30 @@ export default function ComingSoonPage({ discipline, accentColor, subtitle }: Co
           <p className="text-white/60 text-lg leading-relaxed mb-10">
             {subtitle}
           </p>
+
+          {notifyState === "done" ? (
+            <p className="text-white/50 text-sm mb-10">
+              You're on the list. We'll email you when {discipline} launches.
+            </p>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleNotify()}
+                className="h-11 rounded-full bg-white/5 border border-white/15 px-5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 w-full sm:w-72"
+              />
+              <button
+                onClick={handleNotify}
+                disabled={notifyState === "loading"}
+                className="h-11 rounded-full bg-white text-black text-sm font-medium px-6 hover:bg-white/90 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {notifyState === "loading" ? "Saving…" : "Notify me"}
+              </button>
+            </div>
+          )}
 
           <Link href="/">
             <span className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors cursor-pointer">
