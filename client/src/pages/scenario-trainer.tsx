@@ -693,11 +693,12 @@ export default function ScenarioTrainerPage() {
   const nextButtonLabel = isLastQuestion ? "View Results" : hasMoreQuestionsInStep ? "Next Question" : "Next Step";
 
   return (
-    <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-black" data-testid="video-trainer-container">
+    <div ref={containerRef} className="relative h-screen w-full overflow-hidden bg-black flex flex-col sm:block" data-testid="video-trainer-container">
       <video
         ref={videoRef}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-          videoFading ? "opacity-0" : "opacity-100"
+        className={`object-cover transition-opacity duration-500 sm:absolute sm:inset-0 sm:w-full sm:h-full ${
+          showVideoPlaying ? "flex-1 w-full" : "shrink-0 h-[35vh] w-full"
+        } ${videoFading ? "opacity-0" : "opacity-100"
         }`}
         muted={isMuted}
         playsInline
@@ -897,7 +898,7 @@ export default function ScenarioTrainerPage() {
             transition={{ duration: 0.4 }}
             className="absolute bottom-0 left-0 right-0 sm:inset-0 sm:top-0 z-20 sm:flex sm:items-center"
           >
-            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[62vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black/92 backdrop-blur-xl sm:bg-transparent sm:backdrop-blur-none rounded-t-2xl sm:rounded-none pt-3 sm:pt-0">
+            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[65vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black sm:bg-transparent rounded-t-xl sm:rounded-none pt-3 sm:pt-0">
               {vitals && (
                 <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-1.5" data-testid="vitals-panel">
                   {vitals.hr !== undefined && (
