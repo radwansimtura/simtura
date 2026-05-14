@@ -8,3 +8,8 @@ vite.config.ts.*
 .local/
 distractors-review.docx
 *.docx
+.env.save
+simturakeys.env.txt
+*.env.txt
+.env.local
+.env.production
