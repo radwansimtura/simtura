@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    document.title = "Sign In | Simtura.ai";
+    return () => { document.title = "Simtura.ai"; };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

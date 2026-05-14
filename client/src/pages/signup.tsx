@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,11 @@ export default function SignUpPage() {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    document.title = "Sign Up | Simtura.ai";
+    return () => { document.title = "Simtura.ai"; };
+  }, []);
   const [password, setPassword] = useState("");
   const [securityQuestion, setSecurityQuestion] = useState<string>(SECURITY_QUESTIONS[0]);
   const [securityAnswer, setSecurityAnswer] = useState("");
@@ -50,6 +55,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signUp({ email, password, name, securityQuestion, securityAnswer });
+      try { (window as any).gtag?.("event", "sign_up", { method: "email" }); } catch {}
       toast({ title: "Account created.", description: "You're all set." });
       setLocation("/onboarding");
     } catch (err: any) {

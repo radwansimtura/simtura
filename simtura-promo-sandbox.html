@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Simtura — Cinematic Promo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+    body { font-family: 'Inter', system-ui, sans-serif; color: #f6f4ef; }
+    #root { position: fixed; inset: 0; }
+    @keyframes sim-blink { to { visibility: hidden; } }
+    * { box-sizing: border-box; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     BLOCK 1 · ENGINE — Stage, Sprite, easing, PlaybackBar, overlays
+     ════════════════════════════════════════════════════════════════════ -->
+<script type="text/babel">
+  try { localStorage.removeItem('simtura-promo:t'); } catch {}
+
+  const Easing = {
+    linear:         (t) => t,
+    easeOutQuad:    (t) => t * (2 - t),
+    easeInCubic:    (t) => t * t * t,
+    easeOutCubic:   (t) => (--t) * t * t + 1,
+    easeInOutCubic: (t) => t < 0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
+    easeOutExpo:    (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t),
+    easeOutBack: (t) => { const c1=1.70158, c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); },
+  };
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  const TimelineContext = React.createContext({ time: 0, duration: 35, playing: false });
+  const useTime     = () => React.useContext(TimelineContext).time;
+  const useTimeline = () => React.useContext(TimelineContext);
+
+  const SpriteContext = React.createContext({ localTime: 0, progress: 0, duration: 0, visible: false });
+  const useSprite = () => React.useContext(SpriteContext);
+
+  function Sprite({ start = 0, end = Infinity, keepMounted = false, children }) {
+    const { time } = useTimeline();
+    const visible = time >= start && time <= end;
+    if (!visible && !keepMounted) return null;
+    const dur = end - start;
+    const localTime = clamp(time - start, 0, dur);
+    const progress = dur > 0 ? clamp(localTime / dur, 0, 1) : 0;
+    const value = { localTime, progress, duration: dur, visible };
+    return (
+      <SpriteContext.Provider value={value}>
+        {typeof children === 'function' ? children(value) : children}
+      </SpriteContext.Provider>
+    );
+  }
+
+  // Fades every scene out in its final 0.5s — prevents hard cuts
+  function SceneWrapper({ children }) {
+    const { localTime, duration } = useSprite();
+    const opa = clamp((duration - localTime) / 0.5, 0, 1);
+    return <div style={{ position: 'absolute', inset: 0, opacity: opa }}>{children}</div>;
+  }
+
+  // ── Cinematic letterbox bars (slide in at t=0) ────────────────────
+  function CinematicBars() {
+    const { time } = useTimeline();
+    const t = Easing.easeOutCubic(clamp(time / 0.55, 0, 1));
+    const H = 75;
+    return (
+      <>
+        <div style={{ position:'absolute', top:0, left:0, right:0, height:H, background:'#000', zIndex:90, transform:`translateY(${-(1-t)*H}px)` }}/>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, height:H, background:'#000', zIndex:90, transform:`translateY(${(1-t)*H}px)` }}/>
+      </>
+    );
+  }
+
+  // ── Film grain (canvas, cheap — 192×108 upscaled) ─────────────────
+  function FilmGrain() {
+    const ref = React.useRef(null);
+    const fr  = React.useRef(0);
+    React.useEffect(() => {
+      const canvas = ref.current; if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let id;
+      const draw = () => {
+        fr.current++;
+        if (fr.current % 2 === 0) {
+          const img = ctx.createImageData(canvas.width, canvas.height);
+          const d = img.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const v = Math.random() * 255;
+            d[i] = d[i+1] = d[i+2] = v; d[i+3] = 20;
+          }
+          ctx.putImageData(img, 0, 0);
+        }
+        id = requestAnimationFrame(draw);
+      };
+      draw();
+      return () => cancelAnimationFrame(id);
+    }, []);
+    return (
+      <canvas ref={ref} width={192} height={108}
+        style={{ position:'absolute', inset:0, width:'100%', height:'100%', imageRendering:'pixelated', pointerEvents:'none', mixBlendMode:'overlay', opacity:0.055, zIndex:70 }}/>
+    );
+  }
+
+  // ── Stage ─────────────────────────────────────────────────────────
+  function Stage({ width=1920, height=1080, duration=35, background='#000', loop=true, autoplay=true, persistKey='sim-promo', children }) {
+    const [time, setTime]       = React.useState(0);
+    const [playing, setPlaying] = React.useState(autoplay);
+    const [hover, setHover]     = React.useState(null);
+    const [scale, setScale]     = React.useState(1);
+    const stageRef = React.useRef(null);
+    const rafRef   = React.useRef(null);
+    const tsRef    = React.useRef(null);
+
+    React.useEffect(() => {
+      const el = stageRef.current; if (!el) return;
+      const measure = () => setScale(Math.max(0.04, Math.min(el.clientWidth / width, (el.clientHeight - 58) / height)));
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      window.addEventListener('resize', measure);
+      return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+    }, [width, height]);
+
+    React.useEffect(() => {
+      if (!playing) { tsRef.current = null; return; }
+      const step = (ts) => {
+        if (tsRef.current == null) tsRef.current = ts;
+        const dt = (ts - tsRef.current) / 1000;
+        tsRef.current = ts;
+        setTime(t => { let n = t + dt; if (n >= duration) { if (loop) n %= duration; else { n = duration; setPlaying(false); } } return n; });
+        rafRef.current = requestAnimationFrame(step);
+      };
+      rafRef.current = requestAnimationFrame(step);
+      return () => { cancelAnimationFrame(rafRef.current); tsRef.current = null; };
+    }, [playing, duration, loop]);
+
+    React.useEffect(() => {
+      const k = (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.code === 'Space')      { e.preventDefault(); setPlaying(p => !p); }
+        else if (e.code === 'ArrowLeft')  setTime(t => clamp(t - (e.shiftKey ? 1 : 0.1), 0, duration));
+        else if (e.code === 'ArrowRight') setTime(t => clamp(t + (e.shiftKey ? 1 : 0.1), 0, duration));
+        else if (e.key === '0' || e.code === 'Home') setTime(0);
+      };
+      window.addEventListener('keydown', k);
+      return () => window.removeEventListener('keydown', k);
+    }, [duration]);
+
+    const displayTime = hover != null ? hover : time;
+    const ctx = React.useMemo(() => ({ time: displayTime, duration, playing, setTime, setPlaying }), [displayTime, duration, playing]);
+
+    return (
+      <div ref={stageRef} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', background:'#090909' }}>
+        <div style={{ flex:1, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', minHeight:0 }}>
+          <div style={{ width, height, background, position:'relative', transform:`scale(${scale})`, transformOrigin:'center', flexShrink:0, boxShadow:'0 28px 80px rgba(0,0,0,0.7)', overflow:'hidden' }}>
+            <TimelineContext.Provider value={ctx}>{children}</TimelineContext.Provider>
+          </div>
+        </div>
+        <PlaybackBar time={displayTime} duration={duration} playing={playing}
+          onPlayPause={() => setPlaying(p => !p)} onReset={() => setTime(0)}
+          onSeek={t => setTime(t)} onHover={t => setHover(t)} />
+      </div>
+    );
+  }
+
+  // ── PlaybackBar ───────────────────────────────────────────────────
+  const BEATS = [
+    { t:0,  label:'COLD OPEN' },
+    { t:5,  label:'THE CALL'  },
+    { t:10, label:'FREEZE'    },
+    { t:13, label:'SIMULATE'  },
+    { t:22, label:'BUILT'     },
+    { t:29, label:'BEGIN'     },
+  ];
+
+  function PlaybackBar({ time, duration, playing, onPlayPause, onReset, onSeek, onHover }) {
+    const trackRef = React.useRef(null);
+    const [drag, setDrag] = React.useState(false);
+    const atT = React.useCallback((e) => clamp((e.clientX - trackRef.current.getBoundingClientRect().left) / trackRef.current.getBoundingClientRect().width, 0, 1) * duration, [duration]);
+    const onMove = (e) => { if (!trackRef.current) return; drag ? onSeek(atT(e)) : onHover(atT(e)); };
+    const onLeave = () => { if (!drag) onHover(null); };
+    const onDown = (e) => { setDrag(true); onSeek(atT(e)); onHover(null); };
+    React.useEffect(() => {
+      if (!drag) return;
+      const up = () => setDrag(false);
+      const mv = (e) => { if (trackRef.current) onSeek(atT(e)); };
+      window.addEventListener('mouseup', up); window.addEventListener('mousemove', mv);
+      return () => { window.removeEventListener('mouseup', up); window.removeEventListener('mousemove', mv); };
+    }, [drag, atT, onSeek]);
+    const pct  = (time / duration) * 100;
+    const fmt  = (t) => `${String(Math.floor(t % 60)).padStart(2,'0')}.${String(Math.floor((t*100)%100)).padStart(2,'0')}s`;
+    const mono = "'JetBrains Mono', monospace";
+    return (
+      <div style={{ width:'100%', background:'rgba(10,10,10,0.98)', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+        <div style={{ position:'relative', height:20, margin:'0 76px' }}>
+          {BEATS.map(b => (
+            <div key={b.label} onClick={() => onSeek(b.t)}
+              style={{ position:'absolute', left:`${(b.t/duration)*100}%`, transform:'translateX(-50%)', bottom:2, fontFamily:mono, fontSize:9, color:'rgba(255,255,255,0.28)', letterSpacing:'0.13em', cursor:'pointer', userSelect:'none', whiteSpace:'nowrap' }}>
+              {b.label}
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 16px 10px' }}>
+          <IBtn onClick={onReset} title="Restart">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 2v10M12 2L5 7l7 5V2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </IBtn>
+          <IBtn onClick={onPlayPause} title="Play/Pause (Space)">
+            {playing
+              ? <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/></svg>
+              : <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="currentColor"/></svg>}
+          </IBtn>
+          <div style={{ fontFamily:mono, fontSize:11, color:'#f6f4ef', width:56, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{fmt(time)}</div>
+          <div ref={trackRef} onMouseMove={onMove} onMouseLeave={onLeave} onMouseDown={onDown}
+            style={{ flex:1, height:24, position:'relative', cursor:'pointer', display:'flex', alignItems:'center' }}>
+            {BEATS.map(b => <div key={b.t} style={{ position:'absolute', left:`${(b.t/duration)*100}%`, width:1, height:7, background:'rgba(255,255,255,0.18)', bottom:8 }}/>)}
+            <div style={{ position:'absolute', left:0, right:0, height:3, background:'rgba(255,255,255,0.09)', borderRadius:2 }}/>
+            <div style={{ position:'absolute', left:0, width:`${pct}%`, height:3, background:'#3b82f6', borderRadius:2 }}/>
+            <div style={{ position:'absolute', left:`${pct}%`, top:'50%', width:11, height:11, marginLeft:-5.5, marginTop:-5.5, background:'#fff', borderRadius:6, boxShadow:'0 2px 5px rgba(0,0,0,0.5)' }}/>
+          </div>
+          <div style={{ fontFamily:mono, fontSize:11, color:'rgba(246,244,239,0.28)', width:40 }}>35.00s</div>
+        </div>
+      </div>
+    );
+  }
+
+  function IBtn({ children, onClick, title }) {
+    const [h, setH] = React.useState(false);
+    return (
+      <button onClick={onClick} title={title} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+        style={{ width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', background:h?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:6, color:'#f6f4ef', cursor:'pointer', padding:0, transition:'background 100ms' }}>
+        {children}
+      </button>
+    );
+  }
+
+  Object.assign(window, { Easing, clamp, TimelineContext, useTime, useTimeline, Sprite, SpriteContext, useSprite, SceneWrapper, CinematicBars, FilmGrain, Stage });
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     BLOCK 2 · AUDIO — Cinematic synthesized score
+     All video elements are muted. This score is the sole audio source.
+     ctx.close() on loop restart kills every oscillator cleanly.
+     ════════════════════════════════════════════════════════════════════ -->
+<script type="text/babel">
+(function () {
+  let ctx = null, master = null, reverbSend = null, unlocked = false;
+
+  function stopAll() {
+    if (!ctx) return;
+    try { ctx.close(); } catch (e) {}
+    ctx = null; master = null; reverbSend = null;
+  }
+
+  function ensureCtx() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC();
+
+    master = ctx.createGain();
+    master.gain.value = 0.78;
+    master.connect(ctx.destination);
+
+    // Convolution reverb — 2.2s exponential decay impulse
+    const conv = ctx.createConvolver();
+    const sr = ctx.sampleRate;
+    const len = Math.floor(sr * 2.2);
+    const imp = ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = imp.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.8);
+    }
+    conv.buffer = imp;
+    reverbSend = ctx.createGain();
+    reverbSend.gain.value = 0.28;
+    reverbSend.connect(conv);
+    conv.connect(master);
+
+    if (unlocked && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    const c = ensureCtx();
+    if (c.state === 'suspended') c.resume().catch(() => {});
+  }
+  ['click','touchstart','keydown'].forEach(ev => window.addEventListener(ev, unlock, { once:false, passive:true }));
+
+  // ── Primitives ─────────────────────────────────────────────────────
+  function env(g, t0, a, d, s, r, peak, hold) {
+    g.gain.cancelScheduledValues(t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0+a);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak*s), t0+a+d);
+    g.gain.setValueAtTime(Math.max(0.0001, peak*s), t0+a+d+hold);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+a+d+hold+r);
+  }
+
+  // Sub bass impact — felt more than heard
+  function impact(t0, freq=58, peak=0.55) {
+    const c = ensureCtx(), o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq * 2.8, t0);
+    o.frequency.exponentialRampToValueAtTime(freq, t0 + 0.22);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.014);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0 + 1.7);
+  }
+
+  // Noise burst — cinematic cut "thud"
+  function noiseHit(t0, peak=0.22) {
+    const c = ensureCtx();
+    const n = Math.floor(c.sampleRate * 0.10);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/n, 2.8);
+    const src = c.createBufferSource(), lp = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = buf;
+    lp.type = 'lowpass'; lp.frequency.value = 1100;
+    g.gain.setValueAtTime(peak, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.10);
+    src.connect(lp); lp.connect(g); g.connect(master);
+    src.start(t0); src.stop(t0 + 0.13);
+  }
+
+  // Full-range drone — dark foundation under everything
+  function drone(t0, dur, baseFreq=41, peak=0.085) {
+    const c = ensureCtx(), out = c.createGain();
+    out.gain.value = 0; out.connect(master);
+    [baseFreq, baseFreq*1.5, baseFreq*0.5].forEach((f, i) => {
+      const o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
+      o.type = i===2 ? 'sine' : 'sawtooth'; o.frequency.value = f; o.detune.value = (i-1)*9;
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(160, t0); lp.frequency.linearRampToValueAtTime(720, t0 + dur*0.72);
+      lp.Q.value = 1.3;
+      g.gain.value = i===2 ? 0.65 : 0.22;
+      o.connect(lp); lp.connect(g); g.connect(out);
+      o.start(t0); o.stop(t0+dur+0.6);
+    });
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(peak, t0+2.2);
+    out.gain.setValueAtTime(peak, t0+dur-2.0);
+    out.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  }
+
+  // Single heartbeat lub-dub
+  function heartbeat(t0, freq=50) {
+    impact(t0, freq, 0.30);
+    const c = ensureCtx(), o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(78, t0+0.19); o.frequency.exponentialRampToValueAtTime(50, t0+0.34);
+    g.gain.setValueAtTime(0.0001, t0+0.19); g.gain.exponentialRampToValueAtTime(0.22, t0+0.21); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.55);
+    o.connect(g); g.connect(master);
+    o.start(t0+0.19); o.stop(t0+0.70);
+  }
+
+  // Radio dispatch chirp
+  function dispatchChirp(t0) {
+    const c = ensureCtx(), o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(1900, t0); o.frequency.linearRampToValueAtTime(1100, t0+0.26);
+    bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 4.5;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.15, t0+0.01); g.gain.setValueAtTime(0.15, t0+0.24); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.40);
+    o.connect(bp); bp.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+0.45);
+  }
+
+  // Ascending riser — drives into impact beats
+  function riser(t0, dur=0.9) {
+    const c = ensureCtx(), o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(110, t0); o.frequency.exponentialRampToValueAtTime(1100, t0+dur);
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(320, t0); lp.frequency.exponentialRampToValueAtTime(5000, t0+dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.18, t0+dur-0.06); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur+0.08);
+    o.connect(lp); lp.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+dur+0.18);
+  }
+
+  // Tension string — sustained sawtooth with vibrato (FREEZE beat)
+  function tensionStr(freq, t0, dur, peak=0.09) {
+    const c = ensureCtx(), o = c.createOscillator(), lp = c.createBiquadFilter(), hp = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    o.detune.setValueAtTime(0, t0);
+    o.detune.linearRampToValueAtTime(14, t0+dur*0.45);
+    o.detune.linearRampToValueAtTime(-10, t0+dur*0.85);
+    o.detune.linearRampToValueAtTime(0, t0+dur);
+    lp.type = 'lowpass'; lp.frequency.value = 2400; lp.Q.value = 0.65;
+    hp.type = 'highpass'; hp.frequency.value = 180;
+    o.connect(lp); lp.connect(hp); hp.connect(g);
+    // Route through reverb for space
+    const revG = c.createGain(); revG.gain.value = 0.4; g.connect(revG);
+    if (reverbSend) revG.connect(reverbSend);
+    g.connect(master);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0+0.55);
+    g.gain.setValueAtTime(peak, t0+dur-0.65); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.start(t0); o.stop(t0+dur+0.4);
+  }
+
+  // FM bell — with reverb
+  function bell(freq, t0, dur=1.8, peak=0.18) {
+    const c = ensureCtx();
+    const carrier = c.createOscillator(), mod = c.createOscillator(), modG = c.createGain(), g = c.createGain();
+    carrier.type = 'sine'; carrier.frequency.value = freq;
+    mod.type = 'sine'; mod.frequency.value = freq*2.01; modG.gain.value = freq*1.1;
+    mod.connect(modG); modG.connect(carrier.frequency);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    carrier.connect(g); g.connect(master);
+    // Reverb send
+    if (reverbSend) { const rv = c.createGain(); rv.gain.value = 0.5; g.connect(rv); rv.connect(reverbSend); }
+    carrier.start(t0); carrier.stop(t0+dur+0.4);
+    mod.start(t0); mod.stop(t0+dur+0.4);
+  }
+
+  // Filtered sawtooth note (for chords)
+  function note(freq, t0, dur, peak=0.14, ff=1600) {
+    const c = ensureCtx(), o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    lp.type = 'lowpass'; lp.frequency.value = ff; lp.Q.value = 0.7;
+    o.connect(lp); lp.connect(g); g.connect(master);
+    env(g, t0, 0.04, 0.22, 0.55, 0.45, peak, dur);
+    o.start(t0); o.stop(t0+dur+0.8);
+  }
+
+  function chord(freqs, t0, dur, peak=0.12, ff=1800) {
+    freqs.forEach((f, i) => note(f, t0+i*0.015, dur, peak*(i===0?1:0.62), ff));
+  }
+
+  function monitorBeep(t0, freq=880) {
+    const c = ensureCtx(), o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16, t0+0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.15);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+0.20);
+  }
+
+  // ── Score — timed to Sprite windows: 0/5/10/13/22/29/35 ──────────
+  const SCORE = [
+    // ─── COLD OPEN (0–5s)
+    { at: 0.00, fn: (t) => drone(t, 35.0, 41, 0.085) },
+    { at: 0.12, fn: (t) => heartbeat(t, 50) },
+    { at: 0.80, fn: (t) => dispatchChirp(t) },
+    { at: 1.50, fn: (t) => heartbeat(t, 50) },
+    { at: 1.95, fn: (t) => dispatchChirp(t) },
+    { at: 2.90, fn: (t) => heartbeat(t, 50) },
+    { at: 3.80, fn: (t) => dispatchChirp(t) },          // CODE 3 responding
+    { at: 4.25, fn: (t) => riser(t, 0.72) },            // riser into THE CALL
+
+    // ─── THE CALL (5–10s)
+    { at: 5.00, fn: (t) => { impact(t, 52, 0.58); noiseHit(t, 0.24); } },  // cut 1: cardiac arrest
+    { at: 5.05, fn: (t) => chord([110, 147, 196], t, 5.2, 0.09, 1500) },
+    { at: 6.70, fn: (t) => { impact(t, 58, 0.50); noiseHit(t, 0.20); } },  // cut 2: hemorrhage
+    { at: 8.25, fn: (t) => { impact(t, 64, 0.46); noiseHit(t, 0.18); } },  // cut 3: airway
+    { at: 9.15, fn: (t) => monitorBeep(t, 920) },        // single pulse — tension
+    { at: 9.50, fn: (t) => riser(t, 0.45) },             // short riser into FREEZE
+
+    // ─── FREEZE (10–13s) — biggest hit of the piece
+    { at: 9.95, fn: (t) => { impact(t, 36, 0.65); impact(t, 36, 0.42); } }, // double sub hit
+    { at: 10.00, fn: (t) => bell(330, t, 4.5, 0.26) },   // dark, resonant bell — freeze chime
+    { at: 10.06, fn: (t) => tensionStr(660, t, 2.8, 0.10) },
+    { at: 10.08, fn: (t) => chord([110, 146, 196], t, 3.2, 0.07, 2000) },
+    { at: 12.10, fn: (t) => bell(440, t, 1.6, 0.16) },   // resolve note into SIMULATE
+
+    // ─── SIMULATE / PRODUCT (13–22s)
+    { at: 13.00, fn: (t) => impact(t, 50, 0.45) },
+    { at: 13.06, fn: (t) => chord([110, 165, 220, 293], t, 9.2, 0.08, 2300) }, // warm resolution
+    { at: 14.65, fn: (t) => monitorBeep(t, 880) },        // product UI appears
+    { at: 14.95, fn: (t) => monitorBeep(t, 880) },
+    { at: 17.55, fn: (t) => monitorBeep(t, 920) },        // question card
+    { at: 18.10, fn: (t) => bell(660, t, 0.95, 0.17) },  // selection commit
+    { at: 19.30, fn: (t) => bell(880, t, 1.4, 0.16) },   // feedback revealed
+    { at: 19.35, fn: (t) => chord([110, 165, 220], t, 3.2, 0.07, 1900) },
+
+    // ─── BUILT / PROMISE (22–29s)
+    { at: 22.00, fn: (t) => impact(t, 52, 0.50) },
+    { at: 22.06, fn: (t) => chord([98, 147, 196, 247, 330], t, 7.5, 0.10, 1950) },
+    { at: 25.60, fn: (t) => chord([110, 165, 220, 277], t, 4.2, 0.08, 2200) },
+    { at: 28.55, fn: (t) => riser(t, 0.42) },             // into CTA
+
+    // ─── BEGIN / CTA (29–35s) — ascending resolution motif
+    { at: 29.00, fn: (t) => impact(t, 46, 0.60) },
+    { at: 29.06, fn: (t) => chord([110, 220, 277, 330, 440], t, 6.2, 0.13, 2700) },
+    { at: 29.14, fn: (t) => bell(880,  t, 2.8, 0.25) },  // motif root
+    { at: 31.20, fn: (t) => bell(1108, t, 2.4, 0.21) },  // motif 5th
+    { at: 33.20, fn: (t) => bell(1320, t, 2.0, 0.18) },  // motif octave
+    { at: 34.30, fn: (t) => bell(1760, t, 1.6, 0.16) },  // motif resolution — top note
+  ];
+
+  // ── Conductor ─────────────────────────────────────────────────────
+  function AudioConductor() {
+    const t   = window.useTime ? window.useTime() : 0;
+    const last = React.useRef(-1);
+    const ran  = React.useRef(new Set());
+
+    React.useEffect(() => {
+      const prev = last.current;
+      if (t < prev - 0.12) {           // loop or seek-back detected
+        ran.current.clear();
+        stopAll();                      // kills every oscillator
+      }
+      last.current = t;
+      if (!unlocked) return;
+      const c = ensureCtx();
+      const now = c.currentTime;
+      for (const ev of SCORE) {
+        if (ev.at <= t && !ran.current.has(ev)) {
+          ran.current.add(ev);
+          try { ev.fn(now + 0.02); } catch (e) {}
+        }
+      }
+    }, [t]);
+
+    return null;
+  }
+
+  Object.assign(window, { AudioConductor });
+})();
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     BLOCK 3 · SCENES
+     Six beats. All videos muted. Sprite windows: 0/5/10/13/22/29/35
+     ════════════════════════════════════════════════════════════════════ -->
+<script type="text/babel">
+  // ── Tokens ─────────────────────────────────────────────────────────
+  const BLUE  = '#2563eb';
+  const INK   = '#000';
+  const PAPER = '#fff';
+  const W90   = 'rgba(255,255,255,0.90)';
+  const W80   = 'rgba(255,255,255,0.80)';
+  const W65   = 'rgba(255,255,255,0.65)';
+  const W50   = 'rgba(255,255,255,0.50)';
+  const W20   = 'rgba(255,255,255,0.20)';
+  const W12   = 'rgba(255,255,255,0.12)';
+  const W06   = 'rgba(255,255,255,0.06)';
+  const SANS  = "Inter, ui-sans-serif, system-ui, sans-serif";
+  const MONO  = "'JetBrains Mono', ui-monospace, monospace";
+  const LOGO  = "attached_assets/Screenshot_2025-08-13_at_9.54.52_AM_1776888878004.png";
+  const V = (f) => `client/public/videos/${f}`;
+
+  // ── Shared primitives ───────────────────────────────────────────────
+  // Cinema vignette — radial corners + top/bottom gradient
+  const VIGNETTE = 'radial-gradient(ellipse 110% 90% at 50% 50%, transparent 45%, rgba(0,0,0,0.72) 100%), linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.08) 22%, rgba(0,0,0,0) 48%, rgba(0,0,0,0.68) 88%, rgba(0,0,0,0.92) 100%)';
+
+  // All video elements muted — audio from the synthesized score only
+  function VideoLayer({ src, scale=1, opacity=1, gradient=true, frozen=false }) {
+    const ref = React.useRef(null);
+    React.useEffect(() => {
+      const v = ref.current; if (!v) return;
+      v.muted = true;
+      if (frozen) {
+        v.pause();
+        // Seek to a mid-action frame
+        if (!isNaN(v.duration)) v.currentTime = Math.min(v.duration * 0.45, 2.0);
+      } else {
+        const p = v.play(); if (p && p.catch) p.catch(() => {});
+      }
+    }, [src, frozen]);
+    return (
+      <div style={{ position:'absolute', inset:0, overflow:'hidden', opacity }}>
+        <video ref={ref} src={src} autoPlay={!frozen} muted loop playsInline preload="auto"
+          style={{ width:'100%', height:'100%', objectFit:'cover', transform:`scale(${scale})`, filter:'contrast(1.08) saturate(0.86) brightness(0.94)' }}/>
+        {gradient && <div style={{ position:'absolute', inset:0, background:VIGNETTE }}/>}
+      </div>
+    );
+  }
+
+  const typewriter = (text, t, startAt=0, cps=30) =>
+    text.slice(0, Math.max(0, Math.min(text.length, Math.floor((t - startAt) * cps))));
+
+  const Caret = ({ on }) => on ? (
+    <span style={{ display:'inline-block', width:'0.52em', height:'0.95em', background:'currentColor', marginLeft:3, transform:'translateY(0.10em)', animation:'sim-blink 0.5s steps(2) infinite' }}/>
+  ) : null;
+
+  const PillButton = ({ label }) => (
+    <div style={{ display:'inline-flex', alignItems:'center', gap:14, height:64, padding:'0 32px', background:PAPER, color:'#000', borderRadius:999, fontFamily:SANS, fontSize:22, fontWeight:500, letterSpacing:'-0.01em' }}>
+      {label}
+      <svg width="20" height="20" viewBox="0 0 18 18"><path d="M3 9h12M11 4l5 5-5 5" stroke="#000" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+  );
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 1 — COLD OPEN  (0–5s)
+  // 02:47 A.M. The radio breaks the silence. Dispatch types.
+  // Video: hero-clip-1 fades up slowly from black
+  // ════════════════════════════════════════════════════════════════════
+  function ColdOpenScene() {
+    const { localTime: t } = useSprite();
+    const videoOpa = Easing.easeOutCubic(clamp((t - 0.3) / 1.4, 0, 1));
+    const stampT   = Easing.easeOutCubic(clamp(t / 0.8, 0, 1));
+
+    const lines = [
+      { at: 0.55, text: 'MEDIC 9  ·  ENGINE 4',              cps: 32 },
+      { at: 1.35, text: '52 y/o male — unresponsive.',       cps: 30 },
+      { at: 2.40, text: 'Bystander CPR in progress.',         cps: 30 },
+      { at: 3.55, text: 'CODE 3  ·  RESPONDING.',             cps: 42, hero: true },
+    ];
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, color:PAPER, fontFamily:SANS, overflow:'hidden' }}>
+        <VideoLayer src={V('hero-clip-1.mp4')} scale={1.10} opacity={videoOpa * 0.28} gradient={false} />
+        {/* Strong left vignette so text stays readable */}
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(100deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.85) 100%)' }}/>
+
+        {/* Timestamp */}
+        <div style={{ position:'absolute', left:120, top:100, opacity:stampT }}>
+          <div style={{ fontFamily:MONO, fontSize:13, color:W50, letterSpacing:'0.38em' }}>02 : 47 A.M.  ·  STATION 9</div>
+        </div>
+
+        {/* CAD terminal */}
+        <div style={{ position:'absolute', left:120, top:'50%', transform:'translateY(-52%)', fontFamily:MONO, lineHeight:1.85 }}>
+          {lines.map((l, i) => {
+            const text = typewriter(l.text, t, l.at, l.cps);
+            const isCurrent = t >= l.at && t < (lines[i+1]?.at ?? 99);
+            return (
+              <div key={i} style={{
+                fontSize: l.hero ? 44 : 26,
+                color: l.hero ? PAPER : (t >= l.at ? W80 : 'transparent'),
+                fontWeight: l.hero ? 600 : 400,
+                letterSpacing: l.hero ? '0.08em' : '0.01em',
+                marginTop: l.hero ? 22 : 0,
+                transition: 'color 0.4s',
+              }}>
+                {text}<Caret on={isCurrent && text.length < l.text.length} />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom tag */}
+        <div style={{ position:'absolute', left:120, bottom:100, fontFamily:MONO, fontSize:11, color:W50, letterSpacing:'0.28em', opacity:videoOpa }}>
+          DISPATCH LIVE
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 2 — THE CALL  (5–10s)
+  // Three raw cuts. No narration. Scenario label in corner.
+  // Videos: CPR → Tourniquet → Airway OPA
+  // ════════════════════════════════════════════════════════════════════
+  function TheCallScene() {
+    const { localTime: t } = useSprite();
+    const cuts = [
+      { in:0.0, out:1.80, src:V('s5-step3-kneel-cpr.mp4'),   label:'CARDIAC ARREST' },
+      { in:1.80, out:3.50, src:V('s7-step6-tourniquet.mp4'), label:'TRAUMATIC HEMORRHAGE' },
+      { in:3.50, out:5.00, src:V('s8-step5-airway-opa.mp4'), label:'AIRWAY COMPROMISE' },
+    ];
+    const active  = cuts.find(c => t >= c.in && t < c.out) || cuts[cuts.length-1];
+    const cutIdx  = cuts.indexOf(active);
+    const localT  = t - active.in;
+    const isFirst = localT < 0.12;
+    const labelT  = Easing.easeOutCubic(clamp(localT / 0.5, 0, 1));
+    const labelOut = clamp((active.out - t) / 0.25, 0, 1);
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, overflow:'hidden' }}>
+        {cuts.map((c, i) => (
+          <div key={i} style={{ position:'absolute', inset:0, opacity:c===active?1:0, transition:'opacity 0.12s ease-out' }}>
+            <VideoLayer src={c.src} scale={1.06 + localT*0.005} />
+          </div>
+        ))}
+
+        {/* Cut flash — brief white hit on new cut */}
+        {isFirst && <div style={{ position:'absolute', inset:0, background:`rgba(255,255,255,${Math.max(0, 0.20 - localT*1.8)})`, pointerEvents:'none' }}/>}
+
+        {/* Scenario label — bottom left, DCI style */}
+        <div style={{ position:'absolute', left:120, bottom:110, display:'flex', alignItems:'center', gap:16, opacity:labelT * labelOut, transform:`translateX(${(1-labelT)*-22}px)` }}>
+          <div style={{ width:2.5, height:30, background:BLUE, borderRadius:2, flexShrink:0 }}/>
+          <div style={{ fontFamily:MONO, fontSize:15, letterSpacing:'0.28em', color:PAPER, fontWeight:500 }}>
+            {active.label}
+          </div>
+        </div>
+
+        {/* Cut counter — top right */}
+        <div style={{ position:'absolute', right:120, top:100, fontFamily:MONO, fontSize:12, color:W50, letterSpacing:'0.28em' }}>
+          {String(cutIdx+1).padStart(2,'0')} / 03
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 3 — FREEZE  (10–13s)
+  // CPR frozen mid-compression. Glitch flash. Time stops.
+  // "The call doesn't stop. Your training can."
+  // ════════════════════════════════════════════════════════════════════
+  function FreezeScene() {
+    const { localTime: t } = useSprite();
+    const glitch  = t > 0.22 && t < 0.36;       // single frame inversion
+    const desatT  = Easing.easeOutCubic(clamp((t - 0.08) / 0.65, 0, 1));
+    const lineT   = Easing.easeOutCubic(clamp((t - 0.55) / 0.80, 0, 1));
+    const pillT   = Easing.easeOutCubic(clamp((t - 0.08) / 0.45, 0, 1));
+    const h1T     = Easing.easeOutCubic(clamp((t - 0.75) / 1.0, 0, 1));
+    const h2T     = Easing.easeOutCubic(clamp((t - 1.30) / 0.85, 0, 1));
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, color:PAPER, fontFamily:SANS, overflow:'hidden' }}>
+        {/* Frozen CPR frame */}
+        <VideoLayer src={V('s5-step3-kneel-cpr.mp4')} scale={1.07} frozen={true} />
+
+        {/* Glitch flash — inversion burst as freeze hits */}
+        {glitch && <div style={{ position:'absolute', inset:0, background:'rgba(255,255,255,0.55)', mixBlendMode:'difference', pointerEvents:'none' }}/>}
+
+        {/* Desaturate + darken overlay (CSS backdrop-filter for grayscale) */}
+        <div style={{
+          position:'absolute', inset:0,
+          background:`rgba(0,0,0,${0.28 + 0.38 * desatT})`,
+          backdropFilter:`grayscale(${desatT}) blur(${desatT * 2.2}px)`,
+          WebkitBackdropFilter:`grayscale(${desatT}) blur(${desatT * 2.2}px)`,
+        }}/>
+
+        {/* Blue scan line */}
+        <div style={{
+          position:'absolute', left:0, right:0, top:`${6 + lineT * 84}%`, height:1.5,
+          background:`linear-gradient(90deg, transparent 0%, ${BLUE} 25%, rgba(96,165,250,0.9) 50%, ${BLUE} 75%, transparent 100%)`,
+          boxShadow:`0 0 32px ${BLUE}, 0 0 64px ${BLUE}`,
+          opacity: lineT * (1 - clamp((t-2.4)/0.45, 0, 1)),
+        }}/>
+
+        {/* PAUSED pill */}
+        <div style={{ position:'absolute', left:'50%', top:112, transform:'translateX(-50%)', background:'rgba(0,0,0,0.65)', border:`1px solid ${BLUE}`, padding:'11px 26px', borderRadius:999, fontFamily:MONO, fontSize:13, letterSpacing:'0.38em', color:PAPER, opacity:pillT, backdropFilter:'blur(6px)' }}>
+          ❚❚  PAUSED
+        </div>
+
+        {/* Two-line pivot headline */}
+        <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', textAlign:'center', padding:'0 80px', width:'100%', maxWidth:1500 }}>
+          <div style={{ fontSize:118, fontWeight:700, letterSpacing:'-0.04em', lineHeight:1.0, color:PAPER, opacity:h1T, transform:`translateY(${(1-h1T)*28}px)` }}>
+            The call doesn't stop.
+          </div>
+          <div style={{ fontSize:118, fontWeight:700, letterSpacing:'-0.04em', lineHeight:1.0, color:BLUE, marginTop:8, opacity:h2T, transform:`translateY(${(1-h2T)*28}px)` }}>
+            Your training can.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 4 — SIMULATE  (13–22s, 9 seconds)
+  // Product reveal. Authentic cardiac arrest scenario.
+  // Decision: Epinephrine 1mg IVP for asystole.
+  // ════════════════════════════════════════════════════════════════════
+  function SimulateScene() {
+    const { localTime: t, duration } = useSprite();
+    const titleT  = Easing.easeOutCubic(clamp(t / 0.75, 0, 1));
+    const bodyT   = Easing.easeOutCubic(clamp((t - 0.55) / 0.70, 0, 1));
+    const frameT  = Easing.easeOutCubic(clamp((t - 0.40) / 0.90, 0, 1));
+    const cardT   = Easing.easeOutCubic(clamp((t - 1.60) / 0.65, 0, 1));
+    const sel     = t > 4.0 ? 1 : null;                    // option 1 = Epinephrine
+    const checkT  = Easing.easeOutBack(clamp((t - 4.3) / 0.40, 0, 1));
+    const fbT     = Easing.easeOutCubic(clamp((t - 6.0) / 0.70, 0, 1));
+    const fbOpa   = fbT * clamp((duration - t) / 0.55, 0, 1);
+
+    const opts = [
+      'Amiodarone 300mg IVP',
+      'Epinephrine 1mg IVP',           // correct
+      'Sodium Bicarbonate 1 mEq/kg',
+      'Check pulse — consider ROSC',
+    ];
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, color:PAPER, fontFamily:SANS, overflow:'hidden' }}>
+        {/* LEFT — copy */}
+        <div style={{ position:'absolute', left:120, top:180, maxWidth:560 }}>
+          {/* Eyebrow */}
+          <div style={{ opacity:titleT, transform:`translateY(${(1-titleT)*14}px)` }}>
+            <div style={{ fontFamily:MONO, fontSize:11, color:W50, letterSpacing:'0.40em', marginBottom:22 }}>SIMTURA · SCENARIO MODE</div>
+          </div>
+          {/* Stacked headline */}
+          <div style={{ opacity:titleT, transform:`translateY(${(1-titleT)*20}px)` }}>
+            <div style={{ fontSize:100, fontWeight:700, letterSpacing:'-0.04em', lineHeight:0.95 }}>
+              Pause.<br/>Decide.<br/><span style={{ color:W50, fontWeight:600 }}>Learn.</span>
+            </div>
+          </div>
+          {/* Body */}
+          <div style={{ fontSize:19, color:W65, marginTop:34, lineHeight:1.65, maxWidth:440, opacity:bodyT, transform:`translateY(${(1-bodyT)*14}px)` }}>
+            Every scenario freezes at the moment of decision. Commit — then see the clinical reasoning behind every choice.
+          </div>
+        </div>
+
+        {/* RIGHT — product frame */}
+        <div style={{ position:'absolute', left:730, top:118, width:1084, height:848, opacity:frameT, transform:`translateY(${(1-frameT)*50}px) scale(${0.955+0.045*frameT})` }}>
+          <div style={{ width:'100%', height:'100%', background:'#080808', borderRadius:20, border:`1px solid ${W12}`, overflow:'hidden', position:'relative', boxShadow:'0 40px 100px rgba(0,0,0,0.70)' }}>
+            {/* Browser chrome */}
+            <div style={{ height:44, padding:'0 18px', borderBottom:`1px solid ${W06}`, display:'flex', alignItems:'center', gap:9 }}>
+              {['#e74c3c','#f39c12','#2ecc71'].map((bg,i) => <div key={i} style={{ width:10, height:10, borderRadius:5, background:bg, opacity:0.55 }}/>)}
+              <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
+                <div style={{ fontFamily:MONO, fontSize:11, color:W50, letterSpacing:'0.07em', padding:'4px 14px', background:'rgba(255,255,255,0.04)', borderRadius:6 }}>
+                  simtura.ai / scenario / cardiac-arrest-asystole
+                </div>
+              </div>
+            </div>
+
+            {/* Video + decision area */}
+            <div style={{ position:'relative', width:'100%', height:'calc(100% - 44px)', overflow:'hidden' }}>
+              <VideoLayer src={V('s5-step4-apply-aed.mp4')} scale={1.05 + t*0.004} />
+
+              {/* Decision card */}
+              <div style={{ position:'absolute', left:22, right:22, bottom:22, transform:`translateY(${(1-cardT)*260}px)`, opacity:cardT*(1-fbT), background:'rgba(8,8,8,0.95)', backdropFilter:'blur(14px)', border:`1px solid ${W12}`, borderRadius:18, padding:'22px 26px' }}>
+                <div style={{ fontSize:21, fontWeight:500, letterSpacing:'-0.01em', lineHeight:1.40, marginBottom:16, color:W90 }}>
+                  Asystole confirmed. AED: <span style={{ color:'rgba(239,68,68,0.9)' }}>NO SHOCK ADVISED.</span><br/>IV access established. 2 min into resuscitation.<br/>
+                  <span style={{ color:W65, fontSize:18 }}>Next intervention?</span>
+                </div>
+                {opts.map((opt, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:13, padding:'12px 15px', marginBottom:7, borderRadius:11, background:sel===i?'rgba(37,99,235,0.14)':W06, border:`1px solid ${sel===i?BLUE:W12}`, fontSize:15, transition:'background 0.2s, border-color 0.2s' }}>
+                    <div style={{ width:21, height:21, borderRadius:6, border:`1.5px solid ${sel===i?'#60a5fa':'rgba(255,255,255,0.22)'}`, background:sel===i?BLUE:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s' }}>
+                      {sel===i && checkT>0.05 && (
+                        <svg width="12" height="12" viewBox="0 0 14 14" style={{ transform:`scale(${checkT})`, transition:'transform 0.15s' }}>
+                          <path d="M3 7l3 3 5-6" stroke="#fff" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ color:PAPER }}>{opt}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Feedback card */}
+              <div style={{ position:'absolute', left:22, right:22, bottom:22, transform:`translateY(${(1-fbT)*280}px)`, opacity:fbOpa, background:'rgba(8,8,8,0.96)', backdropFilter:'blur(14px)', border:`1px solid ${W12}`, borderRadius:18, padding:'26px 30px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:13, marginBottom:14 }}>
+                  <div style={{ width:36, height:36, borderRadius:11, background:PAPER, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="18" height="18" viewBox="0 0 20 20"><path d="M4 10l4 4 8-9" stroke="#000" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <div style={{ fontSize:22, fontWeight:600, letterSpacing:'-0.01em' }}>Right call.</div>
+                </div>
+                <div style={{ fontSize:15, color:'rgba(255,255,255,0.72)', lineHeight:1.70 }}>
+                  <strong style={{ color:PAPER }}>Epinephrine 1mg IVP</strong> is first-line for asystole and PEA. Push now and flush with 20mL NS — continue uninterrupted CPR. Every 3–5 minutes until ROSC or termination.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 5 — BUILT  (22–29s)
+  // "Built for EMS." Brand lands. Voice from the field.
+  // ════════════════════════════════════════════════════════════════════
+  function BuiltScene() {
+    const { localTime: t } = useSprite();
+    const bgT    = Easing.easeOutCubic(clamp(t / 0.70, 0, 1));
+    const h1T    = Easing.easeOutCubic(clamp((t - 0.28) / 1.0, 0, 1));
+    const subT   = Easing.easeOutCubic(clamp((t - 1.10) / 0.80, 0, 1));
+    const rolesT = Easing.easeOutCubic(clamp((t - 1.80) / 0.85, 0, 1));
+    const qT     = Easing.easeOutCubic(clamp((t - 3.50) / 0.95, 0, 1));
+    const attT   = Easing.easeOutCubic(clamp((t - 4.60) / 0.75, 0, 1));
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, color:PAPER, fontFamily:SANS, overflow:'hidden' }}>
+        <VideoLayer src={V('ems-hero-paramedic-iv.mp4')} scale={1.07} opacity={0.34 * bgT} gradient={false} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.60) 40%, rgba(0,0,0,0.90) 100%)' }}/>
+
+        <div style={{ position:'absolute', left:120, top:186, maxWidth:1080 }}>
+          <div style={{ fontSize:160, fontWeight:800, letterSpacing:'-0.045em', lineHeight:0.93, opacity:h1T, transform:`translateY(${(1-h1T)*28}px)` }}>
+            Built for EMS.
+          </div>
+          <div style={{ fontSize:26, color:W65, marginTop:30, maxWidth:800, lineHeight:1.50, opacity:subT, transform:`translateY(${(1-subT)*16}px)` }}>
+            12 immersive scenarios covering the full chain of care — from field response to definitive treatment. Every role. Every call.
+          </div>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:36, opacity:rolesT, transform:`translateY(${(1-rolesT)*14}px)` }}>
+            {['EMR', 'EMT', 'AEMT', 'Paramedic', 'Nursing'].map(r => (
+              <div key={r} style={{ padding:'10px 24px', borderRadius:999, border:`1px solid ${W20}`, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(8px)', fontSize:15, fontWeight:500, color:PAPER, letterSpacing:'-0.005em' }}>{r}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Testimonial — right column */}
+        <div style={{ position:'absolute', right:120, bottom:140, maxWidth:600, opacity:qT, transform:`translateY(${(1-qT)*18}px)` }}>
+          <div style={{ fontSize:100, fontWeight:700, lineHeight:0.4, color:'rgba(255,255,255,0.08)', fontFamily:'Georgia, serif', marginBottom:-6 }}>"</div>
+          <div style={{ fontSize:28, fontWeight:500, lineHeight:1.38, letterSpacing:'-0.015em', color:W90 }}>
+            It's the closest I've felt to a real call without being on one.
+          </div>
+          <div style={{ marginTop:24, opacity:attT, transform:`translateY(${(1-attT)*8}px)` }}>
+            <div style={{ fontSize:15, fontWeight:600, letterSpacing:'0.01em' }}>Maya Chen</div>
+            <div style={{ fontSize:12, color:W50, marginTop:3, letterSpacing:'0.22em' }}>PARAMEDIC  ·  YEAR 3</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // BEAT 6 — BEGIN  (29–35s)
+  // "Step into the call." Clean. Loud. Logo.
+  // ════════════════════════════════════════════════════════════════════
+  function BeginScene() {
+    const { localTime: t } = useSprite();
+    const h1T  = Easing.easeOutCubic(clamp(t / 0.80, 0, 1));
+    const subT = Easing.easeOutCubic(clamp((t - 0.70) / 0.75, 0, 1));
+    const btnT = Easing.easeOutBack(clamp((t - 1.25) / 0.65, 0, 1));
+    const lgT  = Easing.easeOutCubic(clamp((t - 2.30) / 0.80, 0, 1));
+    const urlT = clamp((t - 3.40) / 0.65, 0, 1);
+
+    return (
+      <div style={{ position:'absolute', inset:0, background:INK, color:PAPER, fontFamily:SANS, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+        <VideoLayer src={V('organizations-bg.mp4')} scale={1.12} opacity={0.22} gradient={false} />
+        <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 55%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.80) 60%, #000 100%)' }}/>
+
+        {/* Eyebrow */}
+        <div style={{ position:'relative', fontFamily:MONO, fontSize:11, color:W50, letterSpacing:'0.45em', marginBottom:30, opacity:subT }}>
+          START FREE TODAY
+        </div>
+
+        {/* Headline */}
+        <div style={{ position:'relative', fontSize:140, fontWeight:800, letterSpacing:'-0.045em', lineHeight:1.0, textAlign:'center', opacity:h1T, transform:`translateY(${(1-h1T)*28}px)` }}>
+          Step into the call.
+        </div>
+
+        {/* Sub */}
+        <div style={{ position:'relative', marginTop:30, fontSize:24, color:W65, maxWidth:680, textAlign:'center', lineHeight:1.5, opacity:subT, transform:`translateY(${(1-subT)*18}px)` }}>
+          One scenario a day — free forever. No credit card.
+        </div>
+
+        {/* CTA button */}
+        <div style={{ position:'relative', marginTop:54, opacity:btnT, transform:`scale(${0.88 + 0.12*btnT})` }}>
+          <PillButton label="Create your account" />
+        </div>
+
+        {/* Logo */}
+        <div style={{ position:'absolute', bottom:108, left:'50%', transform:`translateX(-50%) translateY(${(1-lgT)*20}px)`, opacity:lgT, display:'flex', alignItems:'center', padding:'14px 28px', background:'#fff', borderRadius:14 }}>
+          <img src={LOGO} style={{ height:44, display:'block' }} alt="Simtura"/>
+        </div>
+
+        {/* URL */}
+        <div style={{ position:'absolute', bottom:66, left:'50%', transform:'translateX(-50%)', fontFamily:MONO, fontSize:13, letterSpacing:'0.44em', color:W50, opacity:urlT }}>
+          SIMTURA.AI
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // APP
+  // CinematicBars and FilmGrain render outside Sprites — always present.
+  // ════════════════════════════════════════════════════════════════════
+  function PromoScenes() {
+    return (
+      <>
+        {/* Scenes — each wrapped for exit fade */}
+        <Sprite start={0.0}  end={5.0} ><SceneWrapper><ColdOpenScene /></SceneWrapper></Sprite>
+        <Sprite start={5.0}  end={10.0}><SceneWrapper><TheCallScene /></SceneWrapper></Sprite>
+        <Sprite start={10.0} end={13.0}><SceneWrapper><FreezeScene /></SceneWrapper></Sprite>
+        <Sprite start={13.0} end={22.0}><SceneWrapper><SimulateScene /></SceneWrapper></Sprite>
+        <Sprite start={22.0} end={29.0}><SceneWrapper><BuiltScene /></SceneWrapper></Sprite>
+        <Sprite start={29.0} end={35.0}><SceneWrapper><BeginScene /></SceneWrapper></Sprite>
+
+        {/* Always-on overlays — letterbox + grain */}
+        <CinematicBars />
+        <FilmGrain />
+
+        {/* Audio */}
+        <AudioConductor />
+      </>
+    );
+  }
+
+  function App() {
+    return (
+      <Stage width={1920} height={1080} duration={35} background="#000" persistKey="sim-promo">
+        <PromoScenes />
+      </Stage>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

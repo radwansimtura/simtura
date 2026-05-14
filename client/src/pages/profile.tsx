@@ -56,6 +56,11 @@ export default function ProfilePage() {
     }
   }, [user, isLoading, setLocation]);
 
+  useEffect(() => {
+    document.title = "Profile | Simtura.ai";
+    return () => { document.title = "Simtura.ai"; };
+  }, []);
+
   // Handle return from Stripe Checkout. ?upgraded=1 → poll until webhook
   // flips tier to pro. ?canceled=1 → quick toast, nothing else.
   useEffect(() => {

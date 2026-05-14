@@ -34,6 +34,10 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
+function track(event: string, params?: Record<string, unknown>) {
+  try { (window as any).gtag?.("event", event, params ?? {}); } catch {}
+}
+
 type TrainerMode = "multiple-choice" | "open-response";
 
 type GradeResult = {
@@ -120,6 +124,13 @@ export default function ScenarioTrainerPage() {
     queryKey: ["/api/scenarios", id],
   });
 
+  useEffect(() => {
+    if (scenario?.title) {
+      document.title = `${scenario.title} | Simtura.ai`;
+      return () => { document.title = "Simtura.ai"; };
+    }
+  }, [scenario?.title]);
+
   const backUrl = scenario?.discipline === "Nursing" ? "/nursing" : "/ems";
 
   const { data: steps, isLoading: stepsLoading } = useQuery<ScenarioStep[]>({
@@ -167,6 +178,7 @@ export default function ScenarioTrainerPage() {
       if (msg.startsWith("401")) {
         setLocation(`/signin?next=/scenario/${id}`);
       } else if (msg.startsWith("429") || msg.includes("free_limit_reached")) {
+        track("free_limit_hit", { scenario_id: id });
         setShowUpgrade(true);
       }
     },
@@ -264,6 +276,7 @@ export default function ScenarioTrainerPage() {
 
   const handleStartScenario = () => {
     if (!steps || steps.length === 0) return;
+    track("scenario_start", { scenario_id: id, discipline: scenario?.discipline });
 
     const startFirstStep = () => {
       const step = steps[0];
@@ -466,6 +479,7 @@ export default function ScenarioTrainerPage() {
     if (nextStepIndex >= steps.length) {
       const finalResponses = [...responses];
       completeAttemptMutation.mutate(finalResponses);
+      track("scenario_complete", { scenario_id: id, discipline: scenario?.discipline });
       const departureUrl = scenario?.departureVideoUrl;
       if (departureUrl) {
         setPhase("departure-video");
@@ -696,8 +710,8 @@ export default function ScenarioTrainerPage() {
 
       {showQuestionUI && (
         <>
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10" />
+          <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 z-10" />
         </>
       )}
 
@@ -837,6 +851,11 @@ export default function ScenarioTrainerPage() {
                   </div>
                 </div>
 
+                {user && user.tier !== "pro" && (
+                  <p className="text-center text-xs text-white/40 mb-3">
+                    Free accounts: 1 scenario per day. <span className="text-white/60">Upgrade for unlimited.</span>
+                  </p>
+                )}
                 <Button
                   onClick={handleStartScenario}
                   size="lg"
@@ -878,7 +897,7 @@ export default function ScenarioTrainerPage() {
             transition={{ duration: 0.4 }}
             className="absolute inset-0 z-20 flex items-end sm:items-center"
           >
-            <div className="w-full max-w-md ml-4 mb-4 sm:ml-8 sm:mb-0 max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar pr-2">
+            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[60vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-xl sm:bg-transparent sm:backdrop-blur-none rounded-t-2xl sm:rounded-none pt-3 sm:pt-0">
               {vitals && (
                 <div className="mb-3 grid grid-cols-3 gap-1.5" data-testid="vitals-panel">
                   {vitals.hr !== undefined && (

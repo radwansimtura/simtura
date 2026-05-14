@@ -13,7 +13,7 @@ import {
   User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
@@ -59,7 +59,12 @@ export default function DisciplineScenariosPage({
   const [selectedCert, setSelectedCert] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
 
-  const { data: scenarios, isLoading } = useQuery<Scenario[]>({
+  useEffect(() => {
+    document.title = `${discipline} Scenarios | Simtura.ai`;
+    return () => { document.title = "Simtura.ai"; };
+  }, [discipline]);
+
+  const { data: scenarios, isLoading, error, refetch } = useQuery<Scenario[]>({
     queryKey: ["/api/scenarios", discipline],
     queryFn: async () => {
       const res = await fetch(`/api/scenarios?discipline=${discipline}`);
@@ -81,6 +86,19 @@ export default function DisciplineScenariosPage({
   const scrollToScenarios = () => {
     document.getElementById("scenarios")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white/60 mb-4 text-sm">Couldn't load scenarios.</p>
+          <Button onClick={() => refetch()} variant="outline" className="text-white border-white/20">
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-black text-white relative min-h-screen">
