@@ -1841,5 +1841,53 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     }
   });
 
+  // Internal endpoint for simtura-leads analytics dashboard
+  app.get("/api/internal/signups", async (req, res) => {
+    const key = req.headers["x-simtura-key"];
+    if (!process.env.SIMTURA_INTERNAL_KEY || key !== process.env.SIMTURA_INTERNAL_KEY) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const [totals, users, daily] = await Promise.all([
+        pool.query(`
+          SELECT
+            COUNT(*)                                              AS total,
+            COUNT(*) FILTER (WHERE tier = 'pro')                 AS pro_count,
+            COUNT(*) FILTER (WHERE tier = 'free')                AS free_count,
+            COUNT(*) FILTER (WHERE "createdAt" >= NOW() - INTERVAL '30 days') AS last_30
+          FROM users
+        `),
+        pool.query(`
+          SELECT id, name, email, tier, "createdAt", "proSince", "organizationId"
+          FROM users
+          ORDER BY "createdAt" DESC
+          LIMIT 300
+        `),
+        pool.query(`
+          SELECT DATE("createdAt") AS day, COUNT(*) AS count
+          FROM users
+          WHERE "createdAt" >= NOW() - INTERVAL '30 days'
+          GROUP BY DATE("createdAt")
+          ORDER BY day
+        `),
+      ]);
+      const t = totals.rows[0];
+      res.json({
+        configured: true,
+        total:     parseInt(t.total),
+        proCount:  parseInt(t.pro_count),
+        freeCount: parseInt(t.free_count),
+        last30:    parseInt(t.last_30),
+        users:     users.rows,
+        daily:     daily.rows.map((r: any) => ({
+          day:   r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day),
+          count: parseInt(r.count),
+        })),
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message ?? "Error" });
+    }
+  });
+
   return httpServer;
 }
