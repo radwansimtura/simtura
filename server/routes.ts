@@ -32,7 +32,7 @@ import {
   questionForClient,
 } from "./nremtQuiz";
 import { eq, and, asc, sql } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 import { getUncachableStripeClient } from "./stripeClient";
 
 function generateCode(): string {
@@ -1800,7 +1800,10 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
 
   app.post("/api/cron/retention-emails", async (req, res) => {
     const secret = process.env.CRON_SECRET;
-    if (!secret || req.headers["x-cron-secret"] !== secret) {
+    const providedSecret = req.headers["x-cron-secret"];
+    if (!secret || typeof providedSecret !== "string" ||
+        providedSecret.length !== secret.length ||
+        !timingSafeEqual(Buffer.from(providedSecret), Buffer.from(secret))) {
       return res.status(401).json({ message: "Unauthorized" });
     }
     try {

@@ -31,8 +31,10 @@ import {
   MicOff,
   Loader2,
   Brain,
+  Share2,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 function track(event: string, params?: Record<string, unknown>) {
   try { (window as any).gtag?.("event", event, params ?? {}); } catch {}
@@ -86,6 +88,7 @@ export default function ScenarioTrainerPage() {
   const [, navigate] = useLocation();
   const setLocation = navigate;
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [phase, setPhase] = useState<TrainerPhase>("intro");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -677,6 +680,26 @@ export default function ScenarioTrainerPage() {
               </Button>
               <Button onClick={() => window.location.reload()} className="bg-blue-600 text-white" data-testid="button-retry">
                 Retry Scenario
+              </Button>
+              <Button
+                variant="ghost"
+                className="border-white/20 text-white"
+                data-testid="button-share"
+                onClick={async () => {
+                  const shareText = `I just scored ${score}% on "${scenario.title}" on Simtura.ai`;
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({ title: "Simtura.ai", text: shareText, url: "https://simtura.ai" });
+                    } catch {}
+                  } else {
+                    try {
+                      await navigator.clipboard.writeText("https://simtura.ai");
+                      toast({ title: "Copied!", description: "Link copied to clipboard." });
+                    } catch {}
+                  }
+                }}
+              >
+                <Share2 className="mr-2 h-4 w-4" /> Share
               </Button>
             </div>
           </motion.div>

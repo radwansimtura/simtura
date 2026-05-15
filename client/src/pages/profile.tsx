@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { RedeemCodeCard } from "@/components/redeem-code-card";
 import { SecurityQuestionCard } from "@/components/security-question-card";
+import type { PublicOrganization } from "@shared/schema";
 import {
   ArrowLeft,
   ArrowRight,
   Crown,
   LogOut,
+  Pencil,
   Target,
   TrendingUp,
   Trophy,
@@ -44,11 +47,19 @@ interface Stats {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, signOut, manageBilling } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [managingBilling, setManagingBilling] = useState(false);
+
+  // Inline name edit state
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  // Delete account state
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -106,7 +117,10 @@ export default function ProfilePage() {
   const handleManageBilling = async () => {
     setManagingBilling(true);
     try {
-      await manageBilling();
+      const res = await apiRequest("POST", "/api/auth/billing-portal");
+      const data = (await res.json()) as { portalUrl?: string };
+      if (!data.portalUrl) throw new Error("No portal URL returned.");
+      window.location.href = data.portalUrl;
     } catch (e: any) {
       toast({
         title: "Couldn't open billing portal",
@@ -117,10 +131,75 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSaveName = async () => {
+    if (!nameValue.trim()) return;
+    setSavingName(true);
+    try {
+      const res = await apiRequest("PATCH", "/api/auth/profile", { name: nameValue.trim() });
+      const updated = await res.json();
+      queryClient.setQueryData(["/api/auth/me"], updated);
+      setEditingName(false);
+      toast({ title: "Name updated." });
+    } catch (e: any) {
+      toast({
+        title: "Couldn't update name",
+        description: e?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Are you sure? This permanently deletes your account and cannot be undone."
+    );
+    if (!confirmed) return;
+    setDeletingAccount(true);
+    try {
+      await apiRequest("DELETE", "/api/auth/account");
+      await signOut();
+      setLocation("/");
+    } catch (e: any) {
+      toast({
+        title: "Couldn't delete account",
+        description: e?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+      setDeletingAccount(false);
+    }
+  };
+
   const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery<Stats>({
     queryKey: ["/api/me/stats"],
     enabled: !!user,
   });
+
+  // Task 4: fetch org name when the user belongs to an organization
+  const { data: orgData } = useQuery<PublicOrganization>({
+    queryKey: [`/api/organizations/${user?.organizationId}`],
+    enabled: !!user?.organizationId,
+  });
+
+  // Task 5: compute time-until-midnight countdown for free users who've used today's scenario
+  const usedToday = (() => {
+    if (!stats?.recent) return false;
+    const today = new Date().toDateString();
+    return stats.recent.some(
+      (a) => a.completedAt && new Date(a.completedAt).toDateString() === today
+    );
+  })();
+
+  const timeUntilMidnight = (() => {
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    const diffMs = midnight.getTime() - Date.now();
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return { hours, minutes };
+  })();
 
   const handleSignOut = async () => {
     await signOut();
@@ -182,9 +261,52 @@ export default function ProfilePage() {
             Profile
           </p>
           <div className="flex flex-wrap items-end justify-between gap-4 mb-3">
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight" data-testid="text-name">
-              {user.name || user.email}
-            </h1>
+            {/* Inline name edit (Task 2) */}
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveName();
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                  className="text-2xl font-bold bg-white/5 border-white/20 text-white h-12 px-3"
+                  data-testid="input-name"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveName}
+                  disabled={savingName}
+                  className="bg-white text-black hover:bg-white/90"
+                >
+                  {savingName ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditingName(false)}
+                  className="text-white/50 hover:text-white"
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <h1 className="text-4xl sm:text-5xl font-bold tracking-tight" data-testid="text-name">
+                  {user.name || user.email}
+                </h1>
+                <button
+                  onClick={() => { setNameValue(user.name || ""); setEditingName(true); }}
+                  className="text-white/30 hover:text-white/70 transition-colors mt-1"
+                  aria-label="Edit name"
+                  data-testid="button-edit-name"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             {isPro ? (
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-amber-300 text-xs uppercase tracking-wider">
                 <Crown className="h-3.5 w-3.5" />
@@ -199,6 +321,12 @@ export default function ProfilePage() {
           <p className="text-white/50 text-sm" data-testid="text-email">
             {user.email}
           </p>
+          {/* Task 4: org membership display */}
+          {orgData && (
+            <p className="text-white/40 text-xs mt-1" data-testid="text-org-name">
+              Member of {orgData.name}
+            </p>
+          )}
         </motion.div>
 
         {/* Stats grid */}
@@ -272,22 +400,24 @@ export default function ProfilePage() {
                   Train as many cases as you need, every day.
                 </p>
               </div>
-              {user.premiumSource === "stripe" ? (
+              <div className="flex flex-col items-end gap-2">
+                {/* Task 3: Manage subscription button for Pro users */}
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   onClick={handleManageBilling}
                   disabled={managingBilling}
-                  className="text-white/50 hover:text-white hover:bg-white/5"
-                  data-testid="button-manage-billing"
+                  className="border-white/20 text-white/70 hover:text-white hover:bg-white/5"
+                  data-testid="button-manage-subscription"
                 >
-                  {managingBilling ? "Opening…" : "Manage billing"}
+                  {managingBilling ? "Redirecting…" : "Manage subscription"}
                 </Button>
-              ) : user.premiumSource === "organization" ? (
-                <span className="text-xs text-white/40" data-testid="text-org-pro">
-                  Pro via your organization
-                </span>
-              ) : null}
+                {user.premiumSource === "organization" && (
+                  <span className="text-xs text-white/40" data-testid="text-org-pro">
+                    Pro via your organization
+                  </span>
+                )}
+              </div>
             </div>
           ) : (
             <div>
@@ -321,6 +451,12 @@ export default function ProfilePage() {
               <p className="mt-3 text-xs text-white/50">
                 Free plan includes 1 scenario per day. Pro unlocks unlimited training.
               </p>
+              {/* Task 5: Next free scenario countdown */}
+              {usedToday && (
+                <p className="mt-2 text-xs text-blue-300/70" data-testid="text-next-scenario-countdown">
+                  Next free scenario in {timeUntilMidnight.hours}h {timeUntilMidnight.minutes}m
+                </p>
+              )}
             </div>
           )}
         </motion.div>
@@ -432,6 +568,23 @@ export default function ProfilePage() {
               </Link>
             </div>
           )}
+        </motion.div>
+
+        {/* Danger zone — delete account (Task 1) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-16 pt-8 border-t border-white/5 flex justify-end"
+        >
+          <button
+            onClick={handleDeleteAccount}
+            disabled={deletingAccount}
+            className="text-red-400 hover:text-red-300 text-xs underline underline-offset-2 disabled:opacity-50"
+            data-testid="button-delete-account"
+          >
+            {deletingAccount ? "Deleting…" : "Delete account"}
+          </button>
         </motion.div>
       </main>
     </div>

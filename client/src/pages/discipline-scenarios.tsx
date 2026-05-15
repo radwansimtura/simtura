@@ -407,6 +407,7 @@ function ScenarioCard({ scenario, index }: { scenario: Scenario; index: number }
             <img
               src={scenario.imageUrl}
               alt={scenario.title}
+              loading="lazy"
               className="absolute inset-0 h-full w-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
             />
           ) : (

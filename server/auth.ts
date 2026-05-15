@@ -3,6 +3,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { z } from "zod";
 import { pool } from "./db";
 import { storage } from "./storage";
 import {
@@ -353,6 +354,31 @@ export function registerAuthRoutes(app: Express) {
     }
     res.json({ ok: true });
     sendPasswordResetConfirmationEmail(user.email, user.name).catch(() => {});
+  });
+
+  // Delete the current user's account and destroy their session.
+  app.delete("/api/auth/account", requireAuth, async (req, res) => {
+    try {
+      await pool.query("DELETE FROM users WHERE id = $1", [req.session.userId]);
+      req.session.destroy(() => {});
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: "Could not delete account." });
+    }
+  });
+
+  // Update the current user's profile (name only for now).
+  app.patch("/api/auth/profile", requireAuth, async (req, res) => {
+    const schema = z.object({ name: z.string().min(1).max(100).optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid input" });
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const updated = await pool.query(
+      "UPDATE users SET name = COALESCE($1, name) WHERE id = $2 RETURNING *",
+      [parsed.data.name ?? null, user.id]
+    );
+    res.json(toPublic(updated.rows[0]));
   });
 
   // Open a Stripe Customer Portal session so the user can manage / cancel

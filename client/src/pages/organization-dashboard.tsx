@@ -224,6 +224,20 @@ export default function OrganizationDashboardPage() {
           />
         </div>
 
+        {/* Need more seats callout */}
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-white">Need more seats?</p>
+            <p className="text-xs text-white/50 mt-0.5">Contact us to add seats to your existing plan.</p>
+          </div>
+          <a
+            href={`mailto:radwan@simtura.ai?subject=Add seats — ${org?.name ?? "my organization"}&body=Hi, I'd like to add more seats to my existing Simtura organization.`}
+            className="shrink-0 h-9 rounded-full bg-white text-black text-sm font-medium px-5 inline-flex items-center hover:bg-white/90 transition-colors"
+          >
+            Contact us
+          </a>
+        </div>
+
         {/* Helpful banner */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
