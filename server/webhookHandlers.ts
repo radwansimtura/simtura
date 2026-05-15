@@ -2,6 +2,7 @@ import type Stripe from 'stripe';
 import { getStripeSync } from './stripeClient';
 import { storage } from './storage';
 import { randomBytes } from 'crypto';
+import { sendProWelcomeEmail, sendOrgPaymentConfirmationEmail } from './email';
 
 function generateCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -33,6 +34,7 @@ async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
       return;
     }
     console.log(`[stripe] activated Pro subscription for user ${userId} (sub ${subscriptionId})`);
+    sendProWelcomeEmail(user.email, user.name).catch(() => {});
     return;
   }
 
@@ -73,6 +75,13 @@ async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
   await storage.createOrganizationCodes(orgId, codeStrings);
 
   console.log(`[stripe] fulfilled org ${orgId} (${org.seats} seats, session ${session.id})`);
+
+  if (org.ownerUserId) {
+    const ownerUser = await storage.getUser(org.ownerUserId);
+    if (ownerUser) {
+      sendOrgPaymentConfirmationEmail(ownerUser.email, org.name, org.seats, codeStrings).catch(() => {});
+    }
+  }
 }
 
 export async function processWebhook(rawBody: Buffer, signature: string): Promise<void> {

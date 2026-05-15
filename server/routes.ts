@@ -7,7 +7,7 @@ import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import rateLimit from "express-rate-limit";
 import { requireAuth } from "./auth";
-import { sendUpgradeNudgeEmail, sendContactEmail, sendNotifyInterestEmail } from "./email";
+import { sendUpgradeNudgeEmail, sendContactEmail, sendNotifyInterestEmail, sendDay3ReEngagementEmail, sendDay7ReEngagementEmail } from "./email";
 import {
   contactSchema,
   createOrganizationSchema,
@@ -21,7 +21,7 @@ import {
   nremtQuestions,
   flashcards,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import {
   SESSION_LENGTH,
   buildCategorySequence,
@@ -1796,6 +1796,46 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
       breakdownByCategory,
       missed,
     });
+  });
+
+  app.post("/api/cron/retention-emails", async (req, res) => {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers["x-cron-secret"] !== secret) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const now = new Date();
+      const day3Start = new Date(now); day3Start.setDate(day3Start.getDate() - 4);
+      const day3End = new Date(now); day3End.setDate(day3End.getDate() - 3);
+      const day7Start = new Date(now); day7Start.setDate(day7Start.getDate() - 8);
+      const day7End = new Date(now); day7End.setDate(day7End.getDate() - 7);
+
+      const [day3Users, day7Users] = await Promise.all([
+        pool.query(
+          `SELECT u.id, u.email, u.name FROM users u
+           LEFT JOIN attempts a ON a.user_id = u.id
+           WHERE u.created_at >= $1 AND u.created_at < $2
+           GROUP BY u.id, u.email, u.name HAVING COUNT(a.id) = 0`,
+          [day3Start, day3End]
+        ),
+        pool.query(
+          `SELECT u.id, u.email, u.name FROM users u
+           LEFT JOIN attempts a ON a.user_id = u.id
+           WHERE u.created_at >= $1 AND u.created_at < $2
+           GROUP BY u.id, u.email, u.name HAVING COUNT(a.id) = 0`,
+          [day7Start, day7End]
+        ),
+      ]);
+
+      await Promise.all([
+        ...day3Users.rows.map((u: any) => sendDay3ReEngagementEmail(u.email, u.name).catch(() => {})),
+        ...day7Users.rows.map((u: any) => sendDay7ReEngagementEmail(u.email, u.name).catch(() => {})),
+      ]);
+
+      res.json({ ok: true, day3: day3Users.rows.length, day7: day7Users.rows.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message ?? "Error" });
+    }
   });
 
   return httpServer;

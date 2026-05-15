@@ -24,6 +24,7 @@ import OrganizationsPage from "@/pages/organizations";
 import OrganizationDashboardPage from "@/pages/organization-dashboard";
 import LearnPage from "@/pages/learn";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
+import SecurityPage from "@/pages/security";
 import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
 import WelcomeBackPage from "@/pages/welcome-back";
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/privacy" component={PrivacyPolicyPage} />
+      <Route path="/security" component={SecurityPage} />
       <Route component={NotFound} />
     </Switch>
   );

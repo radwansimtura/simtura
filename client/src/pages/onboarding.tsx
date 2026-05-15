@@ -41,6 +41,7 @@ export default function OnboardingPage() {
     } catch {
       // non-critical — proceed anyway
     }
+    try { (window as any).gtag?.("event", "onboarding_complete"); } catch {}
     setLocation("/ems");
   };
 

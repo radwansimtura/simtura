@@ -331,6 +331,7 @@ export default function LandingPageV2() {
                   size="lg"
                   className="h-12 rounded-full bg-white text-black hover:bg-white/90 font-medium px-7"
                   data-testid="button-hero-primary"
+                  onClick={() => { try { (window as any).gtag?.("event", "cta_click", { location: "hero" }); } catch {} }}
                 >
                   Start Training
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -517,7 +518,7 @@ export default function LandingPageV2() {
               {tier.highlight ? (
                 user ? (
                   <Button
-                    onClick={() => upgrade(billing)}
+                    onClick={() => { upgrade(billing); try { (window as any).gtag?.("event", "cta_click", { location: "pricing_pro" }); } catch {} }}
                     className="w-full h-11 rounded-full font-medium bg-white text-black hover:bg-white/90"
                     data-testid="button-pricing-pro"
                   >
@@ -528,20 +529,33 @@ export default function LandingPageV2() {
                     <Button
                       className="w-full h-11 rounded-full font-medium bg-white text-black hover:bg-white/90"
                       data-testid="button-pricing-pro"
+                      onClick={() => { try { (window as any).gtag?.("event", "cta_click", { location: "pricing_pro" }); } catch {} }}
                     >
                       {tier.cta}
                     </Button>
                   </Link>
                 )
               ) : (
-                <Link href={tier.href}>
-                  <Button
-                    className={`w-full h-11 rounded-full font-medium bg-white/10 text-white hover:bg-white/20 border border-white/20`}
-                    data-testid={`button-pricing-${tier.name.toLowerCase()}`}
-                  >
-                    {tier.cta}
-                  </Button>
-                </Link>
+                tier.name === "Free" ? (
+                  <Link href={tier.href}>
+                    <Button
+                      className={`w-full h-11 rounded-full font-medium bg-white/10 text-white hover:bg-white/20 border border-white/20`}
+                      data-testid={`button-pricing-${tier.name.toLowerCase()}`}
+                      onClick={() => { try { (window as any).gtag?.("event", "cta_click", { location: "pricing_free" }); } catch {} }}
+                    >
+                      {tier.cta}
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href={tier.href}>
+                    <Button
+                      className={`w-full h-11 rounded-full font-medium bg-white/10 text-white hover:bg-white/20 border border-white/20`}
+                      data-testid={`button-pricing-${tier.name.toLowerCase()}`}
+                    >
+                      {tier.cta}
+                    </Button>
+                  </Link>
+                )
               )}
             </motion.div>
             );

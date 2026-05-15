@@ -123,6 +123,7 @@ export default function OrganizationsPage() {
       });
       return;
     }
+    try { (window as any).gtag?.("event", "org_checkout_start", { seats: seats }); } catch {}
     createMutation.mutate();
   };
 
