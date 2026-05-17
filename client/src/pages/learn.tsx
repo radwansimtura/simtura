@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import QuizPanel from "@/components/QuizPanel";
 import simturaLogo from "@/assets/simtura-logo.png";
 import {
   ArrowLeft,
@@ -13,9 +14,6 @@ import {
   Sparkles,
   Loader2,
   ListChecks,
-  Lightbulb,
-  BarChart3,
-  Lock,
 } from "lucide-react";
 
 interface FlashcardData {
@@ -43,7 +41,7 @@ interface QueueResponse {
 }
 
 type Rating = "again" | "hard" | "good" | "easy";
-type Tab = "flashcards" | "quiz" | "concept-review" | "stats";
+type Tab = "flashcards" | "quiz";
 
 const RATINGS: Array<{ value: Rating; label: string; color: string; hint: string }> = [
   { value: "again", label: "Again", color: "bg-red-600 hover:bg-red-700", hint: "I forgot" },
@@ -54,17 +52,35 @@ const RATINGS: Array<{ value: Rating; label: string; color: string; hint: string
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Brain; available: boolean }> = [
   { id: "flashcards", label: "Flashcards", icon: Brain, available: true },
-  { id: "quiz", label: "Drill / Quiz", icon: ListChecks, available: true },
-  { id: "concept-review", label: "Concept Review", icon: Lightbulb, available: false },
-  { id: "stats", label: "Stats", icon: BarChart3, available: false },
+  { id: "quiz", label: "Practice NREMT Quiz", icon: ListChecks, available: true },
 ];
+
+const ACTIVE_TAB_STORAGE_KEY = "simtura:learn:activeTab";
+
+function readStoredTab(): Tab {
+  try {
+    const v = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    if (v === "flashcards" || v === "quiz") return v;
+  } catch {
+    // localStorage may throw in Safari private mode; fall through to default.
+  }
+  return "flashcards";
+}
 
 export default function LearnPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<Tab>("flashcards");
+  const [activeTab, setActiveTab] = useState<Tab>(readStoredTab);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // Best-effort; refresh just won't restore the tab if storage is unavailable.
+    }
+  }, [activeTab]);
 
   // Flashcards state
   const [cards, setCards] = useState<FlashcardData[]>([]);
@@ -74,19 +90,6 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewedCount, setReviewedCount] = useState(0);
-
-  // Quiz state
-  type QuizPhase = "idle" | "loading" | "question" | "answered" | "done";
-  const [quizPhase, setQuizPhase] = useState<QuizPhase>("idle");
-  const [quizSessionId, setQuizSessionId] = useState<string | null>(null);
-  const [quizQuestion, setQuizQuestion] = useState<{ id: string; questionText: string; options: string[]; category: string } | null>(null);
-  const [quizIndex, setQuizIndex] = useState(0);
-  const [quizTotal, setQuizTotal] = useState(25);
-  const [quizSelected, setQuizSelected] = useState<number | null>(null);
-  const [quizWasCorrect, setQuizWasCorrect] = useState<boolean | null>(null);
-  const [quizCorrectAnswer, setQuizCorrectAnswer] = useState<string | null>(null);
-  const [quizScore, setQuizScore] = useState<{ score: number; correctCount: number; total: number } | null>(null);
-  const [quizError, setQuizError] = useState<string | null>(null);
 
   // Redirect to signin if not authed
   useEffect(() => {
@@ -114,60 +117,6 @@ export default function LearnPage() {
   useEffect(() => {
     if (user && activeTab === "flashcards") loadQueue();
   }, [user, activeTab, loadQueue]);
-
-  const startQuiz = async () => {
-    setQuizPhase("loading");
-    setQuizError(null);
-    setQuizScore(null);
-    setQuizSelected(null);
-    try {
-      const res = await apiRequest("POST", "/api/quiz/start");
-      const data = await res.json();
-      setQuizSessionId(data.sessionId);
-      setQuizQuestion(data.question);
-      setQuizIndex(data.questionIndex);
-      setQuizTotal(data.total);
-      setQuizPhase("question");
-    } catch (err: any) {
-      setQuizError(err?.message || "Failed to start quiz.");
-      setQuizPhase("idle");
-    }
-  };
-
-  const submitQuizAnswer = async (choiceIndex: number) => {
-    if (!quizSessionId || !quizQuestion || quizPhase !== "question") return;
-    setQuizSelected(choiceIndex);
-    setQuizPhase("loading");
-    try {
-      const res = await apiRequest("POST", "/api/quiz/submit", {
-        sessionId: quizSessionId,
-        questionId: quizQuestion.id,
-        choiceIndex,
-      });
-      const data = await res.json();
-      setQuizWasCorrect(data.wasCorrect);
-      setQuizCorrectAnswer(data.correctAnswer);
-      if (data.done) {
-        setQuizScore({ score: data.score, correctCount: data.correctCount, total: data.total });
-        setQuizPhase("done");
-      } else {
-        setQuizPhase("answered");
-        // Auto-advance after 1.5s
-        setTimeout(() => {
-          setQuizQuestion(data.question);
-          setQuizIndex(data.questionIndex);
-          setQuizSelected(null);
-          setQuizWasCorrect(null);
-          setQuizCorrectAnswer(null);
-          setQuizPhase("question");
-        }, 1500);
-      }
-    } catch (err: any) {
-      setQuizError(err?.message || "Submission failed.");
-      setQuizPhase("question");
-      setQuizSelected(null);
-    }
-  };
 
   const currentCard = cards[currentIndex];
   const isQueueDone = !loading && cards.length > 0 && currentIndex >= cards.length;
@@ -251,16 +200,23 @@ export default function LearnPage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-32 pb-16">
         {/* Page title */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Learn</h1>
-          <p className="text-sm text-white/60">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-12 text-center"
+        >
+          <h1 className="text-4xl sm:text-5xl font-bold mb-3 tracking-tight text-white">
+            Learn
+          </h1>
+          <p className="text-sm sm:text-base text-white/60 max-w-xl mx-auto leading-relaxed">
             Evidence-based practice modes built on the strongest learning science.
           </p>
-        </div>
+        </motion.div>
 
         {/* Tabs */}
-        <div className="border-b border-white/10 mb-8 overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
+        <div className="border-b border-white/10 mb-8">
+          <div className="flex gap-1">
             {TABS.filter((tab) => tab.available !== false).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -268,7 +224,7 @@ export default function LearnPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                     isActive
                       ? "border-blue-400 text-white"
                       : "border-transparent text-white/60 hover:text-white hover:border-white/20"
@@ -293,7 +249,7 @@ export default function LearnPage() {
                 <h2 className="text-lg font-semibold">Flashcards</h2>
               </div>
               <p className="text-sm text-white/60">
-                Spaced repetition built on the FSRS algorithm. Cards from steps you missed are prioritized at the top.
+                Spaced repetition built on FSRS (Free Spaced Repetition Scheduler) — calibrated to show each card right before you&apos;d forget it. Cards from the steps you missed in scenarios are surfaced first, so the platform learns what <em>you</em> need to work on, not what the average user needs.
               </p>
             </div>
 
@@ -447,124 +403,8 @@ export default function LearnPage() {
           </div>
         )}
 
-        {activeTab === "quiz" && (
-          <div className="space-y-4">
-            {quizPhase === "idle" && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center">
-                <ListChecks className="h-10 w-10 mx-auto text-white/40 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">NREMT Drill Mode</h3>
-                <p className="text-sm text-white/60 max-w-md mx-auto mb-6 leading-relaxed">
-                  25 adaptive multiple-choice questions drawn from the NREMT blueprint. Difficulty adjusts to your performance.
-                </p>
-                {quizError && <p className="text-red-400 text-sm mb-4">{quizError}</p>}
-                <Button onClick={startQuiz} className="rounded-full bg-white text-black hover:bg-white/90 px-8">
-                  Start Quiz
-                </Button>
-              </motion.div>
-            )}
-            {quizPhase === "loading" && (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {(quizPhase === "question" || quizPhase === "answered") && quizQuestion && (
-              <motion.div key={quizQuestion.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <span className="text-xs text-white/40 uppercase tracking-wider">{quizQuestion.category}</span>
-                  <span className="text-xs text-white/40">{quizIndex + 1} / {quizTotal}</span>
-                </div>
-                <p className="text-base font-medium text-white leading-relaxed mb-6">{quizQuestion.questionText}</p>
-                <div className="space-y-2">
-                  {quizQuestion.options.map((opt, i) => {
-                    const isSelected = quizSelected === i;
-                    const isCorrectOpt = quizPhase === "answered" && opt === quizCorrectAnswer;
-                    const isWrongSelected = quizPhase === "answered" && isSelected && !quizWasCorrect;
-                    return (
-                      <button
-                        key={i}
-                        disabled={quizPhase === "answered"}
-                        onClick={() => submitQuizAnswer(i)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${
-                          isCorrectOpt
-                            ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-300"
-                            : isWrongSelected
-                            ? "border-red-500/60 bg-red-500/10 text-red-300"
-                            : isSelected
-                            ? "border-blue-500/60 bg-blue-500/10 text-white"
-                            : "border-white/10 bg-white/[0.02] text-white/80 hover:border-white/20 hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                {quizPhase === "answered" && (
-                  <p className={`mt-4 text-sm font-medium ${quizWasCorrect ? "text-emerald-400" : "text-red-400"}`}>
-                    {quizWasCorrect ? "✓ Correct" : `✗ Correct answer: ${quizCorrectAnswer}`}
-                  </p>
-                )}
-              </motion.div>
-            )}
-            {quizPhase === "done" && quizScore && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center">
-                <div className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${quizScore.score >= 70 ? "bg-emerald-500/20 ring-2 ring-emerald-500/50" : "bg-amber-500/20 ring-2 ring-amber-500/50"}`}>
-                  <span className="text-3xl font-bold">{quizScore.score}%</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Quiz Complete</h3>
-                <p className="text-white/60 text-sm mb-6">{quizScore.correctCount} of {quizScore.total} correct</p>
-                <Button onClick={startQuiz} className="rounded-full bg-white text-black hover:bg-white/90 px-8">
-                  Try Again
-                </Button>
-              </motion.div>
-            )}
-          </div>
-        )}
-        {/* Coming-soon placeholders */}
-        {activeTab !== "flashcards" && activeTab !== "quiz" && (
-          <ComingSoonPanel tab={activeTab} />
-        )}
+        {activeTab === "quiz" && <QuizPanel />}
       </main>
     </div>
-  );
-}
-
-function ComingSoonPanel({ tab }: { tab: Tab }) {
-  const config = {
-    "quiz": {
-      icon: ListChecks,
-      title: "Drill / Quiz Mode",
-      description: "Practice testing surface, separate from scenario simulation. Pulls 10 random questions from steps you've struggled with — randomized order, multiple-choice or short-answer format. Pure practice testing per Dunlosky's HIGH-utility framework.",
-    },
-    "concept-review": {
-      icon: Lightbulb,
-      title: "Concept Review",
-      description: "Elaborative interrogation surface. Picks a step you missed, asks 'Why is X the right approach here?' Type your explanation, get teaching feedback from the AI. Builds durable understanding through self-explanation.",
-    },
-    "stats": {
-      icon: BarChart3,
-      title: "Stats & Progress",
-      description: "Visualize your mastery curve. See which concepts are sticking, which need work, and how your retention is trending over time. Surfaces FSRS memory stability data, scenario performance, and concept-level proficiency.",
-    },
-  };
-  const c = config[tab as keyof typeof config];
-  if (!c) return null;
-  const Icon = c.icon;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-lg border border-white/10 bg-white/[0.02] p-8 text-center"
-    >
-      <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-white/60 mb-6">
-        <Lock className="h-3 w-3" />
-        Coming soon
-      </div>
-      <Icon className="h-12 w-12 mx-auto text-white/40 mb-4" />
-      <h3 className="text-xl font-semibold mb-3">{c.title}</h3>
-      <p className="text-sm text-white/60 leading-relaxed max-w-lg mx-auto">
-        {c.description}
-      </p>
-    </motion.div>
   );
 }
