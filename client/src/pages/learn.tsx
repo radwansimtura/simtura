@@ -177,27 +177,27 @@ export default function LearnPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
-            <Link href="/">
-              <img src={simturaLogo} alt="Simtura" className="h-9 w-auto cursor-pointer" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <MobileNav />
+              <Link href="/">
+                <img src={simturaLogo} alt="Simtura" className="h-9 w-auto cursor-pointer" />
+              </Link>
+            </div>
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
               <Link href="/learn" className="text-white transition-colors">Learn</Link>
               <Link href="/organizations" className="hover:text-white transition-colors">For Organizations</Link>
             </div>
-            <div className="flex items-center gap-2">
-              <MobileNav />
-              <Link href="/profile">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
-                >
-                  {user?.name?.split(" ")[0] || "Profile"}
-                </Button>
-              </Link>
-            </div>
+            <Link href="/profile">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+              >
+                {user?.name?.split(" ")[0] || "Profile"}
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>

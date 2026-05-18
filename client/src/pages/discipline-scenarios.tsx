@@ -107,12 +107,15 @@ export default function DisciplineScenariosPage({
       <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
-            <Link href="/">
-              <div className="flex items-center gap-3 cursor-pointer group" data-testid="link-home">
-                <ArrowLeft className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
-                <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
-              </div>
-            </Link>
+            <div className="flex items-center gap-2">
+              <MobileNav />
+              <Link href="/">
+                <div className="flex items-center gap-3 cursor-pointer group" data-testid="link-home">
+                  <ArrowLeft className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
+                  <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
+                </div>
+              </Link>
+            </div>
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link
                 href="/ems"
@@ -148,7 +151,6 @@ export default function DisciplineScenariosPage({
               </Link>
             </div>
             <div className="flex items-center gap-3">
-              <MobileNav />
               <Button
                 size="sm"
                 variant="outline"

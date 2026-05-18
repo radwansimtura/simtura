@@ -154,28 +154,28 @@ export default function OrganizationsPage() {
       {/* Top nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/40 border-b border-white/5">
         <div className="mx-auto max-w-7xl px-6 sm:px-10 h-20 flex items-center justify-between">
-          <Link href="/">
-            <div className="flex items-center gap-3 cursor-pointer group" data-testid="link-home">
-              <ArrowLeft className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
-              <img src={simturaLogo} alt="Simtura" className="h-9" />
-            </div>
-          </Link>
+          <div className="flex items-center gap-2">
+            <MobileNav />
+            <Link href="/">
+              <div className="flex items-center gap-3 cursor-pointer group" data-testid="link-home">
+                <ArrowLeft className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
+                <img src={simturaLogo} alt="Simtura" className="h-9" />
+              </div>
+            </Link>
+          </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
             <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
             <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
             <Link href="/organizations" className="text-white">For Organizations</Link>
           </div>
-          <div className="flex items-center gap-2">
-            <MobileNav />
-            <Button
-              size="sm"
-              onClick={scrollToBuy}
-              className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
-              data-testid="button-get-started"
-            >
-              Get started
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={scrollToBuy}
+            className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
+            data-testid="button-get-started"
+          >
+            Get started
+          </Button>
         </div>
       </nav>
 

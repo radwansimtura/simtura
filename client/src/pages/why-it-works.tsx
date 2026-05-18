@@ -208,9 +208,12 @@ export default function WhyItWorksPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
-            <Link href="/">
-              <img src={simturaLogo} alt="Simtura.ai" className="h-9 w-auto cursor-pointer" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <MobileNav />
+              <Link href="/">
+                <img src={simturaLogo} alt="Simtura.ai" className="h-9 w-auto cursor-pointer" />
+              </Link>
+            </div>
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
@@ -218,34 +221,31 @@ export default function WhyItWorksPage() {
               <Link href="/organizations" className="hover:text-white transition-colors">For Organizations</Link>
               <Link href="/why-it-works" className="text-white transition-colors">Why Simtura.ai Works</Link>
             </div>
-            <div className="flex items-center gap-3">
-              <MobileNav />
-              {user ? (
-                <Link href="/profile">
+            {user ? (
+              <Link href="/profile">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                >
+                  {user.name?.split(" ")[0] || "Profile"}
+                </Button>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/signup">
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
+                    className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
                   >
-                    {user.name?.split(" ")[0] || "Profile"}
+                    Get Started
                   </Button>
                 </Link>
-              ) : (
-                <>
-                  <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors">
-                    Sign in
-                  </Link>
-                  <Link href="/signup">
-                    <Button
-                      size="sm"
-                      className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
-                    >
-                      Get Started
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>
