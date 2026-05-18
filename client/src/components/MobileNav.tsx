@@ -69,11 +69,11 @@ export default function MobileNav() {
             />
             <motion.div
               key="mobile-nav-drawer"
-              initial={{ x: "-100%" }}
+              initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
+              exit={{ x: "100%" }}
               transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
-              className="fixed top-0 left-0 bottom-0 z-[60] w-72 sm:w-80 bg-black border-r border-white/10 flex flex-col md:hidden"
+              className="fixed top-0 right-0 bottom-0 z-[60] w-72 sm:w-80 bg-black border-l border-white/10 flex flex-col md:hidden"
               data-testid="mobile-nav-drawer"
             >
               <div className="flex justify-end p-4">

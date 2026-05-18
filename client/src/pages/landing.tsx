@@ -61,10 +61,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50" data-testid="nav-bar">
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <MobileNav />
-              <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
-            </div>
+            <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
             <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
               <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
               <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
@@ -72,6 +69,7 @@ export default function LandingPage() {
               <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
             </div>
             <div className="flex items-center gap-3">
+              <MobileNav />
               {user ? (
                 <Link href="/profile">
                   <Button
