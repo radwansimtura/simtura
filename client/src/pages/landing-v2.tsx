@@ -3,7 +3,6 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
-  ChevronDown,
   PlayCircle,
   Quote,
   Check,
@@ -17,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
 import StructuredData from "@/components/structured-data";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 import { organizationSchema, softwareApplicationSchema, faqSchema, websiteSchema } from "@/structured-data/schemas";
 
 type Clip = { src: string; discipline: string };
@@ -172,13 +172,6 @@ const FAQ = [
   },
 ];
 
-const DISCIPLINES = [
-  { label: "EMS", href: "/ems" },
-  { label: "Nursing", href: "/nursing" },
-  { label: "Fire", href: "/fire" },
-  { label: "Police", href: "/police" },
-];
-
 export default function LandingPageV2() {
   const reduceMotion = useReducedMotion() ?? false;
   const [idx, setIdx] = useState(0);
@@ -207,28 +200,7 @@ export default function LandingPageV2() {
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
             <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
-            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              {/* Disciplines dropdown */}
-              <div className="relative group">
-                <button className="flex items-center gap-1 hover:text-white transition-colors text-white/70 text-sm">
-                  Disciplines
-                  <svg className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <div className="absolute top-full left-0 mt-2 w-44 rounded-xl border border-white/10 bg-black/90 backdrop-blur-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 shadow-xl z-50">
-                  {DISCIPLINES.map(({ label, href }) => (
-                    <Link key={href} href={href} className="block px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              <Link href="/learn" className="hover:text-white transition-colors" data-testid="link-nav-learn">Learn</Link>
-              <a href="#pricing" className="hover:text-white transition-colors" data-testid="link-nav-pricing">Pricing</a>
-              <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
-              <Link href="/why-it-works" className="hover:text-white transition-colors" data-testid="link-nav-why-it-works">Why Simtura.ai Works</Link>
-            </div>
+            <DesktopNav />
             <div className="flex items-center gap-3">
               <MobileNav />
               {user ? (

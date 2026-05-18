@@ -7,6 +7,7 @@ import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 
 const TESTIMONIALS = [
   {
@@ -62,12 +63,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 sm:px-10">
           <div className="flex h-20 items-center justify-between gap-4">
             <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
-            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              <Link href="/ems" className="hover:text-white transition-colors" data-testid="link-nav-ems">EMS</Link>
-              <Link href="/nursing" className="hover:text-white transition-colors" data-testid="link-nav-nursing">Nursing</Link>
-              <Link href="/learn" className="hover:text-white transition-colors" data-testid="link-nav-learn">Learn</Link>
-              <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
-            </div>
+            <DesktopNav />
             <div className="flex items-center gap-3">
               <MobileNav />
               {user ? (

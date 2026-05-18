@@ -40,6 +40,7 @@ import {
 import simturaLogo from "@/assets/simtura-logo.png";
 import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 
 const VALUE_PROPS = [
   {
@@ -160,11 +161,7 @@ export default function OrganizationsPage() {
               <img src={simturaLogo} alt="Simtura" className="h-9" />
             </div>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-            <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
-            <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
-            <Link href="/organizations" className="text-white">For Organizations</Link>
-          </div>
+          <DesktopNav />
           <div className="flex items-center gap-2">
             <MobileNav />
             <Button

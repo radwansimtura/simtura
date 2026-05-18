@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 import simturaLogo from "@/assets/simtura-logo.png";
 import {
   Eye,
@@ -211,13 +212,7 @@ export default function WhyItWorksPage() {
             <Link href="/">
               <img src={simturaLogo} alt="Simtura.ai" className="h-9 w-auto cursor-pointer" />
             </Link>
-            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
-              <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
-              <Link href="/learn" className="hover:text-white transition-colors">Learn</Link>
-              <Link href="/organizations" className="hover:text-white transition-colors">For Organizations</Link>
-              <Link href="/why-it-works" className="text-white transition-colors">Why Simtura.ai Works</Link>
-            </div>
+            <DesktopNav />
             <div className="flex items-center gap-3">
               <MobileNav />
               {user ? (
@@ -367,7 +362,7 @@ export default function WhyItWorksPage() {
             Built for medical professionals at every stage — prep, practice, and beyond.
           </p>
           <Button
-            onClick={() => setLocation(user ? "/learn" : "/signin")}
+            onClick={() => setLocation("/ems")}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-base font-medium rounded-md h-auto"
           >
             Try the platform

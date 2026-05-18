@@ -19,6 +19,7 @@ import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -113,40 +114,7 @@ export default function DisciplineScenariosPage({
                 <img src={simturaLogo} alt="Simtura" className="h-9 w-auto" data-testid="img-logo" />
               </div>
             </Link>
-            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              <Link
-                href="/ems"
-                className={`transition-colors hover:text-white ${
-                  discipline === "EMS" ? "text-white" : ""
-                }`}
-                data-testid="link-nav-ems"
-              >
-                EMS
-              </Link>
-              <Link
-                href="/nursing"
-                className={`transition-colors hover:text-white ${
-                  discipline === "Nursing" ? "text-white" : ""
-                }`}
-                data-testid="link-nav-nursing"
-              >
-                Nursing
-              </Link>
-              <Link
-                href="/learn"
-                className="transition-colors hover:text-white"
-                data-testid="link-nav-learn"
-              >
-                Learn
-              </Link>
-              <Link
-                href="/organizations"
-                className="transition-colors hover:text-white"
-                data-testid="link-nav-organizations"
-              >
-                For Organizations
-              </Link>
-            </div>
+            <DesktopNav />
             <div className="flex items-center gap-3">
               <MobileNav />
               <Button

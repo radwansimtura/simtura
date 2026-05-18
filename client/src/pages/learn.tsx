@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import QuizPanel from "@/components/QuizPanel";
 import MobileNav from "@/components/MobileNav";
+import DesktopNav from "@/components/DesktopNav";
 import simturaLogo from "@/assets/simtura-logo.png";
 import {
   ArrowLeft,
@@ -180,12 +181,7 @@ export default function LearnPage() {
             <Link href="/">
               <img src={simturaLogo} alt="Simtura" className="h-9 w-auto cursor-pointer" />
             </Link>
-            <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-              <Link href="/ems" className="hover:text-white transition-colors">EMS</Link>
-              <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
-              <Link href="/learn" className="text-white transition-colors">Learn</Link>
-              <Link href="/organizations" className="hover:text-white transition-colors">For Organizations</Link>
-            </div>
+            <DesktopNav />
             <div className="flex items-center gap-2">
               <MobileNav />
               <Link href="/profile">
