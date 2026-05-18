@@ -226,6 +226,7 @@ export default function LandingPageV2() {
               <Link href="/learn" className="hover:text-white transition-colors" data-testid="link-nav-learn">Learn</Link>
               <a href="#pricing" className="hover:text-white transition-colors" data-testid="link-nav-pricing">Pricing</a>
               <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
+              <Link href="/why-it-works" className="hover:text-white transition-colors" data-testid="link-nav-why-it-works">Why Simtura.ai Works</Link>
             </div>
             <div className="flex items-center gap-3">
               {user ? (
