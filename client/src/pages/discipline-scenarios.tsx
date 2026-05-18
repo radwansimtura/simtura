@@ -18,6 +18,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
+import MobileNav from "@/components/MobileNav";
 
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -147,6 +148,7 @@ export default function DisciplineScenariosPage({
               </Link>
             </div>
             <div className="flex items-center gap-3">
+              <MobileNav />
               <Button
                 size="sm"
                 variant="outline"

@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
+import MobileNav from "@/components/MobileNav";
 
 const TESTIMONIALS = [
   {
@@ -68,6 +69,7 @@ export default function LandingPage() {
               <Link href="/organizations" className="hover:text-white transition-colors" data-testid="link-nav-organizations">For Organizations</Link>
             </div>
             <div className="flex items-center gap-3">
+              <MobileNav />
               {user ? (
                 <Link href="/profile">
                   <Button

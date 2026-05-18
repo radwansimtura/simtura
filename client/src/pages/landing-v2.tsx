@@ -16,6 +16,7 @@ import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteFooter } from "@/components/site-footer";
 import StructuredData from "@/components/structured-data";
+import MobileNav from "@/components/MobileNav";
 import { organizationSchema, softwareApplicationSchema, faqSchema, websiteSchema } from "@/structured-data/schemas";
 
 type Clip = { src: string; discipline: string };
@@ -229,6 +230,7 @@ export default function LandingPageV2() {
               <Link href="/why-it-works" className="hover:text-white transition-colors" data-testid="link-nav-why-it-works">Why Simtura.ai Works</Link>
             </div>
             <div className="flex items-center gap-3">
+              <MobileNav />
               {user ? (
                 <Link href="/profile">
                   <Button

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import MobileNav from "@/components/MobileNav";
 import simturaLogo from "@/assets/simtura-logo.png";
 import {
   Eye,
@@ -217,31 +218,34 @@ export default function WhyItWorksPage() {
               <Link href="/organizations" className="hover:text-white transition-colors">For Organizations</Link>
               <Link href="/why-it-works" className="text-white transition-colors">Why Simtura.ai Works</Link>
             </div>
-            {user ? (
-              <Link href="/profile">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
-                >
-                  {user.name?.split(" ")[0] || "Profile"}
-                </Button>
-              </Link>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors">
-                  Sign in
-                </Link>
-                <Link href="/signup">
+            <div className="flex items-center gap-3">
+              <MobileNav />
+              {user ? (
+                <Link href="/profile">
                   <Button
                     size="sm"
-                    className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/30 bg-transparent text-white hover:bg-white hover:text-black font-medium px-5"
                   >
-                    Get Started
+                    {user.name?.split(" ")[0] || "Profile"}
                   </Button>
                 </Link>
-              </div>
-            )}
+              ) : (
+                <>
+                  <Link href="/signin" className="hidden sm:inline-block text-sm text-white/70 hover:text-white transition-colors">
+                    Sign in
+                  </Link>
+                  <Link href="/signup">
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
+                    >
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>

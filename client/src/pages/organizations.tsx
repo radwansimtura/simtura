@@ -39,6 +39,7 @@ import {
 } from "@shared/schema";
 import simturaLogo from "@/assets/simtura-logo.png";
 import { SiteFooter } from "@/components/site-footer";
+import MobileNav from "@/components/MobileNav";
 
 const VALUE_PROPS = [
   {
@@ -164,14 +165,17 @@ export default function OrganizationsPage() {
             <Link href="/nursing" className="hover:text-white transition-colors">Nursing</Link>
             <Link href="/organizations" className="text-white">For Organizations</Link>
           </div>
-          <Button
-            size="sm"
-            onClick={scrollToBuy}
-            className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
-            data-testid="button-get-started"
-          >
-            Get started
-          </Button>
+          <div className="flex items-center gap-2">
+            <MobileNav />
+            <Button
+              size="sm"
+              onClick={scrollToBuy}
+              className="h-9 rounded-full bg-white text-black hover:bg-white/90 font-medium px-5"
+              data-testid="button-get-started"
+            >
+              Get started
+            </Button>
+          </div>
         </div>
       </nav>
 
