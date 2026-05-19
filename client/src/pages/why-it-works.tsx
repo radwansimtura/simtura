@@ -199,8 +199,8 @@ export default function WhyItWorksPage() {
       label: "AI-illustrated patient scenarios",
     },
     { value: "6", label: "evidence-based principles" },
-    { value: "30+ years", label: "of cognitive science" },
-    { value: "FSRS", label: "spaced repetition algorithm" },
+    { value: "Adaptive", label: "difficulty per category" },
+    { value: "Personalized", label: "review schedule" },
   ];
 
   return (
