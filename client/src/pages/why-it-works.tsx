@@ -288,7 +288,7 @@ export default function WhyItWorksPage() {
               key={s.label}
               className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-5 text-center"
             >
-              <div className="text-3xl font-semibold text-white mb-1">{s.value}</div>
+              <div className="text-2xl font-semibold tracking-tight text-white mb-1">{s.value}</div>
               <div className="text-xs text-white/50 leading-snug">{s.label}</div>
             </div>
           ))}
