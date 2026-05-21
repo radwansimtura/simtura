@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Scenario1ALanding } from "@/components/drill-mode/scenario-1a-landing";
+import { SCENARIO_1A_ID } from "@/lib/drill-mode/types";
 
 function track(event: string, params?: Record<string, unknown>) {
   try { (window as any).gtag?.("event", event, params ?? {}); } catch {}
@@ -118,12 +120,16 @@ export default function ScenarioTrainerPage() {
     criterion: string | null;
     summary: string;
   }>({ show: false, criterion: null, summary: "" });
+  const [drillLandingDismissed, setDrillLandingDismissed] = useState(false);
+  const { data: featureFlags } = useQuery<{ drillModeEnabled: boolean }>({
+    queryKey: ["/api/feature-flags"],
+  });
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const speechSupported = typeof window !== "undefined" && (("SpeechRecognition" in window) || ("webkitSpeechRecognition" in window));
 
-  const { data: scenario, isLoading: scenarioLoading } = useQuery<Scenario>({
+  const { data: scenario, isLoading: scenarioLoading, error: scenarioError } = useQuery<Scenario>({
     queryKey: ["/api/scenarios", id],
   });
 
@@ -136,9 +142,19 @@ export default function ScenarioTrainerPage() {
 
   const backUrl = scenario?.discipline === "Nursing" ? "/nursing" : "/ems";
 
-  const { data: steps, isLoading: stepsLoading } = useQuery<ScenarioStep[]>({
+  const { data: steps, isLoading: stepsLoading, error: stepsError } = useQuery<ScenarioStep[]>({
     queryKey: ["/api/scenarios", id, "steps"],
   });
+
+  const isUnauthenticated =
+    (scenarioError instanceof Error && scenarioError.message.startsWith("401")) ||
+    (stepsError instanceof Error && stepsError.message.startsWith("401"));
+
+  useEffect(() => {
+    if (isUnauthenticated) {
+      setLocation(`/signin?next=${encodeURIComponent(window.location.pathname)}`);
+    }
+  }, [isUnauthenticated, setLocation]);
 
   const totalQuestions = useMemo(() => {
     if (!steps) return 0;
@@ -546,6 +562,17 @@ export default function ScenarioTrainerPage() {
     );
   }
 
+  if (isUnauthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/60 text-sm">Redirecting to sign in...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!scenario || !steps || steps.length === 0) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -557,6 +584,19 @@ export default function ScenarioTrainerPage() {
           </Button>
         </div>
       </div>
+    );
+  }
+
+  if (scenario.id === SCENARIO_1A_ID && !drillLandingDismissed) {
+    return (
+      <Scenario1ALanding
+        title={scenario.title}
+        description={scenario.description ?? null}
+        imageUrl={scenario.imageUrl ?? null}
+        drillEnabled={featureFlags?.drillModeEnabled ?? false}
+        onStartLearn={() => setDrillLandingDismissed(true)}
+        backUrl={backUrl}
+      />
     );
   }
 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,33 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import simturaLogo from "@/assets/simtura-logo.png";
 
+// Accepts a `?next=...` query param so deep-links to gated pages survive
+// the sign-in detour (e.g. scenario-trainer redirects unauthenticated users
+// to /signin?next=/scenario/<id>). Same-origin paths only — anything that
+// could resolve cross-origin (full URL, protocol-relative, backslash trick)
+// falls back to the default landing page to avoid open-redirect.
+const DEFAULT_LANDING = "/welcome-back";
+
+function isSafeNextPath(next: string | null | undefined): next is string {
+  if (!next) return false;
+  if (!next.startsWith("/")) return false;
+  if (next.startsWith("//") || next.startsWith("/\\")) return false;
+  return true;
+}
+
 export default function SignInPage() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { signIn } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const nextPath = useMemo(() => {
+    const raw = new URLSearchParams(search).get("next");
+    return isSafeNextPath(raw) ? raw : DEFAULT_LANDING;
+  }, [search]);
 
   useEffect(() => {
     document.title = "Sign In | Simtura.ai";
@@ -27,7 +47,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      setLocation("/welcome-back");
+      setLocation(nextPath);
     } catch (err: any) {
       toast({
         title: "Sign in failed",
