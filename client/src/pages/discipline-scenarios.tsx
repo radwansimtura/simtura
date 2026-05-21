@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import simturaLogo from "@/assets/simtura-logo.png";
 import { useAuth } from "@/hooks/use-auth";
+import { useScope, type ScopeMode } from "@/hooks/use-scope";
 import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
 import DesktopNav from "@/components/DesktopNav";
@@ -57,6 +58,7 @@ export default function DisciplineScenariosPage({
 }: DisciplineScenariosPageProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const { user } = useAuth();
+  const { scope, setScope } = useScope();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCert, setSelectedCert] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
@@ -260,6 +262,46 @@ export default function DisciplineScenariosPage({
             Step into a real patient case. Make the call. Learn what works.
           </p>
         </motion.div>
+
+        {/* Scope selector — EMS only */}
+        {discipline === "EMS" && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5 }}
+            className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+          >
+            <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Practice scope</p>
+            <p className="text-sm text-white/60 mb-4 max-w-xl">
+              Select your provider level. The same scenarios play for all scopes — only the quiz questions change to match your scope of practice.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(["EMT-B", "AEMT", "Paramedic"] as ScopeMode[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setScope(s)}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+                    scope === s
+                      ? s === "EMT-B"
+                        ? "bg-blue-500 text-white"
+                        : s === "AEMT"
+                        ? "bg-violet-500 text-white"
+                        : "bg-rose-500 text-white"
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+              {scope && (
+                <span className="self-center text-xs text-white/40 ml-2">
+                  Questions will be generated for <span className="text-white/70">{scope}</span> scope
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Filters */}
         <motion.div

@@ -556,6 +556,91 @@ Evaluate their reasoning about why this is the correct ${previousStepAction ? "s
     res.json(steps);
   });
 
+  // Scope-adaptive question generation
+  app.post("/api/generate-scope-questions", aiRateLimit, async (req, res) => {
+    const { scope, scenarioTitle, chiefComplaint, videoDescription, stepOrder, patientContext } = req.body;
+    if (!scope || !scenarioTitle || !videoDescription) {
+      return res.status(400).json({ message: "scope, scenarioTitle, and videoDescription are required" });
+    }
+    if (!["EMT-B", "AEMT", "Paramedic"].includes(scope)) {
+      return res.status(400).json({ message: "scope must be EMT-B, AEMT, or Paramedic" });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ message: "AI service not configured" });
+    }
+
+    const scopeReference: Record<string, string> = {
+      "EMT-B": `Scene safety, BSI, MOI/NOI, AVPU/GCS, primary/secondary survey. Airway: manual maneuvers, OPA, NPA, BVM, suctioning. O2: nasal cannula (2-4 LPM), NRB (15 LPM), BVM with O2. CPR, AED (shockable vs non-shockable via AED prompt). Hemorrhage control: direct pressure, tourniquet (CAT/SOFT-T), wound packing. Splinting, spinal motion restriction, c-collar. Childbirth: normal delivery, APGAR, cord clamping. Assisted meds: patient's own NTG, inhaler, oral glucose, aspirin 324mg, naloxone IN, EpiPen. Vitals: pulse, RR, BP, SpO2, skin, pupils. Burns: rule of nines, dry sterile dressing. Shock recognition. ALS intercept indication.`,
+      "AEMT": `All EMT-B skills PLUS: IV access (peripheral, gauge selection), IO access (EZ-IO), fluid therapy (NS/LR, wide open vs restrict). Saline lock. Cardiac monitoring: lead placement, basic rhythms (NSR, sinus tach/brady, AFib, VFib, VTach, PEA, asystole). 12-lead ECG acquisition (placement only, not interpretation). CPAP setup/indications. Nebulized albuterol/ipratropium. IM glucagon/epinephrine. IN naloxone/midazolam (state-variable). Blood glucose monitoring. Supraglottic airway (King LT, i-gel) in some states.`,
+      "Paramedic": `All AEMT skills PLUS: 12-lead interpretation (STEMI, BBB, ischemia patterns, Wellens, de Winter). Advanced rhythm interpretation (wide complex tachy, WPW). Full drug formulary: epinephrine IV/IO, amiodarone, lidocaine, adenosine, atropine, dopamine, norepinephrine, sodium bicarb, calcium chloride, magnesium, dextrose, thiamine, haloperidol, droperidol, ketamine IM/IV, midazolam IM/IV/IN, diazepam, lorazepam, morphine, fentanyl, ondansetron, metoprolol, labetalol, NTG IV drip, aspirin. RSI/DSI: indications, drug selection, pre-ox, post-intubation management. ETI: direct/video laryngoscopy, tube confirmation (waveform capnography), securing. Waveform capnography: EtCO2 interpretation. Needle decompression: tension pneumo recognition, 2nd ICS MCL vs 4th/5th ICS AAL. Chest seal: vented vs non-vented, burping. Permissive hypotension in penetrating trauma. Pediatric weight-based dosing, Broselow. Stroke scales. Crush injury/rhabdo. Burns Parkland formula. ExDS cooling priority, ketamine dosing. Differential diagnosis. ROSC post-arrest care.`
+    };
+
+    const airwayRules = `AIRWAY DEVICE RULES (always apply):
+- Apneic/pulseless: BVM only. NRB is NEVER correct for apneic patients.
+- Breathing, SpO2 <90%: NRB at 15 LPM
+- Breathing, SpO2 90-94%: NRB or high-flow NC
+- Breathing, SpO2 >=95%, no distress: NC 2-4 LPM or no O2
+- STEMI, SpO2 >=90%: no supplemental O2 or NC only — NRB is harmful
+- CO/smoke inhalation: NRB at 15 LPM regardless of displayed SpO2
+- Post-naloxone, breathing adequately: NC only
+- Psychiatric patient, SpO2 99%, no complaint: no O2 indicated`;
+
+    const systemPrompt = `You are a clinical EMS question writer generating scope-of-practice-appropriate multiple choice questions for a first-person POV video-based training app.
+
+Active scope: ${scope}
+Scope constraints: ${scopeReference[scope]}
+
+${airwayRules}
+
+Rules:
+- Generate exactly 3 multiple choice questions (A/B/C/D).
+- Questions must test skills, decisions, or reasoning appropriate ONLY to the ${scope} scope.
+- Never ask a lower scope about skills outside their scope as the correct answer.
+- Write rationales that explicitly reference the provider level ("at your scope", "as an ${scope}").
+- Return ONLY a valid JSON array. No markdown, no preamble.
+- Cross-scope questions (situational awareness of ALS actions on screen) may appear at most once and must be tagged cross_scope: true.`;
+
+    const userPrompt = `Scenario: ${scenarioTitle}
+Chief complaint: ${chiefComplaint || "not specified"}
+Patient context: ${patientContext || ""}
+Video segment ${stepOrder}: ${videoDescription}
+
+Generate 3 scope-appropriate multiple choice questions for a ${scope} provider watching this video segment. Return JSON array only:
+[{
+  "question_type": "assessment|intervention|priority|recognition|complication|communication|pharmacology|cross_scope",
+  "cross_scope": false,
+  "question": "...",
+  "options": {"A": "...", "B": "...", "C": "...", "D": "..."},
+  "correct": "A|B|C|D",
+  "rationale_correct": "...",
+  "rationale_A": "...",
+  "rationale_B": "...",
+  "rationale_C": "...",
+  "rationale_D": "..."
+}]`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+
+      const raw = (response.content[0] as any).text?.trim() ?? "";
+      const jsonStart = raw.indexOf("[");
+      const jsonEnd = raw.lastIndexOf("]");
+      if (jsonStart === -1 || jsonEnd === -1) {
+        return res.status(500).json({ message: "Malformed AI response" });
+      }
+      const questions = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+      res.json({ questions });
+    } catch (err: any) {
+      console.error("generate-scope-questions error", err?.message);
+      res.status(500).json({ message: "Failed to generate questions" });
+    }
+  });
+
   app.post("/api/attempts", async (req, res) => {
     const parsed = createAttemptSchema.safeParse(req.body);
     if (!parsed.success) {

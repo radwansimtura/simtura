@@ -35,8 +35,10 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+
 import { Scenario1ALanding } from "@/components/drill-mode/scenario-1a-landing";
 import { SCENARIO_1A_ID } from "@/lib/drill-mode/types";
+import { useScope } from "@/hooks/use-scope";
 
 function track(event: string, params?: Record<string, unknown>) {
   try { (window as any).gtag?.("event", event, params ?? {}); } catch {}
@@ -57,6 +59,19 @@ type GradeResult = {
 };
 
 const PASS_THRESHOLD = 70;
+
+interface ScopeQuestion {
+  question_type: string;
+  cross_scope: boolean;
+  question: string;
+  options: { A: string; B: string; C: string; D: string };
+  correct: "A" | "B" | "C" | "D";
+  rationale_correct: string;
+  rationale_A: string;
+  rationale_B: string;
+  rationale_C: string;
+  rationale_D: string;
+}
 
 type TrainerPhase =
   | "intro"
@@ -83,6 +98,39 @@ function getStepQuestions(step: ScenarioStep): StepQuestion[] {
     hint: step.hint ?? undefined,
     isCritical: step.isCritical,
   }];
+}
+
+function ScopeVitals({ vitalSigns }: { vitalSigns: VitalSigns | null | undefined }) {
+  if (!vitalSigns) return null;
+  const v = vitalSigns;
+  return (
+    <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+      {v.hr != null && v.hr > 0 && (
+        <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+          <Heart className="h-3.5 w-3.5 text-red-400 shrink-0" />
+          <div><div className="text-[10px] text-white/40">HR</div><div className="text-xs font-semibold font-mono text-white/90">{v.hr} bpm</div></div>
+        </div>
+      )}
+      {v.rr != null && v.rr > 0 && (
+        <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+          <Wind className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+          <div><div className="text-[10px] text-white/40">RR</div><div className="text-xs font-semibold font-mono text-white/90">{v.rr} /min</div></div>
+        </div>
+      )}
+      {v.spo2 != null && v.spo2 > 0 && (
+        <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5 text-green-400 shrink-0" />
+          <div><div className="text-[10px] text-white/40">SpO2</div><div className="text-xs font-semibold font-mono text-white/90">{v.spo2}%</div></div>
+        </div>
+      )}
+      {v.bp && (
+        <div className="rounded-lg bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-2 flex items-center gap-2">
+          <Stethoscope className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+          <div><div className="text-[10px] text-white/40">BP</div><div className="text-xs font-semibold font-mono text-white/90">{v.bp}</div></div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ScenarioTrainerPage() {
@@ -120,10 +168,15 @@ export default function ScenarioTrainerPage() {
     criterion: string | null;
     summary: string;
   }>({ show: false, criterion: null, summary: "" });
-  const [drillLandingDismissed, setDrillLandingDismissed] = useState(false);
+const [drillLandingDismissed, setDrillLandingDismissed] = useState(false);
   const { data: featureFlags } = useQuery<{ drillModeEnabled: boolean }>({
     queryKey: ["/api/feature-flags"],
   });
+  const { scope } = useScope();
+  const [scopeQuestionsByStep, setScopeQuestionsByStep] = useState<Record<number, ScopeQuestion[]>>({});
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [scopeSelectedOption, setScopeSelectedOption] = useState<"A" | "B" | "C" | "D" | null>(null);
+  const [scopeShowFeedback, setScopeShowFeedback] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -325,6 +378,10 @@ export default function ScenarioTrainerPage() {
   const currentQuestions = currentStep ? getStepQuestions(currentStep) : [];
   const currentQuestion = currentQuestions[currentQuestionIndex] ?? null;
 
+  const isScopeAdaptive = scenario?.gradingMode === "scope-adaptive";
+  const currentScopeQuestions = isScopeAdaptive ? (scopeQuestionsByStep[currentStepIndex] ?? []) : [];
+  const currentScopeQuestion = isScopeAdaptive ? (currentScopeQuestions[currentQuestionIndex] ?? null) : null;
+
   const progressValue = totalQuestions > 0 ? ((questionsAnsweredSoFar + (phase === "feedback" ? 1 : 0)) / totalQuestions) * 100 : 0;
   const vitals = currentQuestion?.vitalSigns as VitalSigns | null;
 
@@ -336,6 +393,41 @@ export default function ScenarioTrainerPage() {
       setShuffledActions(allActions.sort(() => Math.random() - 0.5));
     }
   }, [currentStepIndex, currentQuestionIndex, currentQuestion?.prompt]);
+
+  // Generate scope-adaptive questions when entering question phase
+  useEffect(() => {
+    if (!isScopeAdaptive || !scope || !currentStep || phase !== "question") return;
+    if (scopeQuestionsByStep[currentStepIndex] !== undefined) return; // already generated
+    if (isGeneratingQuestions) return;
+
+    setIsGeneratingQuestions(true);
+    setScopeSelectedOption(null);
+    setScopeShowFeedback(false);
+
+    fetch("/api/generate-scope-questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scope,
+        scenarioTitle: scenario?.title ?? "",
+        chiefComplaint: scenario?.patientSummary ?? "",
+        videoDescription: currentStep.phase,
+        stepOrder: currentStep.stepOrder,
+        patientContext: currentStep.patientState ?? "",
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.questions)) {
+          setScopeQuestionsByStep((prev) => ({ ...prev, [currentStepIndex]: data.questions }));
+        }
+      })
+      .catch(() => {
+        // fallback: empty so UI shows an error state
+        setScopeQuestionsByStep((prev) => ({ ...prev, [currentStepIndex]: [] }));
+      })
+      .finally(() => setIsGeneratingQuestions(false));
+  }, [isScopeAdaptive, scope, currentStep?.id, phase, currentStepIndex]);
 
   const handleSelectAction = (action: string) => {
     if (phase !== "question") return;
@@ -382,8 +474,28 @@ export default function ScenarioTrainerPage() {
   useEffect(() => () => stopListening(), [stopListening]);
 
   const handleSubmit = async () => {
-    if (!currentQuestion || !currentStep) return;
+    if (!currentStep) return;
     const timeSpent = Math.round((Date.now() - stepStartTime) / 1000);
+
+    // Scope-adaptive MCQ path
+    if (isScopeAdaptive && currentScopeQuestion) {
+      if (!scopeSelectedOption) return;
+      const isCorrect = scopeSelectedOption === currentScopeQuestion.correct;
+      const response: StepResponse = {
+        stepId: currentStep.id,
+        questionIndex: currentQuestionIndex,
+        selectedAction: currentScopeQuestion.options[scopeSelectedOption],
+        isCorrect,
+        timeSpent,
+        mode: "multiple-choice",
+      };
+      setResponses((prev) => [...prev, response]);
+      setScopeShowFeedback(true);
+      setPhase("feedback");
+      return;
+    }
+
+    if (!currentQuestion) return;
 
     if (mode === "multiple-choice") {
       if (!selectedAction) return;
@@ -475,11 +587,15 @@ export default function ScenarioTrainerPage() {
   const handleNext = () => {
     if (!steps || !currentStep) return;
 
-    const hasMoreQuestions = currentQuestionIndex + 1 < currentQuestions.length;
+    // Scope-adaptive: determine if more questions remain in this step
+    const questionsInStep = isScopeAdaptive ? currentScopeQuestions.length : currentQuestions.length;
+    const hasMoreQuestions = currentQuestionIndex + 1 < questionsInStep;
 
     if (hasMoreQuestions) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAction(null);
+      setScopeSelectedOption(null);
+      setScopeShowFeedback(false);
       setShowHint(false);
       setTraineeAnswer("");
       setSubmittedAnswer("");
@@ -512,6 +628,8 @@ export default function ScenarioTrainerPage() {
       setCurrentStepIndex(nextStepIndex);
       setCurrentQuestionIndex(0);
       setSelectedAction(null);
+      setScopeSelectedOption(null);
+      setScopeShowFeedback(false);
       setShowHint(false);
       setTraineeAnswer("");
       setSubmittedAnswer("");
@@ -751,8 +869,9 @@ export default function ScenarioTrainerPage() {
   const showVideoPlaying = phase === "dispatch-video" || phase === "step-video" || phase === "departure-video";
   const showQuestionUI = phase === "question" || phase === "feedback";
 
-  const isLastQuestion = currentStepIndex + 1 >= steps.length && currentQuestionIndex + 1 >= currentQuestions.length;
-  const hasMoreQuestionsInStep = currentQuestionIndex + 1 < currentQuestions.length;
+  const questionsInCurrentStep = isScopeAdaptive ? currentScopeQuestions.length : currentQuestions.length;
+  const isLastQuestion = currentStepIndex + 1 >= (steps?.length ?? 0) && currentQuestionIndex + 1 >= Math.max(questionsInCurrentStep, 1);
+  const hasMoreQuestionsInStep = currentQuestionIndex + 1 < questionsInCurrentStep;
   const nextButtonLabel = isLastQuestion ? "View Results" : hasMoreQuestionsInStep ? "Next Question" : "Next Step";
 
   return (
@@ -953,7 +1072,166 @@ export default function ScenarioTrainerPage() {
           </motion.div>
         )}
 
-        {showQuestionUI && currentQuestion && (
+        {/* Scope-adaptive question UI */}
+        {showQuestionUI && isScopeAdaptive && (
+          <motion.div
+            key={`scope-question-${currentStepIndex}-${currentQuestionIndex}`}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.4 }}
+            className="absolute bottom-0 left-0 right-0 sm:inset-0 sm:top-0 z-20 sm:flex sm:items-center"
+          >
+            <div className="w-full sm:max-w-md px-4 sm:pl-8 sm:pr-2 pb-4 sm:pb-0 max-h-[65vh] sm:max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar bg-black sm:bg-transparent rounded-t-xl sm:rounded-none pt-3 sm:pt-0">
+              {/* Vitals from step */}
+              <ScopeVitals vitalSigns={currentStep?.vitalSigns as VitalSigns | null} />
+
+              {/* No scope selected */}
+              {!scope && (
+                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
+                  <p className="text-white/60 text-sm mb-3">Select your provider scope to receive tailored questions.</p>
+                  <p className="text-white/40 text-xs">Go back to the EMS scenarios page and select EMT-B, AEMT, or Paramedic.</p>
+                </div>
+              )}
+
+              {/* Loading */}
+              {scope && isGeneratingQuestions && (
+                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-400 mx-auto mb-3" />
+                  <p className="text-white/60 text-sm">Generating {scope} questions...</p>
+                </div>
+              )}
+
+              {/* Generated question */}
+              {scope && !isGeneratingQuestions && currentScopeQuestion && (
+                <>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Badge className={`text-[10px] border-0 ${scope === "EMT-B" ? "bg-blue-600/80" : scope === "AEMT" ? "bg-violet-600/80" : "bg-rose-600/80"} text-white`}>
+                      {scope} Scope
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] border-white/20 text-white/50">
+                      {currentScopeQuestion.question_type}
+                    </Badge>
+                    {currentScopeQuestion.cross_scope && (
+                      <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-400">
+                        Situational Awareness
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="mb-3 rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-4">
+                    <h2 className="text-base font-bold text-white">
+                      {currentScopeQuestion.question}
+                    </h2>
+                  </div>
+
+                  <div className="space-y-1.5 mb-3">
+                    {(["A", "B", "C", "D"] as const).map((letter) => {
+                      const isSelected = scopeSelectedOption === letter;
+                      const isCorrect = scopeShowFeedback && letter === currentScopeQuestion.correct;
+                      const isWrong = scopeShowFeedback && isSelected && letter !== currentScopeQuestion.correct;
+                      return (
+                        <button
+                          key={letter}
+                          onClick={() => !scopeShowFeedback && setScopeSelectedOption(letter)}
+                          disabled={scopeShowFeedback}
+                          className={`w-full text-left rounded-lg border p-3 transition-all text-sm backdrop-blur-md ${
+                            scopeShowFeedback
+                              ? isCorrect
+                                ? "border-green-500/50 bg-green-500/15"
+                                : isWrong
+                                ? "border-red-500/50 bg-red-500/15"
+                                : "border-white/5 bg-black/40 opacity-40"
+                              : isSelected
+                              ? "border-blue-500/50 bg-blue-500/15"
+                              : "border-white/10 bg-black/50 hover:border-white/20 hover:bg-black/60"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium mt-0.5 ${
+                              scopeShowFeedback
+                                ? isCorrect ? "bg-green-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-white/10 text-white/30"
+                                : isSelected ? "bg-blue-500 text-white" : "bg-white/10 text-white/50"
+                            }`}>
+                              {scopeShowFeedback ? (isCorrect ? <CheckCircle2 className="h-3.5 w-3.5" /> : isWrong ? <XCircle className="h-3.5 w-3.5" /> : letter) : letter}
+                            </div>
+                            <span className="text-white/90 text-xs leading-snug">{currentScopeQuestion.options[letter]}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Submit */}
+                  {!scopeShowFeedback && (
+                    <div className="mb-3">
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={!scopeSelectedOption}
+                        className="bg-blue-600 text-white disabled:opacity-30"
+                      >
+                        Submit Answer
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Feedback rationale */}
+                  {scopeShowFeedback && (() => {
+                    const isCorrect = scopeSelectedOption === currentScopeQuestion.correct;
+                    const rationaleKey = `rationale_${scopeSelectedOption}` as keyof ScopeQuestion;
+                    const selectedRationale = currentScopeQuestion[rationaleKey] as string;
+                    const correctRationale = currentScopeQuestion.rationale_correct;
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-2 mb-3"
+                      >
+                        <div className={`rounded-lg border p-4 backdrop-blur-md ${isCorrect ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            {isCorrect ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <XCircle className="h-4 w-4 text-red-400" />}
+                            <span className="text-sm font-semibold text-white">{isCorrect ? "Correct" : "Incorrect"}</span>
+                          </div>
+                          <p className="text-xs text-white/80 leading-relaxed">{isCorrect ? correctRationale : selectedRationale}</p>
+                        </div>
+                        {!isCorrect && (
+                          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3 backdrop-blur-md">
+                            <div className="text-[10px] uppercase tracking-wider text-green-400/70 font-medium mb-1">Correct answer — {currentScopeQuestion.correct}</div>
+                            <p className="text-xs text-white/70 leading-relaxed">{correctRationale}</p>
+                          </div>
+                        )}
+                        <Button
+                          onClick={handleNext}
+                          className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                        >
+                          {nextButtonLabel} <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    );
+                  })()}
+                </>
+              )}
+
+              {/* Empty — generation failed */}
+              {scope && !isGeneratingQuestions && currentScopeQuestions.length === 0 && scopeQuestionsByStep[currentStepIndex] !== undefined && (
+                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
+                  <p className="text-white/60 text-sm mb-3">Couldn't generate questions for this step.</p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setScopeQuestionsByStep((prev) => { const n = {...prev}; delete n[currentStepIndex]; return n; });
+                    }}
+                    className="bg-white/10 text-white"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {showQuestionUI && !isScopeAdaptive && currentQuestion && (
           <motion.div
             key={`question-${currentStepIndex}-${currentQuestionIndex}`}
             initial={{ opacity: 0, x: 30 }}
