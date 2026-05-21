@@ -164,6 +164,10 @@ export async function seedDatabase() {
     seededCount += 1;
   }
 
+  if (await ensureScenario1ADrill()) {
+    seededCount += 1;
+  }
+
   if (seededCount === 0) {
     log("Database already seeded", "seed");
   } else {
@@ -176,6 +180,35 @@ export async function seedDatabase() {
 
 async function seedScenario1Only() {
   await createScenario1WithSteps();
+}
+
+// Drill Mode Scenario 1A is referenced by a fixed UUID so the drill_sessions
+// FK is stable across environments. The row was originally inserted directly
+// into prod; this keeper makes the seed file the source of truth.
+async function ensureScenario1ADrill(): Promise<boolean> {
+  const id = "11111111-aaaa-1111-aaaa-111111111111";
+  const [existing] = await db.select().from(scenarios).where(eq(scenarios.id, id)).limit(1);
+  if (existing) return false;
+  log("Seeding Drill Mode Scenario 1A (Chest Pain / NREMT Practice)...", "seed");
+  await db.insert(scenarios).values({
+    id,
+    title: "Scenario 1A — Chest Pain / Heart Problems (NREMT Practice)",
+    description:
+      "Continuous 15-minute voice-based NREMT psychomotor exam simulation. The proctor presents the patient and you conduct your assessment, history, interventions, and handoff exactly as you would on exam day. Graded throughout on the NREMT E202 Patient Assessment/Management — Medical skill sheet.",
+    patientSummary:
+      "70-year-old male presenting with chest pain. Acute coronary syndrome scenario. Practice the full E202 medical assessment: scene size-up, primary survey, OPQRST history, SAMPLE history, secondary assessment, vitals, field impression, interventions (oxygen, aspirin, prescribed nitroglycerin assist), reassessment, and ALS handoff.",
+    difficulty: "Beginner",
+    category: "Medical",
+    certLevel: "EMT",
+    discipline: "EMS",
+    imageUrl: "https://placehold.co/600x400?text=Chest+Pain",
+    estimatedMinutes: 15,
+    tags: ["chest-pain", "ACS", "NREMT", "primary-survey", "OPQRST", "SAMPLE", "psychomotor-exam"],
+    departureVideoUrl: "https://example.com/placeholder.mp4",
+    gradingMode: "nremt_medical",
+    published: true,
+  });
+  return true;
 }
 
 async function createScenario1WithSteps() {

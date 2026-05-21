@@ -437,6 +437,31 @@ export const nremtQuestions = pgTable("nremt_questions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Drill Mode sessions — continuous voice-driven scenario runs.
+// Created when a candidate starts a drill, updated as the session progresses,
+// and finalized with grading_result_json after Sonnet evaluates the transcript.
+export const drillSessions = pgTable("drill_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  // FK to scenarios.id. Scenario 1A is "11111111-aaaa-1111-aaaa-111111111111".
+  scenarioId: varchar("scenario_id").notNull(),
+  // Stable string key for the drill variant (e.g. "1A"). Decouples the variant
+  // from the scenario UUID for cross-environment portability.
+  scenarioKey: text("scenario_key").notNull(),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  endedAt: timestamp("ended_at"),
+  // One of: handoff_completed | timer_expired | candidate_terminated | abandoned
+  endReason: text("end_reason"),
+  totalElapsedSeconds: integer("total_elapsed_seconds"),
+  // Full transcript with timestamps — candidate utterances + system events.
+  // Shape: TranscriptEntry[] (see drill-mode types).
+  transcriptJson: jsonb("transcript_json").notNull().default(sql`'[]'::jsonb`),
+  // Sonnet's structured grading output. Null until grading completes.
+  gradingResultJson: jsonb("grading_result_json"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertScenarioSchema = createInsertSchema(scenarios).omit({ id: true });
 export const insertScenarioStepSchema = createInsertSchema(scenarioSteps).omit({ id: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true });
@@ -446,6 +471,7 @@ export const insertFlashcardReviewSchema = createInsertSchema(flashcardReviews).
 export const insertQuizSessionSchema = createInsertSchema(quizSessions).omit({ id: true });
 export const insertQuizSessionResponseSchema = createInsertSchema(quizSessionResponses).omit({ id: true });
 export const insertNremtQuestionSchema = createInsertSchema(nremtQuestions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDrillSessionSchema = createInsertSchema(drillSessions).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type User = typeof users.$inferSelect;
 export type Scenario = typeof scenarios.$inferSelect;
@@ -466,6 +492,19 @@ export type QuizSessionResponse = typeof quizSessionResponses.$inferSelect;
 export type InsertQuizSessionResponse = z.infer<typeof insertQuizSessionResponseSchema>;
 export type NremtQuestion = typeof nremtQuestions.$inferSelect;
 export type InsertNremtQuestion = z.infer<typeof insertNremtQuestionSchema>;
+export type DrillSession = typeof drillSessions.$inferSelect;
+export type InsertDrillSession = z.infer<typeof insertDrillSessionSchema>;
+
+// Drill Mode transcript entries — one row per candidate utterance or system event.
+export type DrillTranscriptEntry =
+  | { timestampSeconds: number; speaker: "candidate"; text: string }
+  | {
+      timestampSeconds: number;
+      speaker: "system";
+      event: "evaluator_audio" | "patient_audio" | "clipboard_write" | "scenario_start" | "scenario_end";
+      lineId?: string;
+      text?: string;
+    };
 
 export interface VitalSigns {
   hr?: number;
