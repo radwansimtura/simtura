@@ -371,9 +371,7 @@ Return a JSON object with EXACTLY this structure. Do not include any text outsid
     "<each note as a short string, e.g., 'Administered nitro without verifying ED medications'>"
   ],
 
-  "non_standard_sequence_flags": [
-    "<each flag as a short string, e.g., 'Completed SAMPLE before OPQRST'>"
-  ],
+  "non_standard_sequence_flags": <array of strings; each string flags a specific point where the candidate performed an action out of the NREMT-expected sequence. Return empty array [] if no flags. Do NOT use this field to explain absence of data, scenario termination, or anything other than out-of-order actions.>,
 
   "strengths": [
     "<exactly 2 items, one short sentence each, ≤ 20 words per item, specific not generic>"
@@ -405,6 +403,10 @@ Return a JSON object with EXACTLY this structure. Do not include any text outsid
 8. **Keep evidence concise.** For each entry in `point_by_point`, the `evidence` field must be at most ONE short sentence (≤ 25 words) — typically a brief quote or paraphrase from the transcript with a timestamp reference. Do NOT add elaboration, justification, or rephrasing. Sonnet's primary job is grading; verbose evidence is not what the user needs. The `note` field should only be populated when something genuinely unusual happened (procedural miss, out-of-order completion, etc.) — leave it empty otherwise. The same brevity rule applies to `evidence` in `critical_criteria`.
 
 9. **Quote verbatim only when phrasing is graded.** Quote candidate utterances verbatim only when the exact phrasing is itself what's being graded (e.g., a field impression that needs to articulate ACS specifically). Otherwise, paraphrase briefly with a timestamp reference (e.g., "asked about onset at 2:34").
+
+10. **Early termination and time-dependent critical criteria.** Critical criteria CC6, CC7, and CC10 apply to candidates who failed to perform a required action within the scenario as designed, not to scenarios that the candidate terminated early. If the scenario was terminated by the candidate before reaching the relevant step (e.g., transport decision is normally made at end of primary survey but the candidate ended the scenario after only assessing airway), do NOT fire CC6/CC7/CC10 as violated. Instead, mark them violated: false with evidence "Scenario terminated before relevant step reached" and note the early termination in procedural_notes. CC1 (failure to call for transport within 15 minutes) and CC11 (failure to manage as competent EMT) still apply to early terminations since they reflect overall scenario management.
+
+11. **Non-applicable critical criteria.** When a critical criterion is not meaningfully applicable (e.g., CC8 "secondary examination before assessing ABCs" when neither primary nor secondary was performed at all), mark it violated: false with evidence "Not applicable — relevant action did not occur in scenario." This is distinct from a violation. Use this pattern for any CC where the precondition simply did not arise.
 
 # THE TRANSCRIPT TO GRADE
 
