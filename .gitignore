@@ -13,3 +13,9 @@ simturakeys.env.txt
 *.env.txt
 .env.local
 .env.production
+
+# Drill Mode artifacts
+drill-mode-overnight-report.md
+client/public/drill-assets/scenario-1a/clipboard-*.mp4
+client/public/drill-assets/scenario-1a/patient-closeup.mp4
+client/public/drill-assets/scenario-1a/audio/*.mp3
