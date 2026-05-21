@@ -26,6 +26,7 @@ import LearnPage from "@/pages/learn";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import SecurityPage from "@/pages/security";
 import WhyItWorksPage from "@/pages/why-it-works";
+import DrillScenario1APage from "@/pages/drill-scenario-1a";
 import CookieBanner from "@/components/cookie-banner";
 import ComingSoonPage from "@/pages/coming-soon";
 import WelcomeBackPage from "@/pages/welcome-back";
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/privacy" component={PrivacyPolicyPage} />
       <Route path="/security" component={SecurityPage} />
       <Route path="/why-it-works" component={WhyItWorksPage} />
+      <Route path="/drill/scenario-1a" component={DrillScenario1APage} />
       <Route component={NotFound} />
     </Switch>
   );
