@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
+import { ScopeProvider } from "@/hooks/use-scope";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import LandingPageV2 from "@/pages/landing-v2";
@@ -115,11 +116,13 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-            <CookieBanner />
-          </TooltipProvider>
+          <ScopeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+              <CookieBanner />
+            </TooltipProvider>
+          </ScopeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
