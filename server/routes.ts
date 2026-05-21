@@ -34,6 +34,7 @@ import {
 import { eq, and, asc, sql } from "drizzle-orm";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { getUncachableStripeClient } from "./stripeClient";
+import { registerDrillModeRoutes } from "./drill-mode";
 
 function generateCode(): string {
   // 12-character base32-style alphanumeric, easy to read (no 0/O/1/I)
@@ -261,6 +262,14 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
+  // Feature flags — surfaces server-side env state to the client.
+  app.get("/api/feature-flags", (_req, res) => {
+    res.json({
+      drillModeEnabled: process.env.DRILL_MODE_ENABLED === "true",
+    });
+  });
+
+  registerDrillModeRoutes(app);
 
   app.post("/api/grade-answer", aiRateLimit, async (req, res) => {
     const parsed = gradeAnswerSchema.safeParse(req.body);
