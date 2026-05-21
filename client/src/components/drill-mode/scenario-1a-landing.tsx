@@ -94,14 +94,14 @@ export function Scenario1ALanding({
                       <p className="text-xs text-white/50">Pro members get 10 drills/month included.</p>
                     </div>
                     <div className="mt-5 flex flex-col sm:flex-row sm:justify-center gap-2">
-                      <Link href="/pricing">
+                      <a href="/#pricing">
                         <Button
                           className="w-full sm:w-auto bg-blue-500 hover:bg-blue-400 text-white"
                           data-testid="button-upsell-see-pro-plans"
                         >
                           See Pro plans →
                         </Button>
-                      </Link>
+                      </a>
                       <Button
                         variant="outline"
                         onClick={onStartLearn}

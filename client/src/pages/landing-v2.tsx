@@ -179,6 +179,16 @@ export default function LandingPageV2() {
   const { user, upgrade } = useAuth();
 
   useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.slice(1);
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     if (reduceMotion) return;
     const t = setInterval(() => {
       setIdx((i) => (i + 1) % MONTAGE.length);
