@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Mic } from "lucide-react";
+import { ArrowLeft, BookOpen, Lock, Mic } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Scenario1ALandingProps {
   title: string;
@@ -19,6 +20,9 @@ export function Scenario1ALanding({
   onStartLearn,
   backUrl,
 }: Scenario1ALandingProps) {
+  const { user } = useAuth();
+  const isFreeTier = user?.tier === "free";
+
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
       {imageUrl && (
@@ -54,37 +58,83 @@ export function Scenario1ALanding({
             )}
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <button
-                onClick={onStartLearn}
-                className="group rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 p-6 text-left transition-all"
-                data-testid="button-start-learn-mode"
-              >
+              <div className="h-full flex flex-col rounded-xl border border-white/15 bg-white/[0.03] p-6">
                 <div className="h-10 w-10 rounded-xl bg-blue-500/15 flex items-center justify-center mb-4">
                   <BookOpen className="h-5 w-5 text-blue-300" />
                 </div>
                 <h2 className="text-lg font-semibold mb-1">Learn Mode</h2>
-                <p className="text-sm text-white/60">
+                <p className="text-sm text-white/60 flex-1">
                   Step-by-step guided assessment. Click through each decision, get feedback, and review the reasoning.
                 </p>
-              </button>
+                <div className="mt-5">
+                  <Button
+                    onClick={onStartLearn}
+                    className="w-full sm:w-auto bg-blue-500 hover:bg-blue-400 text-white"
+                    data-testid="button-start-learn-mode"
+                  >
+                    Start Learn Mode →
+                  </Button>
+                </div>
+              </div>
 
               {drillEnabled ? (
-                <Link href="/drill/scenario-1a">
-                  <button
-                    className="w-full h-full group rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-blue-500/5 hover:from-blue-500/20 hover:to-blue-500/10 hover:border-blue-500/50 p-6 text-left transition-all"
-                    data-testid="button-start-drill-mode"
+                isFreeTier ? (
+                  <div
+                    className="h-full flex flex-col rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-blue-500/5 p-6"
+                    data-testid="drill-mode-pro-upsell"
                   >
+                    <h2 className="text-lg font-semibold mb-3 text-blue-200 flex items-center gap-2">
+                      <Lock className="w-5 h-5 text-blue-400" />
+                      Drill Mode is a Pro feature
+                    </h2>
+                    <div className="flex-1">
+                      <p className="text-sm text-white/70 mb-3 leading-relaxed">
+                        1 in 7 candidates who pass the written exam still fail a skills station on their first attempt. Drill Mode rehearses you under real exam conditions: voice-driven scoring, 15-minute timer, NREMT-aligned grading.
+                      </p>
+                      <p className="text-xs text-white/50">Pro members get 10 drills/month included.</p>
+                    </div>
+                    <div className="mt-5 flex flex-col sm:flex-row sm:justify-center gap-2">
+                      <Link href="/pricing">
+                        <Button
+                          className="w-full sm:w-auto bg-blue-500 hover:bg-blue-400 text-white"
+                          data-testid="button-upsell-see-pro-plans"
+                        >
+                          See Pro plans →
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        onClick={onStartLearn}
+                        className="w-full sm:w-auto"
+                        data-testid="button-upsell-continue-learn"
+                      >
+                        Use Learn Mode
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-blue-500/5 p-6">
                     <div className="h-10 w-10 rounded-xl bg-blue-500/25 flex items-center justify-center mb-4">
                       <Mic className="h-5 w-5 text-blue-200" />
                     </div>
                     <h2 className="text-lg font-semibold mb-1">Drill Mode</h2>
-                    <p className="text-sm text-white/60">
+                    <p className="text-sm text-white/60 flex-1">
                       Continuous 15-minute voice exam simulation. Speak naturally, the patient and evaluator respond in real time, graded at the end.
                     </p>
-                  </button>
-                </Link>
+                    <div className="mt-5">
+                      <Link href="/drill/scenario-1a">
+                        <Button
+                          className="w-full sm:w-auto bg-blue-500 hover:bg-blue-400 text-white"
+                          data-testid="button-start-drill-mode"
+                        >
+                          Start Drill Mode →
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )
               ) : (
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6 opacity-60">
+                <div className="h-full flex flex-col rounded-xl border border-white/10 bg-white/[0.02] p-6 opacity-60">
                   <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center mb-4">
                     <Mic className="h-5 w-5 text-white/40" />
                   </div>
