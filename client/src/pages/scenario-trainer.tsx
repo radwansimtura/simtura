@@ -166,8 +166,6 @@ export default function ScenarioTrainerPage() {
     summary: string;
   }>({ show: false, criterion: null, summary: "" });
   const { scope } = useScope();
-  const [scopeQuestionsByStep, setScopeQuestionsByStep] = useState<Record<number, ScopeQuestion[]>>({});
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [scopeSelectedOption, setScopeSelectedOption] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [scopeShowFeedback, setScopeShowFeedback] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -362,7 +360,10 @@ export default function ScenarioTrainerPage() {
   const currentQuestion = currentQuestions[currentQuestionIndex] ?? null;
 
   const isScopeAdaptive = scenario?.gradingMode === "scope-adaptive";
-  const currentScopeQuestions = isScopeAdaptive ? (scopeQuestionsByStep[currentStepIndex] ?? []) : [];
+  const currentScopeQuestions: ScopeQuestion[] =
+    isScopeAdaptive && scope && currentStep?.questions
+      ? ((currentStep.questions as Record<string, ScopeQuestion[]>)[scope] ?? [])
+      : [];
   const currentScopeQuestion = isScopeAdaptive ? (currentScopeQuestions[currentQuestionIndex] ?? null) : null;
 
   const progressValue = totalQuestions > 0 ? ((questionsAnsweredSoFar + (phase === "feedback" ? 1 : 0)) / totalQuestions) * 100 : 0;
@@ -377,40 +378,13 @@ export default function ScenarioTrainerPage() {
     }
   }, [currentStepIndex, currentQuestionIndex, currentQuestion?.prompt]);
 
-  // Generate scope-adaptive questions when entering question phase
+  // Reset scope answer state when navigating steps/questions
   useEffect(() => {
-    if (!isScopeAdaptive || !scope || !currentStep || phase !== "question") return;
-    if (scopeQuestionsByStep[currentStepIndex] !== undefined) return; // already generated
-    if (isGeneratingQuestions) return;
-
-    setIsGeneratingQuestions(true);
-    setScopeSelectedOption(null);
-    setScopeShowFeedback(false);
-
-    fetch("/api/generate-scope-questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        scope,
-        scenarioTitle: scenario?.title ?? "",
-        chiefComplaint: scenario?.patientSummary ?? "",
-        videoDescription: currentStep.phase,
-        stepOrder: currentStep.stepOrder,
-        patientContext: currentStep.patientState ?? "",
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data.questions)) {
-          setScopeQuestionsByStep((prev) => ({ ...prev, [currentStepIndex]: data.questions }));
-        }
-      })
-      .catch(() => {
-        // fallback: empty so UI shows an error state
-        setScopeQuestionsByStep((prev) => ({ ...prev, [currentStepIndex]: [] }));
-      })
-      .finally(() => setIsGeneratingQuestions(false));
-  }, [isScopeAdaptive, scope, currentStep?.id, phase, currentStepIndex]);
+    if (isScopeAdaptive) {
+      setScopeSelectedOption(null);
+      setScopeShowFeedback(false);
+    }
+  }, [currentStepIndex, currentQuestionIndex, isScopeAdaptive]);
 
   const handleSelectAction = (action: string) => {
     if (phase !== "question") return;
@@ -1053,16 +1027,8 @@ export default function ScenarioTrainerPage() {
                 </div>
               )}
 
-              {/* Loading */}
-              {scope && isGeneratingQuestions && (
-                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-400 mx-auto mb-3" />
-                  <p className="text-white/60 text-sm">Generating {scope} questions...</p>
-                </div>
-              )}
-
-              {/* Generated question */}
-              {scope && !isGeneratingQuestions && currentScopeQuestion && (
+              {/* Question */}
+              {scope && currentScopeQuestion && (
                 <>
                   <div className="mb-2 flex items-center gap-2">
                     <Badge className={`text-[10px] border-0 ${scope === "EMT-B" ? "bg-blue-600/80" : scope === "AEMT" ? "bg-violet-600/80" : "bg-rose-600/80"} text-white`}>
@@ -1171,19 +1137,10 @@ export default function ScenarioTrainerPage() {
                 </>
               )}
 
-              {/* Empty — generation failed */}
-              {scope && !isGeneratingQuestions && currentScopeQuestions.length === 0 && scopeQuestionsByStep[currentStepIndex] !== undefined && (
+              {/* No questions for this step */}
+              {scope && currentScopeQuestions.length === 0 && (
                 <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
-                  <p className="text-white/60 text-sm mb-3">Couldn't generate questions for this step.</p>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setScopeQuestionsByStep((prev) => { const n = {...prev}; delete n[currentStepIndex]; return n; });
-                    }}
-                    className="bg-white/10 text-white"
-                  >
-                    Retry
-                  </Button>
+                  <p className="text-white/60 text-sm">No questions available for this step.</p>
                 </div>
               )}
             </div>
