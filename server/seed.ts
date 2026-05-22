@@ -3,6 +3,13 @@ import { db } from "./db";
 import { scenarios, scenarioSteps, attempts } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { log } from "./index";
+import {
+  DROWNING_QUESTIONS,
+  DKA_QUESTIONS,
+  SEIZURE_QUESTIONS,
+  GSW_QUESTIONS,
+  STEMI_QUESTIONS,
+} from "./scope-questions";
 
 async function scenarioExists(title: string): Promise<boolean> {
   const existing = await db.select().from(scenarios).where(eq(scenarios.title, title)).limit(1);
@@ -4032,7 +4039,7 @@ async function createScenarioDrowningWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/drowning-v1-scene-approach.mov",
-      questions: null,
+      questions: DROWNING_QUESTIONS[1],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4048,7 +4055,7 @@ async function createScenarioDrowningWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/shared-vitals-taking.mp4",
-      questions: null,
+      questions: DROWNING_QUESTIONS[2],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4064,7 +4071,7 @@ async function createScenarioDrowningWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/drowning-v3-cpr.mov",
-      questions: null,
+      questions: DROWNING_QUESTIONS[3],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4080,7 +4087,7 @@ async function createScenarioDrowningWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/drowning-v4-aed-shock.mov",
-      questions: null,
+      questions: DROWNING_QUESTIONS[4],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4096,7 +4103,7 @@ async function createScenarioDrowningWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-enroute-monitoring.mov",
-      questions: null,
+      questions: DROWNING_QUESTIONS[5],
     }),
   ]);
   await storage.setScenarioPublished(scenario.id, true);
@@ -4133,7 +4140,7 @@ async function createScenarioDKAWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/dka-v2-patient-contact.mov",
-      questions: null,
+      questions: DKA_QUESTIONS[1],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4149,7 +4156,7 @@ async function createScenarioDKAWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/dka-v3-avpu-assessment.mov",
-      questions: null,
+      questions: DKA_QUESTIONS[2],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4165,7 +4172,7 @@ async function createScenarioDKAWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/dka-v4-pulse-ox.mp4",
-      questions: null,
+      questions: DKA_QUESTIONS[3],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4181,7 +4188,7 @@ async function createScenarioDKAWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-nrb-mask.mov",
-      questions: null,
+      questions: DKA_QUESTIONS[4],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4197,7 +4204,7 @@ async function createScenarioDKAWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/dka-v6-enroute.mp4",
-      questions: null,
+      questions: DKA_QUESTIONS[5],
     }),
   ]);
   await storage.setScenarioPublished(scenario.id, true);
@@ -4234,7 +4241,7 @@ async function createScenarioSeizureWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/seizure-v2-active-convulsing.mp4",
-      questions: null,
+      questions: SEIZURE_QUESTIONS[1],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4250,7 +4257,7 @@ async function createScenarioSeizureWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/seizure-v3-postictal-lateral.mov",
-      questions: null,
+      questions: SEIZURE_QUESTIONS[2],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4266,7 +4273,7 @@ async function createScenarioSeizureWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-nrb-mask.mov",
-      questions: null,
+      questions: SEIZURE_QUESTIONS[3],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4282,7 +4289,7 @@ async function createScenarioSeizureWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-vitals-taking.mp4",
-      questions: null,
+      questions: SEIZURE_QUESTIONS[4],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4298,7 +4305,7 @@ async function createScenarioSeizureWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/shared-enroute-monitoring.mov",
-      questions: null,
+      questions: SEIZURE_QUESTIONS[5],
     }),
   ]);
   await storage.setScenarioPublished(scenario.id, true);
@@ -4335,7 +4342,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-vitals-taking.mp4",
-      questions: null,
+      questions: GSW_QUESTIONS[1],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4351,7 +4358,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-nasal-cannula.mov",
-      questions: null,
+      questions: GSW_QUESTIONS[2],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4367,7 +4374,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/gsw-chest-v3-chest-seal.mp4",
-      questions: null,
+      questions: GSW_QUESTIONS[3],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4383,7 +4390,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/gsw-chest-v4-nrb-check.mov",
-      questions: null,
+      questions: GSW_QUESTIONS[4],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4399,7 +4406,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-vitals-taking.mp4",
-      questions: null,
+      questions: GSW_QUESTIONS[5],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4415,7 +4422,7 @@ async function createScenarioGSWChestWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/gsw-chest-v6-stretcher-load.mov",
-      questions: null,
+      questions: GSW_QUESTIONS[6],
     }),
   ]);
   await storage.setScenarioPublished(scenario.id, true);
@@ -4452,7 +4459,7 @@ async function createScenarioSTEMIWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/stemi-v1-scene-approach.mov",
-      questions: null,
+      questions: STEMI_QUESTIONS[1],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4468,7 +4475,7 @@ async function createScenarioSTEMIWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-vitals-taking.mp4",
-      questions: null,
+      questions: STEMI_QUESTIONS[2],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4484,7 +4491,7 @@ async function createScenarioSTEMIWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/shared-nasal-cannula.mov",
-      questions: null,
+      questions: STEMI_QUESTIONS[3],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4500,7 +4507,7 @@ async function createScenarioSTEMIWithSteps() {
       hint: null,
       isCritical: true,
       videoUrl: "/videos/stemi-v4-ecg-analysis.mov",
-      questions: null,
+      questions: STEMI_QUESTIONS[4],
     }),
     storage.createScenarioStep({
       scenarioId: scenario.id,
@@ -4516,7 +4523,7 @@ async function createScenarioSTEMIWithSteps() {
       hint: null,
       isCritical: false,
       videoUrl: "/videos/shared-enroute-monitoring.mov",
-      questions: null,
+      questions: STEMI_QUESTIONS[5],
     }),
   ]);
   await storage.setScenarioPublished(scenario.id, true);
