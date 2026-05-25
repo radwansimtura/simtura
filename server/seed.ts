@@ -4054,7 +4054,7 @@ async function createScenarioDrowningWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: false,
-      videoUrl: "/videos/shared-vitals-taking.mp4",
+      videoUrl: "/videos/drowning-v3-cpr.mov",
       questions: DROWNING_QUESTIONS[2],
     }),
     storage.createScenarioStep({
@@ -4187,7 +4187,7 @@ async function createScenarioDKAWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/shared-nrb-mask.mov",
+      videoUrl: "/videos/shared-enroute-monitoring.mov",
       questions: DKA_QUESTIONS[4],
     }),
     storage.createScenarioStep({
@@ -4288,7 +4288,7 @@ async function createScenarioSeizureWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/shared-vitals-taking.mp4",
+      videoUrl: "/videos/seizure-v2-active-convulsing.mp4",
       questions: SEIZURE_QUESTIONS[4],
     }),
     storage.createScenarioStep({
@@ -4405,7 +4405,7 @@ async function createScenarioGSWChestWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/shared-vitals-taking.mp4",
+      videoUrl: "/videos/gsw-chest-v4-nrb-check.mov",
       questions: GSW_QUESTIONS[5],
     }),
     storage.createScenarioStep({
