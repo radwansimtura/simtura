@@ -59,13 +59,11 @@ export default function DisciplineScenariosPage({
   heroSubtitle,
   heroImage,
   heroVideo,
-  certLevels,
 }: DisciplineScenariosPageProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const { user } = useAuth();
   const { scope, setScope } = useScope();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCert, setSelectedCert] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
 
   useEffect(() => {
@@ -87,10 +85,9 @@ export default function DisciplineScenariosPage({
     const matchesSearch =
       s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCert = selectedCert === "All" || s.certLevel === selectedCert;
     const matchesDifficulty =
       selectedDifficulty === "All" || s.difficulty === selectedDifficulty;
-    return matchesSearch && matchesCert && matchesDifficulty;
+    return matchesSearch && matchesDifficulty;
   });
 
   const scrollToScenarios = () => {
@@ -269,46 +266,6 @@ export default function DisciplineScenariosPage({
           </p>
         </motion.div>
 
-        {/* Scope selector — EMS only */}
-        {discipline === "EMS" && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-          >
-            <p className="text-xs uppercase tracking-widest text-white/50 mb-3">Practice scope</p>
-            <p className="text-sm text-white/60 mb-4 max-w-xl">
-              Select your provider level. The same scenarios play for all scopes — only the quiz questions change to match your scope of practice.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(["EMT-B", "AEMT", "Paramedic"] as ScopeMode[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setScope(s)}
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                    scope === s
-                      ? s === "EMT-B"
-                        ? "bg-blue-500 text-white"
-                        : s === "AEMT"
-                        ? "bg-violet-500 text-white"
-                        : "bg-rose-500 text-white"
-                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-              {scope && (
-                <span className="self-center text-xs text-white/40 ml-2">
-                  Questions will be generated for <span className="text-white/70">{scope}</span> scope
-                </span>
-              )}
-            </div>
-          </motion.div>
-        )}
-
         {/* Filters */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -329,21 +286,30 @@ export default function DisciplineScenariosPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {["All", ...certLevels].map((cert) => (
-              <button
-                key={cert}
-                onClick={() => setSelectedCert(cert)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  selectedCert === cert
-                    ? "bg-white text-black"
-                    : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10"
-                }`}
-                data-testid={`button-filter-cert-${cert}`}
-              >
-                {cert}
-              </button>
-            ))}
-            <div className="w-px h-6 bg-white/10 mx-1 self-center" />
+            {discipline === "EMS" && (
+              <>
+                <span className="text-xs text-white/50 self-center mr-1">Scope:</span>
+                {(["EMT-B", "AEMT", "Paramedic"] as ScopeMode[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setScope(s)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      scope === s
+                        ? s === "EMT-B"
+                          ? "bg-blue-500 text-white"
+                          : s === "AEMT"
+                          ? "bg-violet-500 text-white"
+                          : "bg-rose-500 text-white"
+                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/10"
+                    }`}
+                    data-testid={`button-scope-${s}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                <div className="w-px h-6 bg-white/10 mx-1 self-center" />
+              </>
+            )}
             {["All", "Beginner", "Intermediate", "Advanced"].map((diff) => (
               <button
                 key={diff}
