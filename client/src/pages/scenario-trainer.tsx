@@ -173,7 +173,7 @@ export default function ScenarioTrainerPage() {
   const recognitionRef = useRef<any>(null);
   const speechSupported = typeof window !== "undefined" && (("SpeechRecognition" in window) || ("webkitSpeechRecognition" in window));
 
-  const { data: scenario, isLoading: scenarioLoading } = useQuery<Scenario>({
+  const { data: scenario, isLoading: scenarioLoading, error: scenarioError } = useQuery<Scenario>({
     queryKey: ["/api/scenarios", id],
   });
 
@@ -186,9 +186,19 @@ export default function ScenarioTrainerPage() {
 
   const backUrl = scenario?.discipline === "Nursing" ? "/nursing" : "/ems";
 
-  const { data: steps, isLoading: stepsLoading } = useQuery<ScenarioStep[]>({
+  const { data: steps, isLoading: stepsLoading, error: stepsError } = useQuery<ScenarioStep[]>({
     queryKey: ["/api/scenarios", id, "steps"],
   });
+
+  // /api/scenarios/:id/steps requires auth. A 401 from either query means
+  // the user is logged out — redirect to signin with a next= back to here
+  // rather than falling through to the "Scenario not found" check.
+  useEffect(() => {
+    const err = scenarioError ?? stepsError;
+    if (err && err.message.startsWith("401")) {
+      setLocation(`/signin?next=/scenario/${id}`);
+    }
+  }, [scenarioError, stepsError, id, setLocation]);
 
   const totalQuestions = useMemo(() => {
     if (!steps) return 0;
