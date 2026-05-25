@@ -22,9 +22,13 @@ import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
 import DesktopNav from "@/components/DesktopNav";
 
-// Hidden temporarily; STEMI has video mapping issues — restore when fixed.
+// Hidden temporarily; video mapping and progression issues — restore as fixed.
 const HIDDEN_SCENARIO_IDS = new Set<string>([
-  "9a500337-e965-4443-822a-213b73d3f82f",
+  "9a500337-e965-4443-822a-213b73d3f82f", // STEMI
+  "5b2b97dd-f3ac-489a-8b36-5011b230e6df", // Active Seizure
+  "032109fc-8b59-4610-b559-0113cb499607", // DKA
+  "4f0ffc2d-a32b-4a6f-b530-156ee3fe4944", // Drowning
+  "0fe2a503-232e-4f73-99a3-510cf8b09e68", // GSW Chest
 ]);
 
 const difficultyColors: Record<string, string> = {
