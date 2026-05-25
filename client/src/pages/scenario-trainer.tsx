@@ -165,7 +165,7 @@ export default function ScenarioTrainerPage() {
     criterion: string | null;
     summary: string;
   }>({ show: false, criterion: null, summary: "" });
-  const { scope } = useScope();
+  const { scope, setScope } = useScope();
   const [scopeSelectedOption, setScopeSelectedOption] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [scopeShowFeedback, setScopeShowFeedback] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1047,9 +1047,31 @@ export default function ScenarioTrainerPage() {
 
               {/* No scope selected */}
               {!scope && (
-                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
-                  <p className="text-white/60 text-sm mb-3">Select your provider scope to receive tailored questions.</p>
-                  <p className="text-white/40 text-xs">Go back to the EMS scenarios page and select EMT-B, AEMT, or Paramedic.</p>
+                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5">
+                  <p className="text-white/90 text-sm font-medium mb-1">
+                    Select your provider scope
+                  </p>
+                  <p className="text-white/50 text-xs mb-4">
+                    Questions and grading will match your certification level. You can change this later from the scenarios page.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["EMT-B", "AEMT", "Paramedic"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setScope(s)}
+                        className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                          s === "EMT-B"
+                            ? "bg-blue-500 hover:bg-blue-400 text-white"
+                            : s === "AEMT"
+                            ? "bg-violet-500 hover:bg-violet-400 text-white"
+                            : "bg-rose-500 hover:bg-rose-400 text-white"
+                        }`}
+                        data-testid={`button-inline-scope-${s}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 

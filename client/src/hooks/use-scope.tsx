@@ -18,6 +18,15 @@ const ScopeContext = createContext<ScopeContextValue>({
 
 export function ScopeProvider({ children }: { children: ReactNode }) {
   const [scope, setScopeState] = useState<ScopeMode | null>(() => {
+    // URL query param wins over localStorage so shareable links carry scope.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("scope");
+      if (fromUrl === "EMT-B" || fromUrl === "AEMT" || fromUrl === "Paramedic") {
+        try { localStorage.setItem(STORAGE_KEY, fromUrl); } catch {}
+        return fromUrl;
+      }
+    } catch {}
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored === "EMT-B" || stored === "AEMT" || stored === "Paramedic") return stored;
@@ -28,6 +37,11 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   const setScope = (s: ScopeMode) => {
     setScopeState(s);
     try { localStorage.setItem(STORAGE_KEY, s); } catch {}
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("scope", s);
+      window.history.replaceState({}, "", url);
+    } catch {}
   };
 
   const clearScope = () => {
