@@ -22,6 +22,11 @@ import { SiteFooter } from "@/components/site-footer";
 import MobileNav from "@/components/MobileNav";
 import DesktopNav from "@/components/DesktopNav";
 
+// Hidden temporarily; STEMI has video mapping issues — restore when fixed.
+const HIDDEN_SCENARIO_IDS = new Set<string>([
+  "9a500337-e965-4443-822a-213b73d3f82f",
+]);
+
 const difficultyColors: Record<string, string> = {
   Beginner: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   Intermediate: "bg-amber-500/15 text-amber-300 border-amber-500/30",
@@ -78,6 +83,7 @@ export default function DisciplineScenariosPage({
   });
 
   const filteredScenarios = scenarios?.filter((s) => {
+    if (HIDDEN_SCENARIO_IDS.has(s.id)) return false;
     const matchesSearch =
       s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.description.toLowerCase().includes(searchTerm.toLowerCase());

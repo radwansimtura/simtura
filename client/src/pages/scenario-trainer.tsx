@@ -637,7 +637,23 @@ export default function ScenarioTrainerPage() {
     );
   }
 
-  if (!scenario || !steps || steps.length === 0) {
+  if (!scenario) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 mx-auto text-white/40 mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Scenario not found</h2>
+          <Button onClick={() => navigate(backUrl)} variant="outline" data-testid="button-back-scenarios">
+            Back to Scenarios
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Scope-adaptive scenarios legitimately have zero scenario_steps — their
+  // questions are generated at runtime from scope-questions, not pre-seeded.
+  if (scenario.gradingMode !== "scope-adaptive" && (!steps || steps.length === 0)) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -858,10 +874,10 @@ export default function ScenarioTrainerPage() {
               {phase !== "intro" && (
                 <div className="text-xs text-white/50">
                   {showVideoPlaying ? (
-                    phase === "dispatch-video" ? "En Route..." : phase === "departure-video" ? "Transporting patient..." : `Step ${currentStepIndex + 1} of ${steps.length}`
+                    phase === "dispatch-video" ? "En Route..." : phase === "departure-video" ? "Transporting patient..." : `Step ${currentStepIndex + 1} of ${steps?.length ?? 0}`
                   ) : (
                     <>
-                      Step {currentStepIndex + 1} of {steps.length}
+                      Step {currentStepIndex + 1} of {steps?.length ?? 0}
                       {currentQuestions.length > 1 && (
                         <span className="text-white/30"> &middot; Q{currentQuestionIndex + 1}/{currentQuestions.length}</span>
                       )}
