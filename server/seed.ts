@@ -4054,7 +4054,9 @@ async function createScenarioDrowningWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: false,
-      videoUrl: "/videos/drowning-v3-cpr.mov",
+      // Video missing/mismapped — render this step without a clip and go
+      // straight to the scope question. Re-add a clip once one is sourced.
+      videoUrl: null,
       questions: DROWNING_QUESTIONS[2],
     }),
     storage.createScenarioStep({
@@ -4187,7 +4189,9 @@ async function createScenarioDKAWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/shared-enroute-monitoring.mov",
+      // Video missing/mismapped — render this step without a clip and go
+      // straight to the scope question. Re-add a clip once one is sourced.
+      videoUrl: null,
       questions: DKA_QUESTIONS[4],
     }),
     storage.createScenarioStep({
@@ -4288,7 +4292,9 @@ async function createScenarioSeizureWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/seizure-v2-active-convulsing.mp4",
+      // Video missing/mismapped — render this step without a clip and go
+      // straight to the scope question. Re-add a clip once one is sourced.
+      videoUrl: null,
       questions: SEIZURE_QUESTIONS[4],
     }),
     storage.createScenarioStep({
@@ -4405,7 +4411,9 @@ async function createScenarioGSWChestWithSteps() {
       feedbackIncorrect: "",
       hint: null,
       isCritical: true,
-      videoUrl: "/videos/gsw-chest-v4-nrb-check.mov",
+      // Video missing/mismapped — render this step without a clip and go
+      // straight to the scope question. Re-add a clip once one is sourced.
+      videoUrl: null,
       questions: GSW_QUESTIONS[5],
     }),
     storage.createScenarioStep({
