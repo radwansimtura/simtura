@@ -485,7 +485,12 @@ export interface StepQuestion {
   patientState?: string;
   vitalSigns?: VitalSigns | null;
   correctActions: string[];
+  // Open-response grader reference — long, on-the-nose wrong answers.
   incorrectActions: string[];
+  // MCQ-only — purpose-written plausible-wrong options. When present, the
+  // trainer renders these alongside correctActions instead of incorrectActions
+  // so option length doesn't telegraph the right answer.
+  distractors?: string[];
   feedbackCorrect: string;
   feedbackIncorrect: string;
   hint?: string;

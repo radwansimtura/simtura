@@ -383,7 +383,7 @@ export default function ScenarioTrainerPage() {
 
   useEffect(() => {
     if (currentQuestion) {
-      const allActions = [...(currentQuestion.correctActions || []), ...(currentQuestion.incorrectActions || [])];
+      const allActions = [...(currentQuestion.correctActions || []), ...(currentQuestion.distractors || [])];
       setShuffledActions(allActions.sort(() => Math.random() - 0.5));
     }
   }, [currentStepIndex, currentQuestionIndex, currentQuestion?.prompt]);
