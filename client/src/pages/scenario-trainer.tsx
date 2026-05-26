@@ -384,7 +384,15 @@ export default function ScenarioTrainerPage() {
   useEffect(() => {
     if (currentQuestion) {
       const allActions = [...(currentQuestion.correctActions || []), ...(currentQuestion.distractors || [])];
-      setShuffledActions(allActions.sort(() => Math.random() - 0.5));
+      // Fisher-Yates for uniform distribution. Array.sort with a random
+      // comparator is non-uniform — it tends to leave the original first
+      // element in position 0, which would land the correct answer
+      // (always first in the combined array) in slot A more often than chance.
+      for (let i = allActions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allActions[i], allActions[j]] = [allActions[j], allActions[i]];
+      }
+      setShuffledActions(allActions);
     }
   }, [currentStepIndex, currentQuestionIndex, currentQuestion?.prompt]);
 
