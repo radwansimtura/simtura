@@ -1,5 +1,5 @@
-import type Stripe from 'stripe';
-import { getStripeSync } from './stripeClient';
+import Stripe from 'stripe';
+import { getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
 import { randomBytes } from 'crypto';
 import { sendProWelcomeEmail, sendOrgPaymentConfirmationEmail } from './email';
@@ -85,17 +85,17 @@ async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
 }
 
 export async function processWebhook(rawBody: Buffer, signature: string): Promise<void> {
-  const stripeSync = await getStripeSync();
-  // Verifies signature against the managed webhook secret AND syncs Stripe data.
-  // Throws on invalid signature, so the JSON.parse below is safe afterwards.
-  await stripeSync.processWebhook(rawBody, signature);
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET environment variable is not set');
+  }
 
+  const stripe = await getUncachableStripeClient();
   let event: Stripe.Event;
   try {
-    event = JSON.parse(rawBody.toString('utf8')) as Stripe.Event;
-  } catch (err) {
-    console.error('[stripe] webhook parse failed after sync:', err);
-    return;
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  } catch (err: any) {
+    throw new Error(`Webhook signature verification failed: ${err.message}`);
   }
 
   if (event.type === 'checkout.session.completed') {

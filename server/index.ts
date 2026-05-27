@@ -104,26 +104,14 @@ app.use((req, res, next) => {
 });
 
 async function initStripe() {
-  try {
-    const { runMigrations } = await import("stripe-replit-sync");
-    const { getStripeSync } = await import("./stripeClient");
-
-    await runMigrations({ databaseUrl: process.env.DATABASE_URL! });
-    const stripeSync = await getStripeSync();
-
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-    if (domain) {
-      const webhookUrl = `https://${domain}/api/stripe/webhook`;
-      await stripeSync.findOrCreateManagedWebhook(webhookUrl);
-      log(`stripe webhook ready at ${webhookUrl}`, "stripe");
-    } else {
-      log("REPLIT_DOMAINS not set — skipping managed webhook creation", "stripe");
-    }
-    await stripeSync.syncBackfill();
-    log("stripe initialized", "stripe");
-  } catch (err: any) {
-    console.error("[stripe] init failed (payments will be unavailable):", err?.message ?? err);
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn("[stripe] STRIPE_SECRET_KEY not set — payments will be unavailable");
+    return;
   }
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.warn("[stripe] STRIPE_WEBHOOK_SECRET not set — webhook verification will fail");
+  }
+  log("stripe initialized", "stripe");
 }
 
 (async () => {
