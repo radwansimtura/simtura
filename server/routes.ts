@@ -846,7 +846,7 @@ Generate 3 scope-appropriate multiple choice questions for a ${scope} provider w
           seats: String(data.seats),
           courseMonths: String(months),
         },
-        success_url: `${baseUrl}/organizations/${org.id}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${baseUrl}/org-dashboard/${org.id}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/organizations?canceled=1`,
       });
 

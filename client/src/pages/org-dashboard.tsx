@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -191,8 +191,22 @@ const NAV = [
 export default function OrgDashboardPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [section, setSection] = useState<Section>("overview");
   const [dateRange, setDateRange] = useState("This Course");
+
+  // Show welcome toast after successful Stripe payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("paid") === "1") {
+      toast({
+        title: "Payment successful!",
+        description: "Your organization is active. Share the access codes with your students.",
+      });
+      // Clean the URL so the toast doesn't re-fire on refresh
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const { data: org, isLoading: orgLoading } = useQuery<PublicOrganization>({
     queryKey: ["/api/organizations", id],

@@ -14,7 +14,9 @@ import type { PublicOrganization } from "@shared/schema";
 import {
   ArrowLeft,
   ArrowRight,
+  Building2,
   Crown,
+  LayoutDashboard,
   LogOut,
   Pencil,
   Target,
@@ -182,6 +184,12 @@ export default function ProfilePage() {
     enabled: !!user?.organizationId,
   });
 
+  // Fetch orgs this user owns (to show dashboard link)
+  const { data: ownedOrgs } = useQuery<PublicOrganization[]>({
+    queryKey: ["/api/organizations/mine/list"],
+    enabled: !!user,
+  });
+
   // Task 5: compute time-until-midnight countdown for free users who've used today's scenario
   const usedToday = (() => {
     if (!stats?.recent) return false;
@@ -326,6 +334,20 @@ export default function ProfilePage() {
             <p className="text-white/40 text-xs mt-1" data-testid="text-org-name">
               Member of {orgData.name}
             </p>
+          )}
+          {/* Org dashboard link for owners */}
+          {ownedOrgs && ownedOrgs.length > 0 && (
+            <div className="mt-3 flex flex-col gap-2">
+              {ownedOrgs.map((org) => (
+                <Link key={org.id} href={`/org-dashboard/${org.id}`}>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer">
+                    <Building2 className="h-3 w-3" />
+                    <span>{org.name}</span>
+                    <LayoutDashboard className="h-3 w-3 ml-1" />
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
         </motion.div>
 
