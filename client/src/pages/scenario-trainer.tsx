@@ -370,9 +370,10 @@ export default function ScenarioTrainerPage() {
   const currentQuestion = currentQuestions[currentQuestionIndex] ?? null;
 
   const isScopeAdaptive = scenario?.gradingMode === "scope-adaptive";
+  const effectiveScope = scope ?? "EMT-B";
   const currentScopeQuestions: ScopeQuestion[] =
-    isScopeAdaptive && scope && currentStep?.questions
-      ? ((currentStep.questions as Record<string, ScopeQuestion[]>)[scope] ?? [])
+    isScopeAdaptive && currentStep?.questions
+      ? ((currentStep.questions as Record<string, ScopeQuestion[]>)[effectiveScope] ?? [])
       : [];
   const currentScopeQuestion = isScopeAdaptive ? (currentScopeQuestions[currentQuestionIndex] ?? null) : null;
 
@@ -1053,51 +1054,13 @@ export default function ScenarioTrainerPage() {
               {/* Vitals from step */}
               <ScopeVitals vitalSigns={currentStep?.vitalSigns as VitalSigns | null} />
 
-              {/* No scope selected */}
-              {!scope && (
-                <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5">
-                  <p className="text-white/90 text-sm font-medium mb-1">
-                    Select your provider scope
-                  </p>
-                  <p className="text-white/50 text-xs mb-4">
-                    Questions and grading will match your certification level. You can change this later from the scenarios page.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(["EMT-B", "AEMT", "Paramedic"] as const).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setScope(s)}
-                        className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
-                          s === "EMT-B"
-                            ? "bg-blue-500 hover:bg-blue-400 text-white"
-                            : s === "AEMT"
-                            ? "bg-violet-500 hover:bg-violet-400 text-white"
-                            : "bg-rose-500 hover:bg-rose-400 text-white"
-                        }`}
-                        data-testid={`button-inline-scope-${s}`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Question */}
-              {scope && currentScopeQuestion && (
+              {currentScopeQuestion && (
                 <>
                   <div className="mb-2 flex items-center gap-2">
-                    <Badge className={`text-[10px] border-0 ${scope === "EMT-B" ? "bg-blue-600/80" : scope === "AEMT" ? "bg-violet-600/80" : "bg-rose-600/80"} text-white`}>
-                      {scope} Scope
+                    <Badge className={`text-[10px] border-0 ${effectiveScope === "EMT-B" ? "bg-blue-600/80" : effectiveScope === "AEMT" ? "bg-violet-600/80" : "bg-rose-600/80"} text-white`}>
+                      {effectiveScope} Scope
                     </Badge>
-                    <Badge variant="outline" className="text-[10px] border-white/20 text-white/50">
-                      {currentScopeQuestion.question_type}
-                    </Badge>
-                    {currentScopeQuestion.cross_scope && (
-                      <Badge variant="outline" className="text-[10px] border-yellow-500/40 text-yellow-400">
-                        Situational Awareness
-                      </Badge>
-                    )}
                   </div>
 
                   <div className="mb-3 rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-4">
@@ -1128,8 +1091,8 @@ export default function ScenarioTrainerPage() {
                               : "border-white/10 bg-black/50 hover:border-white/20 hover:bg-black/60"
                           }`}
                         >
-                          <div className="flex items-start gap-2.5">
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium mt-0.5 ${
+                          <div className="flex items-center gap-2.5">
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
                               scopeShowFeedback
                                 ? isCorrect ? "bg-green-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-white/10 text-white/30"
                                 : isSelected ? "bg-blue-500 text-white" : "bg-white/10 text-white/50"
@@ -1194,7 +1157,7 @@ export default function ScenarioTrainerPage() {
               )}
 
               {/* No questions for this step */}
-              {scope && currentScopeQuestions.length === 0 && (
+              {currentScopeQuestions.length === 0 && (
                 <div className="rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 p-5 text-center">
                   <p className="text-white/60 text-sm">No questions available for this step.</p>
                 </div>
@@ -1515,7 +1478,7 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   )}
-                  {!(!headlineCorrect && !criticalFailureState.show) && (
+                  {(headlineCorrect || criticalFailureState.show || mode === "multiple-choice") && (
                   <div className={`rounded-lg border p-4 backdrop-blur-md ${
                     headlineCorrect
                       ? "border-green-500/30 bg-green-500/10"
@@ -1545,6 +1508,12 @@ export default function ScenarioTrainerPage() {
                       </div>
                     </div>
                   </div>
+                  )}
+                  {!headlineCorrect && mode === "multiple-choice" && !criticalFailureState.show && currentQuestion?.correctActions?.[0] && (
+                    <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3 backdrop-blur-md">
+                      <div className="text-[10px] uppercase tracking-wider text-green-400/70 font-medium mb-1">Correct answer</div>
+                      <p className="text-xs text-white/70 leading-relaxed">{currentQuestion.correctActions[0]}</p>
+                    </div>
                   )}
                   {!headlineCorrect && scenario?.gradingMode === "nremt_medical" && !criticalFailureState.show && (
                     <div
